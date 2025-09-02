@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown, Star, ExternalLink, Phone } from 'lucide-react';
+import { useEventSource } from '@/hooks/useEventSource';
+import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown, Star, ExternalLink, Phone, Wifi, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PlaceResult {
@@ -53,14 +54,23 @@ interface FoodRequest {
   };
   recommendation_count?: number;
   user_has_recommended?: boolean;
+  // Real-time specific fields
+  lat?: number;
+  lng?: number;
+  urgency?: "quick" | "soon" | "extended";
 }
+
+type LiveEvent = 
+  | { type: "hello" | "heartbeat"; serverTime: string }
+  | { type: "request.created" | "request.updated" | "request.closed" | "recommendation.created"; requestId: string; serverTime: string; payload: any };
 
 const BrowseRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [requests, setRequests] = useState<FoodRequest[]>([]);
+  const [requests, setRequests] = useState<Record<string, FoodRequest>>({});
   const [loading, setLoading] = useState(true);
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<FoodRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [restaurantOpen, setRestaurantOpen] = useState(false);
@@ -69,6 +79,7 @@ const BrowseRequests = () => {
   const [googlePlaces, setGooglePlaces] = useState<PlaceResult[]>([]);
   const [sessionToken] = useState(() => crypto.randomUUID());
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
+  const [clockSkew, setClockSkew] = useState(0);
   const [formData, setFormData] = useState({
     restaurantName: '',
     note: '',
@@ -80,16 +91,34 @@ const BrowseRequests = () => {
     priceLevel: null as number | null
   });
 
+  // Get user location once on mount
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (position) => setCoords({ 
+        lat: position.coords.latitude, 
+        lng: position.coords.longitude 
+      }),
+      (error) => {
+        console.warn('Failed to get location:', error);
+        // Fallback to a default location (Concord, NC)
+        setCoords({ lat: 35.4087, lng: -80.5792 });
+      },
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  }, []);
+
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
     
-    fetchRequests();
-  }, [user, navigate]);
+    if (coords) {
+      fetchInitialRequests();
+    }
+  }, [user, navigate, coords]);
 
-  const fetchRequests = async () => {
+  const fetchInitialRequests = async () => {
     try {
       // Fetch active requests with recommendation counts and user's recommendation status
       const { data, error } = await supabase
@@ -128,12 +157,19 @@ const BrowseRequests = () => {
           return {
             ...request,
             recommendation_count: count || 0,
-            user_has_recommended: userHasRecommended
+            user_has_recommended: userHasRecommended,
+            urgency: getUrgencyFromResponseWindow(request.response_window)
           };
         })
       );
 
-      setRequests(requestsWithCounts);
+      // Convert to record keyed by id
+      const requestsRecord: Record<string, FoodRequest> = {};
+      requestsWithCounts.forEach(req => {
+        requestsRecord[req.id] = req;
+      });
+
+      setRequests(requestsRecord);
     } catch (error) {
       console.error('Error fetching requests:', error);
       toast({
@@ -145,6 +181,206 @@ const BrowseRequests = () => {
       setLoading(false);
     }
   };
+
+  // Polling fallback for when SSE fails
+  const pollForUpdates = useCallback(async () => {
+    if (!coords || !user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('food_requests')
+        .select(`
+          *,
+          profiles (display_name, email)
+        `)
+        .eq('status', 'active')
+        .gt('expires_at', 'now()')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const requestsWithCounts = await Promise.all(
+        (data || []).map(async (request) => {
+          const { count } = await supabase
+            .from('recommendations')
+            .select('*', { count: 'exact', head: true })
+            .eq('request_id', request.id);
+
+          let userHasRecommended = false;
+          if (user) {
+            const { data: userRec } = await supabase
+              .from('recommendations')
+              .select('id')
+              .eq('request_id', request.id)
+              .eq('recommender_id', user.id)
+              .single();
+            userHasRecommended = !!userRec;
+          }
+
+          return {
+            ...request,
+            recommendation_count: count || 0,
+            user_has_recommended: userHasRecommended,
+            urgency: getUrgencyFromResponseWindow(request.response_window)
+          };
+        })
+      );
+
+      // Update requests state
+      const requestsRecord: Record<string, FoodRequest> = {};
+      requestsWithCounts.forEach(req => {
+        requestsRecord[req.id] = req;
+      });
+      setRequests(requestsRecord);
+      
+    } catch (error) {
+      console.error('Error polling for updates:', error);
+    }
+  }, [coords, user]);
+
+  // Real-time SSE stream URL
+  const streamUrl = useMemo(() => {
+    if (!coords || !user) return "";
+
+    const params = new URLSearchParams({
+      userId: user.id,
+      lat: String(coords.lat),
+      lng: String(coords.lng),
+      radiusKm: "15"
+    });
+    
+    return `https://edazolwepxbdeniluamf.supabase.co/functions/v1/realtime-requests?${params}`;
+  }, [coords, user]);
+
+  // Handle real-time events
+  const handleRealtimeEvent = useCallback((event: LiveEvent) => {
+    console.log('Received real-time event:', event);
+    
+    switch (event.type) {
+      case "hello":
+        console.log('Connected to real-time stream');
+        break;
+        
+      case "heartbeat":
+        // Sync clock for accurate countdowns
+        const serverTime = new Date(event.serverTime).getTime();
+        const clientTime = Date.now();
+        setClockSkew(serverTime - clientTime);
+        break;
+        
+      case "request.created": {
+        const payload = event.payload;
+        const newRequest: FoodRequest = {
+          id: event.requestId,
+          food_type: payload.cuisine,
+          location_city: payload.area.split(',')[0]?.trim() || '',
+          location_state: payload.area.split(',')[1]?.trim() || '',
+          created_at: payload.createdAt,
+          expires_at: payload.expiresAt,
+          response_window: payload.responseWindow,
+          status: 'active',
+          recommendation_count: payload.count,
+          user_has_recommended: false,
+          urgency: payload.urgency,
+          lat: payload.lat,
+          lng: payload.lng,
+          profiles: {
+            display_name: 'Anonymous',
+            email: ''
+          }
+        };
+        
+        setRequests(prev => ({ ...prev, [event.requestId]: newRequest }));
+        
+        // Play sound/vibration for urgent requests
+        if (payload.urgency === 'quick') {
+          // Optional: play notification sound
+          if ('vibrate' in navigator) {
+            navigator.vibrate([100, 50, 100]);
+          }
+        }
+        break;
+      }
+      
+      case "request.updated": {
+        const payload = event.payload;
+        setRequests(prev => {
+          const existing = prev[event.requestId];
+          if (!existing) return prev;
+          
+          return {
+            ...prev,
+            [event.requestId]: { ...existing, ...payload }
+          };
+        });
+        break;
+      }
+      
+      case "recommendation.created": {
+        setRequests(prev => {
+          const existing = prev[event.requestId];
+          if (!existing) return prev;
+          
+          return {
+            ...prev,
+            [event.requestId]: { 
+              ...existing, 
+              recommendation_count: event.payload.count 
+            }
+          };
+        });
+        break;
+      }
+      
+      case "request.closed": {
+        setRequests(prev => {
+          const next = { ...prev };
+          delete next[event.requestId];
+          return next;
+        });
+        break;
+      }
+    }
+  }, []);
+
+  // Set up real-time connection
+  const { connected, usingFallback } = useEventSource(
+    streamUrl,
+    {
+      onEvent: handleRealtimeEvent,
+      onError: (error) => {
+        console.error('SSE error:', error);
+        toast({
+          title: "Connection issue",
+          description: "Using backup polling for updates",
+        });
+      },
+      fallbackPoll: pollForUpdates
+    }
+  );
+
+  // Auto-remove expired requests every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now() + clockSkew;
+      setRequests(prev => {
+        const next = { ...prev };
+        let hasChanges = false;
+        
+        for (const [id, request] of Object.entries(next)) {
+          const expiresAt = new Date(request.expires_at).getTime();
+          if (expiresAt <= now) {
+            delete next[id];
+            hasChanges = true;
+          }
+        }
+        
+        return hasChanges ? next : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [clockSkew]);
 
   const searchPlaces = async (query: string, request: FoodRequest) => {
     if (!query.trim() || query.length < 2) {
@@ -255,7 +491,7 @@ const BrowseRequests = () => {
       setSelectedRequest(null);
       
       // Refresh the requests list
-      fetchRequests();
+      fetchInitialRequests();
     } catch (error: any) {
       console.error('Error submitting recommendation:', error);
       toast({
@@ -278,12 +514,21 @@ const BrowseRequests = () => {
   };
 
   const formatTimeRemaining = (expiresAt: string) => {
-    const now = new Date();
-    const expires = new Date(expiresAt);
-    const diffMs = expires.getTime() - now.getTime();
+    const now = Date.now() + clockSkew;
+    const expires = new Date(expiresAt).getTime();
+    const diffMs = expires - now;
     const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor((diffMs % 60000) / 1000);
     
-    if (diffMins <= 0) return "Expired";
+    if (diffMs <= 0) return "Expired";
+    
+    // For requests with less than 5 minutes, show seconds
+    if (diffMins < 5) {
+      const mm = String(diffMins).padStart(2, '0');
+      const ss = String(Math.max(0, diffSecs)).padStart(2, '0');
+      return `${mm}:${ss}`;
+    }
+    
     if (diffMins < 60) return `${diffMins}m left`;
     
     const hours = Math.floor(diffMins / 60);
@@ -291,33 +536,39 @@ const BrowseRequests = () => {
     return `${hours}h ${mins}m left`;
   };
 
-  const getUrgencyColor = (responseWindow: number, expiresAt: string) => {
-    const now = new Date();
-    const expires = new Date(expiresAt);
-    const diffMs = expires.getTime() - now.getTime();
+  const getUrgencyFromResponseWindow = (responseWindow: number): "quick" | "soon" | "extended" => {
+    if (responseWindow <= 5) return "quick";
+    if (responseWindow <= 30) return "soon";
+    return "extended";
+  };
+
+  const getUrgencyColor = (urgency: string, expiresAt: string) => {
+    const now = Date.now() + clockSkew;
+    const expires = new Date(expiresAt).getTime();
+    const diffMs = expires - now;
     
     if (diffMs <= 0) return "secondary"; // Expired
     
-    if (responseWindow <= 5) return "destructive"; // Quick - Red
-    if (responseWindow <= 30) return "outline"; // Soon - Orange  
+    if (urgency === "quick") return "destructive"; // Quick - Red
+    if (urgency === "soon") return "outline"; // Soon - Orange  
     return "secondary"; // Extended - Gray
   };
 
-  const getUrgencyText = (responseWindow: number) => {
-    if (responseWindow <= 5) return "Quick";
-    if (responseWindow <= 30) return "Soon";
+  const getUrgencyText = (urgency: string) => {
+    if (urgency === "quick") return "Quick";
+    if (urgency === "soon") return "Soon";
     return "Extended";
   };
 
-  const getUrgencyStyle = (responseWindow: number, expiresAt: string) => {
-    const now = new Date();
-    const expires = new Date(expiresAt);
-    const diffMs = expires.getTime() - now.getTime();
+  const getUrgencyStyle = (urgency: string, expiresAt: string) => {
+    const now = Date.now() + clockSkew;
+    const expires = new Date(expiresAt).getTime();
+    const diffMs = expires - now;
     
     if (diffMs <= 0) return {}; // Expired - default
     
-    if (responseWindow <= 5) return {}; // Quick - Red (destructive variant)
-    if (responseWindow <= 30) return { 
+    if (urgency === "quick") return {}; // Quick - Red (destructive variant)
+    if (urgency === "soon") return { 
       backgroundColor: '#fb923340', 
       borderColor: '#fb923360', 
       color: '#ea580c' 
@@ -344,6 +595,19 @@ const BrowseRequests = () => {
             Home
           </Button>
           <h1 className="text-2xl font-bold">Nearby Requests</h1>
+          <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+            {connected ? (
+              <>
+                <Wifi className="h-4 w-4 text-green-500" />
+                {usingFallback ? "Backup mode" : "Live updates"}
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4 text-red-500" />
+                Connecting...
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -357,30 +621,51 @@ const BrowseRequests = () => {
           </div>
 
           <div className="space-y-4">
-            {requests.length === 0 ? (
+            {!coords && (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">Getting your location for nearby requests...</p>
+                </CardContent>
+              </Card>
+            )}
+            
+            {coords && Object.keys(requests).length === 0 && !loading && (
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground">No active food requests found nearby.</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {connected ? "Watching for new requests..." : "Connection issues - using backup polling"}
+                  </p>
                 </CardContent>
               </Card>
-            ) : (
-              requests.map((request) => (
+            )}
+            
+            {Object.values(requests)
+              .sort((a, b) => {
+                // Sort by urgency first (quick > soon > extended), then by creation time
+                const urgencyOrder = { quick: 0, soon: 1, extended: 2 };
+                const aUrgency = urgencyOrder[a.urgency as keyof typeof urgencyOrder] ?? 2;
+                const bUrgency = urgencyOrder[b.urgency as keyof typeof urgencyOrder] ?? 2;
+                
+                if (aUrgency !== bUrgency) return aUrgency - bUrgency;
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              })
+              .map((request) => (
                 <Card key={request.id}>
                   <CardHeader>
-                     <div className="flex items-center justify-between">
-                       <CardTitle className="text-lg">{request.food_type}</CardTitle>
-                       <div className="flex items-center gap-2">
-                         <Badge 
-                           variant={getUrgencyColor(request.response_window, request.expires_at)}
-                           style={getUrgencyStyle(request.response_window, request.expires_at)}
-                         >
-                           {getUrgencyText(request.response_window)} — {formatTimeRemaining(request.expires_at)}
-                         </Badge>
-                         {request.recommendation_count! >= 10 && (
-                           <Badge variant="destructive">Full</Badge>
-                         )}
-                       </div>
-                     </div>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{request.food_type}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <LiveCountdownBadge 
+                            urgency={request.urgency || getUrgencyFromResponseWindow(request.response_window)}
+                            expiresAt={request.expires_at}
+                            clockSkew={clockSkew}
+                          />
+                          {request.recommendation_count! >= 10 && (
+                            <Badge variant="destructive">Full</Badge>
+                          )}
+                        </div>
+                      </div>
                     <p className="text-sm text-muted-foreground">
                       Requested by {request.profiles.display_name || request.profiles.email}
                     </p>
@@ -601,13 +886,89 @@ const BrowseRequests = () => {
                       </div>
                     </div>
                   </CardContent>
-                </Card>
-              ))
-            )}
+                 </Card>
+               ))
+            }
           </div>
         </div>
       </main>
     </div>
+  );
+};
+
+// Live countdown badge component
+const LiveCountdownBadge = ({ urgency, expiresAt, clockSkew }: { 
+  urgency: string; 
+  expiresAt: string; 
+  clockSkew: number; 
+}) => {
+  const [timeLeft, setTimeLeft] = useState('');
+  
+  useEffect(() => {
+    const updateTime = () => {
+      const now = Date.now() + clockSkew;
+      const expires = new Date(expiresAt).getTime();
+      const diffMs = expires - now;
+      
+      if (diffMs <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+      
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffSecs = Math.floor((diffMs % 60000) / 1000);
+      
+      // For urgent requests (< 5 min), show countdown in MM:SS format
+      if (diffMins < 5) {
+        const mm = String(diffMins).padStart(2, '0');
+        const ss = String(Math.max(0, diffSecs)).padStart(2, '0');
+        setTimeLeft(`${mm}:${ss}`);
+      } else if (diffMins < 60) {
+        setTimeLeft(`${diffMins}m left`);
+      } else {
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        setTimeLeft(`${hours}h ${mins}m left`);
+      }
+    };
+    
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt, clockSkew]);
+  
+  const getVariant = () => {
+    if (timeLeft === 'Expired') return 'secondary';
+    if (urgency === 'quick') return 'destructive';
+    if (urgency === 'soon') return 'outline';
+    return 'secondary';
+  };
+  
+  const getStyle = () => {
+    if (timeLeft === 'Expired') return {};
+    if (urgency === 'quick') return {};
+    if (urgency === 'soon') return {
+      backgroundColor: '#fb923340',
+      borderColor: '#fb923360',
+      color: '#ea580c'
+    };
+    return {};
+  };
+  
+  const getUrgencyDisplayText = () => {
+    if (urgency === 'quick') return 'Quick';
+    if (urgency === 'soon') return 'Soon';
+    return 'Extended';
+  };
+  
+  return (
+    <Badge 
+      variant={getVariant()}
+      style={getStyle()}
+      className={urgency === 'quick' && timeLeft !== 'Expired' ? 'animate-pulse' : ''}
+    >
+      {getUrgencyDisplayText()} — {timeLeft}
+    </Badge>
   );
 };
 
