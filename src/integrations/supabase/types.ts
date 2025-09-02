@@ -17,6 +17,7 @@ export type Database = {
       food_requests: {
         Row: {
           additional_notes: string | null
+          closed_at: string | null
           created_at: string
           expires_at: string
           food_type: string
@@ -32,6 +33,7 @@ export type Database = {
         }
         Insert: {
           additional_notes?: string | null
+          closed_at?: string | null
           created_at?: string
           expires_at?: string
           food_type: string
@@ -47,6 +49,7 @@ export type Database = {
         }
         Update: {
           additional_notes?: string | null
+          closed_at?: string | null
           created_at?: string
           expires_at?: string
           food_type?: string
@@ -79,7 +82,12 @@ export type Database = {
           id: string
           is_active: boolean
           location_city: string | null
+          location_lat: number | null
+          location_lng: number | null
           location_state: string | null
+          notification_email: string | null
+          points_this_month: number
+          points_total: number
           updated_at: string
           user_id: string
           user_role: Database["public"]["Enums"]["user_role"]
@@ -92,7 +100,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           location_city?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           location_state?: string | null
+          notification_email?: string | null
+          points_this_month?: number
+          points_total?: number
           updated_at?: string
           user_id: string
           user_role?: Database["public"]["Enums"]["user_role"]
@@ -105,7 +118,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           location_city?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           location_state?: string | null
+          notification_email?: string | null
+          points_this_month?: number
+          points_total?: number
           updated_at?: string
           user_id?: string
           user_role?: Database["public"]["Enums"]["user_role"]
@@ -168,7 +186,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      award_points_for_request: {
+        Args: { request_id_param: string }
+        Returns: number
+      }
+      close_expired_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
     }
     Enums: {
       request_status: "active" | "completed" | "expired"
