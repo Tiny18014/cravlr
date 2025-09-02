@@ -8,6 +8,9 @@ const corsHeaders = {
 };
 
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY');
+console.log('API Key Status:', GOOGLE_API_KEY ? 'LOADED' : 'MISSING');
+console.log('API Key Length:', GOOGLE_API_KEY ? GOOGLE_API_KEY.length : 0);
+
 const DEFAULT_RADIUS_KM = 5;
 const MAX_RESULTS = 20;
 const CACHE_TTL_MIN = 15;
