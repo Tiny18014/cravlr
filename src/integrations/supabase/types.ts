@@ -28,6 +28,7 @@ export type Database = {
           location_lng: number | null
           location_state: string
           requester_id: string
+          response_window: number
           status: Database["public"]["Enums"]["request_status"]
           updated_at: string
         }
@@ -44,6 +45,7 @@ export type Database = {
           location_lng?: number | null
           location_state: string
           requester_id: string
+          response_window?: number
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
         }
@@ -60,6 +62,7 @@ export type Database = {
           location_lng?: number | null
           location_state?: string
           requester_id?: string
+          response_window?: number
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
         }
