@@ -135,7 +135,12 @@ export type Database = {
           confidence_score: number
           created_at: string
           id: string
+          maps_url: string | null
           notes: string | null
+          photo_token: string | null
+          place_id: string | null
+          price_level: number | null
+          rating: number | null
           recommender_id: string
           request_id: string
           restaurant_address: string | null
@@ -146,7 +151,12 @@ export type Database = {
           confidence_score?: number
           created_at?: string
           id?: string
+          maps_url?: string | null
           notes?: string | null
+          photo_token?: string | null
+          place_id?: string | null
+          price_level?: number | null
+          rating?: number | null
           recommender_id: string
           request_id: string
           restaurant_address?: string | null
@@ -157,7 +167,12 @@ export type Database = {
           confidence_score?: number
           created_at?: string
           id?: string
+          maps_url?: string | null
           notes?: string | null
+          photo_token?: string | null
+          place_id?: string | null
+          price_level?: number | null
+          rating?: number | null
           recommender_id?: string
           request_id?: string
           restaurant_address?: string | null

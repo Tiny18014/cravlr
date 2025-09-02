@@ -11,18 +11,22 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown, Star, ExternalLink, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// Popular restaurant chains for autocomplete
-const POPULAR_RESTAURANTS = [
-  "McDonald's", "Burger King", "Subway", "Starbucks", "KFC", "Pizza Hut", "Domino's Pizza",
-  "Taco Bell", "Wendy's", "Chick-fil-A", "Chipotle", "Panera Bread", "Olive Garden",
-  "Applebee's", "Red Lobster", "Outback Steakhouse", "TGI Friday's", "Chili's",
-  "Texas Roadhouse", "Cracker Barrel", "Denny's", "IHOP", "Buffalo Wild Wings",
-  "Five Guys", "In-N-Out Burger", "Shake Shack", "White Castle", "Sonic Drive-In",
-  "Arby's", "Popeyes", "Panda Express", "P.F. Chang's", "The Cheesecake Factory"
-];
+interface PlaceResult {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating?: number;
+  reviews?: number;
+  priceLevel?: number;
+  mapsUrl: string;
+  photoToken?: string;
+  distanceMeters?: number;
+}
 
 interface FoodRequest {
   id: string;
@@ -52,10 +56,18 @@ const BrowseRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState<FoodRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [restaurantOpen, setRestaurantOpen] = useState(false);
+  const [searchingPlaces, setSearchingPlaces] = useState(false);
+  const [googlePlaces, setGooglePlaces] = useState<PlaceResult[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [formData, setFormData] = useState({
     restaurantName: '',
     note: '',
-    link: ''
+    link: '',
+    placeId: '',
+    mapsUrl: '',
+    photoToken: '',
+    rating: null as number | null,
+    priceLevel: null as number | null
   });
 
   useEffect(() => {
@@ -124,6 +136,46 @@ const BrowseRequests = () => {
     }
   };
 
+  const searchPlaces = async (query: string, request: FoodRequest) => {
+    if (!query.trim() || query.length < 2) {
+      setGooglePlaces([]);
+      return;
+    }
+
+    setSearchingPlaces(true);
+    try {
+      const response = await supabase.functions.invoke('places-search', {
+        body: {
+          zip: `${request.location_city}, ${request.location_state}`,
+          cuisine: query.trim(),
+          radiusKm: 5
+        }
+      });
+
+      if (response.error) throw response.error;
+      setGooglePlaces(response.data || []);
+    } catch (error) {
+      console.error('Error searching places:', error);
+      setGooglePlaces([]);
+    } finally {
+      setSearchingPlaces(false);
+    }
+  };
+
+  const handlePlaceSelect = (place: PlaceResult) => {
+    setSelectedPlace(place);
+    setFormData(prev => ({
+      ...prev,
+      restaurantName: place.name,
+      placeId: place.placeId,
+      mapsUrl: place.mapsUrl,
+      photoToken: place.photoToken || '',
+      rating: place.rating || null,
+      priceLevel: place.priceLevel || null
+    }));
+    setRestaurantOpen(false);
+  };
+
   const handleSubmitRecommendation = async () => {
     if (!selectedRequest || !user || !formData.restaurantName.trim()) return;
 
@@ -136,9 +188,14 @@ const BrowseRequests = () => {
           recommender_id: user.id,
           restaurant_name: formData.restaurantName.trim(),
           notes: formData.note.trim() || null,
-          restaurant_address: null,
+          restaurant_address: selectedPlace?.address || null,
           restaurant_phone: null,
-          confidence_score: 5
+          confidence_score: 5,
+          place_id: formData.placeId || null,
+          maps_url: formData.mapsUrl || null,
+          photo_token: formData.photoToken || null,
+          rating: formData.rating,
+          price_level: formData.priceLevel
         }])
         .select()
         .single();
@@ -164,7 +221,18 @@ const BrowseRequests = () => {
       });
 
       // Reset form and close dialog
-      setFormData({ restaurantName: '', note: '', link: '' });
+      setFormData({ 
+        restaurantName: '', 
+        note: '', 
+        link: '',
+        placeId: '',
+        mapsUrl: '',
+        photoToken: '',
+        rating: null,
+        priceLevel: null
+      });
+      setSelectedPlace(null);
+      setGooglePlaces([]);
       setSelectedRequest(null);
       
       // Refresh the requests list
@@ -310,7 +378,7 @@ const BrowseRequests = () => {
                                         aria-expanded={restaurantOpen}
                                         className="w-full justify-between"
                                       >
-                                        {formData.restaurantName || "Select or type restaurant name..."}
+                                        {formData.restaurantName || "Search for restaurants..."}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                       </Button>
                                     </PopoverTrigger>
@@ -319,37 +387,108 @@ const BrowseRequests = () => {
                                         <CommandInput 
                                           placeholder="Search restaurants..." 
                                           value={formData.restaurantName}
-                                          onValueChange={(value) => setFormData(prev => ({...prev, restaurantName: value}))}
+                                          onValueChange={(value) => {
+                                            setFormData(prev => ({...prev, restaurantName: value}));
+                                            if (selectedRequest) {
+                                              searchPlaces(value, selectedRequest);
+                                            }
+                                          }}
                                         />
                                         <CommandList>
-                                          <CommandEmpty>No restaurant found.</CommandEmpty>
-                                          <CommandGroup>
-                                            {POPULAR_RESTAURANTS
-                                              .filter(restaurant => 
-                                                restaurant.toLowerCase().includes(formData.restaurantName.toLowerCase())
-                                              )
-                                              .map((restaurant) => (
+                                          {searchingPlaces && (
+                                            <div className="p-2 text-sm text-muted-foreground">
+                                              Searching restaurants...
+                                            </div>
+                                          )}
+                                          {!searchingPlaces && googlePlaces.length === 0 && formData.restaurantName.length >= 2 && (
+                                            <CommandEmpty>
+                                              No restaurants found. You can still type a custom name.
+                                            </CommandEmpty>
+                                          )}
+                                          {googlePlaces.length > 0 && (
+                                            <CommandGroup heading="Local Restaurants">
+                                              {googlePlaces.map((place) => (
                                                 <CommandItem
-                                                  key={restaurant}
-                                                  value={restaurant}
-                                                  onSelect={(currentValue) => {
-                                                    setFormData(prev => ({...prev, restaurantName: currentValue}));
-                                                    setRestaurantOpen(false);
-                                                  }}
+                                                  key={place.placeId}
+                                                  value={place.name}
+                                                  onSelect={() => handlePlaceSelect(place)}
+                                                  className="flex flex-col items-start p-3"
                                                 >
-                                                  <Check
-                                                    className={`mr-2 h-4 w-4 ${
-                                                      formData.restaurantName === restaurant ? "opacity-100" : "opacity-0"
-                                                    }`}
-                                                  />
-                                                  {restaurant}
+                                                  <div className="flex items-center justify-between w-full">
+                                                    <div className="flex items-center gap-2">
+                                                      <Check
+                                                        className={`h-4 w-4 ${
+                                                          selectedPlace?.placeId === place.placeId ? "opacity-100" : "opacity-0"
+                                                        }`}
+                                                      />
+                                                      <span className="font-medium">{place.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 text-xs">
+                                                      {place.rating && (
+                                                        <div className="flex items-center gap-1">
+                                                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                                          <span>{place.rating}</span>
+                                                        </div>
+                                                      )}
+                                                      {place.priceLevel && (
+                                                        <span className="text-muted-foreground">
+                                                          {'$'.repeat(place.priceLevel)}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  <div className="text-xs text-muted-foreground mt-1">
+                                                    {place.address}
+                                                  </div>
+                                                  {place.distanceMeters && (
+                                                    <div className="text-xs text-muted-foreground">
+                                                      {(place.distanceMeters / 1000).toFixed(1)} km away
+                                                    </div>
+                                                  )}
                                                 </CommandItem>
                                               ))}
-                                          </CommandGroup>
+                                            </CommandGroup>
+                                          )}
                                         </CommandList>
                                       </Command>
                                     </PopoverContent>
                                   </Popover>
+                                  {selectedPlace && (
+                                    <div className="mt-2 p-3 bg-muted rounded-md">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                                          <span className="text-sm font-medium">{selectedPlace.name}</span>
+                                        </div>
+                                        {selectedPlace.mapsUrl && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => window.open(selectedPlace.mapsUrl, '_blank')}
+                                          >
+                                            <ExternalLink className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1">{selectedPlace.address}</p>
+                                      <div className="flex items-center gap-4 mt-2 text-xs">
+                                        {selectedPlace.rating && (
+                                          <div className="flex items-center gap-1">
+                                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                            <span>{selectedPlace.rating}</span>
+                                            {selectedPlace.reviews && (
+                                              <span className="text-muted-foreground">({selectedPlace.reviews})</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {selectedPlace.priceLevel && (
+                                          <span className="text-muted-foreground">
+                                            {'$'.repeat(selectedPlace.priceLevel)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -383,7 +522,18 @@ const BrowseRequests = () => {
                                     variant="outline"
                                     onClick={() => {
                                       setSelectedRequest(null);
-                                      setFormData({ restaurantName: '', note: '', link: '' });
+                                      setFormData({ 
+                                        restaurantName: '', 
+                                        note: '', 
+                                        link: '',
+                                        placeId: '',
+                                        mapsUrl: '',
+                                        photoToken: '',
+                                        rating: null,
+                                        priceLevel: null
+                                      });
+                                      setSelectedPlace(null);
+                                      setGooglePlaces([]);
                                     }}
                                     className="flex-1"
                                   >
