@@ -25,9 +25,11 @@ interface FoodRequest {
 interface Recommendation {
   id: string;
   restaurant_name: string;
-  note?: string;
-  link?: string;
-  awarded_points: number;
+  restaurant_address?: string;
+  restaurant_phone?: string;
+  notes?: string;
+  confidence_score: number;
+  awarded_points?: number;
   created_at: string;
   request_id: string;
   food_requests: {
@@ -44,9 +46,11 @@ interface Recommendation {
 interface ReceivedRecommendation {
   id: string;
   restaurant_name: string;
-  note?: string;
-  link?: string;
-  awarded_points: number;
+  restaurant_address?: string;
+  restaurant_phone?: string;
+  notes?: string;
+  confidence_score: number;
+  awarded_points?: number;
   created_at: string;
   profiles: {
     display_name: string;
@@ -308,8 +312,8 @@ const Dashboard = () => {
                         <Clock className="h-4 w-4 mr-2" />
                         {formatDate(rec.created_at)}
                       </div>
-                      {rec.note && (
-                        <p className="text-sm mt-2">{rec.note}</p>
+                      {rec.notes && (
+                        <p className="text-sm mt-2">{rec.notes}</p>
                       )}
                     </div>
                   </CardContent>
