@@ -38,11 +38,22 @@ interface PlaceResult {
 
 async function geocodeZip(zip: string) {
   console.log(`Geocoding location: ${zip}`);
+  
+  if (!GOOGLE_API_KEY) {
+    console.error('Google API key is not set');
+    throw new Error('Google API key not configured');
+  }
+  
   const response = await fetch(
     `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(zip)}&key=${GOOGLE_API_KEY}`
   );
-  const data = await response.json();
   
+  if (!response.ok) {
+    console.error('Geocoding API request failed:', response.status, response.statusText);
+    throw new Error(`Geocoding API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
   console.log('Geocoding response:', JSON.stringify(data, null, 2));
   
   if (data.status === 'OK' && data.results?.length > 0) {
@@ -51,8 +62,29 @@ async function geocodeZip(zip: string) {
     return { lat: location.lat, lng: location.lng };
   }
   
-  console.error('Geocoding failed:', data.status, data.error_message);
-  throw new Error(`Could not geocode location: ${data.status || 'Unknown error'}`);
+  // Handle specific error cases
+  if (data.status === 'ZERO_RESULTS') {
+    // Try with just the city name if original search failed
+    const cityOnly = zip.split(',')[0].trim();
+    if (cityOnly !== zip) {
+      console.log(`Retrying with city only: ${cityOnly}`);
+      const retryResponse = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cityOnly + ', NC')}&key=${GOOGLE_API_KEY}`
+      );
+      
+      if (retryResponse.ok) {
+        const retryData = await retryResponse.json();
+        if (retryData.status === 'OK' && retryData.results?.length > 0) {
+          const location = retryData.results[0].geometry.location;
+          console.log(`Successfully geocoded city to: ${location.lat}, ${location.lng}`);
+          return { lat: location.lat, lng: location.lng };
+        }
+      }
+    }
+  }
+  
+  console.error('Geocoding failed:', data.status, data.error_message || 'No error message');
+  throw new Error(`Could not geocode location "${zip}": ${data.status || 'Unknown error'}`);
 }
 
 async function searchPlaces(lat: number, lng: number, cuisine: string, radiusKm: number): Promise<PlaceResult[]> {
