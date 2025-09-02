@@ -262,6 +262,17 @@ const Dashboard = () => {
                       {request.additional_notes && (
                         <p className="text-sm mt-2">{request.additional_notes}</p>
                       )}
+                      {(request.recommendation_count || 0) > 0 && (
+                        <div className="mt-3 pt-3 border-t">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => navigate(`/request/${request.id}/results`)}
+                          >
+                            View {request.recommendation_count} recommendation{request.recommendation_count !== 1 ? 's' : ''}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
