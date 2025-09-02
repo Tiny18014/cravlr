@@ -19,15 +19,15 @@ interface FoodRequest {
   status: string;
   created_at: string;
   expires_at: string;
+  recommendation_count?: number;
 }
 
 interface Recommendation {
   id: string;
   restaurant_name: string;
-  restaurant_address?: string;
-  restaurant_phone?: string;
-  notes?: string;
-  confidence_score: number;
+  note?: string;
+  link?: string;
+  awarded_points: number;
   created_at: string;
   request_id: string;
   food_requests: {
@@ -44,10 +44,9 @@ interface Recommendation {
 interface ReceivedRecommendation {
   id: string;
   restaurant_name: string;
-  restaurant_address?: string;
-  restaurant_phone?: string;
-  notes?: string;
-  confidence_score: number;
+  note?: string;
+  link?: string;
+  awarded_points: number;
   created_at: string;
   profiles: {
     display_name: string;
@@ -65,6 +64,7 @@ const Dashboard = () => {
   const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
   const [myRecommendations, setMyRecommendations] = useState<Recommendation[]>([]);
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
+  const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch user's requests
+      // Fetch user's requests with recommendation counts
       const { data: requests, error: requestsError } = await supabase
         .from('food_requests')
         .select('*')
@@ -86,7 +86,23 @@ const Dashboard = () => {
         .order('created_at', { ascending: false });
 
       if (requestsError) throw requestsError;
-      setMyRequests(requests || []);
+
+      // Add recommendation count to each request
+      const requestsWithCounts = await Promise.all(
+        (requests || []).map(async (request) => {
+          const { count } = await supabase
+            .from('recommendations')
+            .select('*', { count: 'exact', head: true })
+            .eq('request_id', request.id);
+          
+          return {
+            ...request,
+            recommendation_count: count || 0
+          };
+        })
+      );
+
+      setMyRequests(requestsWithCounts);
 
       // Fetch recommendations user has made
       const { data: recommendations, error: recommendationsError } = await supabase
@@ -115,6 +131,22 @@ const Dashboard = () => {
 
       if (receivedError) throw receivedError;
       setReceivedRecommendations(received || []);
+
+      // Fetch user points
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('points_total, points_this_month')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileError);
+      } else if (profile) {
+        setUserPoints({
+          total: profile.points_total || 0,
+          thisMonth: profile.points_this_month || 0
+        });
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -164,6 +196,21 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Points Header */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border">
+          <h2 className="text-2xl font-bold mb-2">Your Points</h2>
+          <div className="flex gap-6">
+            <div>
+              <p className="text-3xl font-bold text-primary">{userPoints.total}</p>
+              <p className="text-sm text-muted-foreground">Total Points</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{userPoints.thisMonth}</p>
+              <p className="text-sm text-muted-foreground">This Month</p>
+            </div>
+          </div>
+        </div>
+
         <Tabs defaultValue="requests" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="requests">My Requests ({myRequests.length})</TabsTrigger>
@@ -194,10 +241,15 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {request.location_city}, {request.location_state}
-                        {request.location_address && ` - ${request.location_address}`}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {request.location_city}, {request.location_state}
+                          {request.location_address && ` - ${request.location_address}`}
+                        </div>
+                        <Badge variant="outline">
+                          {request.recommendation_count || 0} recommendations
+                        </Badge>
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Clock className="h-4 w-4 mr-2" />
@@ -230,8 +282,11 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{rec.restaurant_name}</CardTitle>
                       <div className="flex items-center">
-                        <Star className="h-4 w-4 mr-1 fill-current text-yellow-500" />
-                        <span className="text-sm">{rec.confidence_score}/5</span>
+                        {rec.awarded_points > 0 ? (
+                          <Badge variant="secondary">{rec.awarded_points} pts</Badge>
+                        ) : (
+                          <Badge variant="outline">Pending</Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -253,8 +308,8 @@ const Dashboard = () => {
                         <Clock className="h-4 w-4 mr-2" />
                         {formatDate(rec.created_at)}
                       </div>
-                      {rec.notes && (
-                        <p className="text-sm mt-2">{rec.notes}</p>
+                      {rec.note && (
+                        <p className="text-sm mt-2">{rec.note}</p>
                       )}
                     </div>
                   </CardContent>
@@ -280,8 +335,11 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{rec.restaurant_name}</CardTitle>
                       <div className="flex items-center">
-                        <Star className="h-4 w-4 mr-1 fill-current text-yellow-500" />
-                        <span className="text-sm">{rec.confidence_score}/5</span>
+                        {rec.awarded_points > 0 ? (
+                          <Badge variant="secondary">{rec.awarded_points} pts</Badge>
+                        ) : (
+                          <Badge variant="outline">Pending</Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
