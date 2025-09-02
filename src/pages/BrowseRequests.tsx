@@ -46,6 +46,7 @@ interface FoodRequest {
   created_at: string;
   expires_at: string;
   closed_at?: string;
+  response_window: number;
   profiles: {
     display_name: string;
     email: string;
@@ -290,6 +291,40 @@ const BrowseRequests = () => {
     return `${hours}h ${mins}m left`;
   };
 
+  const getUrgencyColor = (responseWindow: number, expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diffMs = expires.getTime() - now.getTime();
+    
+    if (diffMs <= 0) return "secondary"; // Expired
+    
+    if (responseWindow <= 5) return "destructive"; // Quick - Red
+    if (responseWindow <= 30) return "outline"; // Soon - Orange  
+    return "secondary"; // Extended - Gray
+  };
+
+  const getUrgencyText = (responseWindow: number) => {
+    if (responseWindow <= 5) return "Quick";
+    if (responseWindow <= 30) return "Soon";
+    return "Extended";
+  };
+
+  const getUrgencyStyle = (responseWindow: number, expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diffMs = expires.getTime() - now.getTime();
+    
+    if (diffMs <= 0) return {}; // Expired - default
+    
+    if (responseWindow <= 5) return {}; // Quick - Red (destructive variant)
+    if (responseWindow <= 30) return { 
+      backgroundColor: '#fb923340', 
+      borderColor: '#fb923360', 
+      color: '#ea580c' 
+    }; // Soon - Orange
+    return {}; // Extended - Gray (secondary variant)
+  };
+
   if (!user) return null;
 
   if (loading) {
@@ -332,15 +367,20 @@ const BrowseRequests = () => {
               requests.map((request) => (
                 <Card key={request.id}>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{request.food_type}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{formatTimeRemaining(request.expires_at)}</Badge>
-                        {request.recommendation_count! >= 10 && (
-                          <Badge variant="destructive">Full</Badge>
-                        )}
-                      </div>
-                    </div>
+                     <div className="flex items-center justify-between">
+                       <CardTitle className="text-lg">{request.food_type}</CardTitle>
+                       <div className="flex items-center gap-2">
+                         <Badge 
+                           variant={getUrgencyColor(request.response_window, request.expires_at)}
+                           style={getUrgencyStyle(request.response_window, request.expires_at)}
+                         >
+                           {getUrgencyText(request.response_window)} — {formatTimeRemaining(request.expires_at)}
+                         </Badge>
+                         {request.recommendation_count! >= 10 && (
+                           <Badge variant="destructive">Full</Badge>
+                         )}
+                       </div>
+                     </div>
                     <p className="text-sm text-muted-foreground">
                       Requested by {request.profiles.display_name || request.profiles.email}
                     </p>
