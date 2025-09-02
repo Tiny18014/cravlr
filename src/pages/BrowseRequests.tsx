@@ -154,28 +154,22 @@ const BrowseRequests = () => {
 
     setSearchingPlaces(true);
     try {
-      // For now, just use the main search endpoint with query parameter
-      const response = await supabase.functions.invoke('places-search', {
+      // Use the autocomplete endpoint for type-ahead suggestions
+      const response = await supabase.functions.invoke('places-search/autocomplete', {
         body: {
+          input: query.trim(),
           zip: `${request.location_city}, ${request.location_state}`,
-          query: query.trim(),
           radiusKm: 5
         }
       });
 
       if (response.error) throw response.error;
       
-      const places = response.data || [];
-      setGooglePlaces(places);
-      
-      // Create autocomplete-style results from the full results
-      const predictions = places.slice(0, 5).map((place: PlaceResult) => ({
-        placeId: place.placeId,
-        name: place.name,
-        address: place.address,
-        description: `${place.name}, ${place.address}`
-      }));
+      const predictions = response.data || [];
       setAutocompleteResults(predictions);
+      
+      // Clear the full places list during autocomplete
+      setGooglePlaces([]);
       
     } catch (error) {
       console.error('Error searching places:', error);
@@ -418,61 +412,50 @@ const BrowseRequests = () => {
                                             }
                                           }}
                                         />
-                                        <CommandList>
-                                          {searchingPlaces && (
-                                            <div className="p-2 text-sm text-muted-foreground">
-                                              Searching restaurants...
-                                            </div>
-                                          )}
-                                          {!searchingPlaces && googlePlaces.length === 0 && formData.restaurantName.length >= 2 && (
-                                            <CommandEmpty>
-                                              No restaurants found. You can still type a custom name.
-                                            </CommandEmpty>
-                                          )}
-                                          {googlePlaces.length > 0 && (
-                                            <CommandGroup heading="Local Restaurants">
-                                              {googlePlaces.map((place) => (
-                                                <CommandItem
-                                                  key={place.placeId}
-                                                  value={place.name}
-                                                  onSelect={() => handlePlaceSelect(place)}
-                                                  className="flex flex-col items-start p-3"
-                                                >
-                                                  <div className="flex items-center justify-between w-full">
-                                                    <div className="flex items-center gap-2">
-                                                      <Check
-                                                        className={`h-4 w-4 ${
-                                                          selectedPlace?.placeId === place.placeId ? "opacity-100" : "opacity-0"
-                                                        }`}
-                                                      />
-                                                      <span className="font-medium">{place.name}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 text-xs">
-                                                      {place.rating && (
-                                                        <div className="flex items-center gap-1">
-                                                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                                          <span>{place.rating}</span>
-                                                        </div>
-                                                      )}
-                                                      {place.priceLevel && (
-                                                        <span className="text-muted-foreground">
-                                                          {'$'.repeat(place.priceLevel)}
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                  <div className="text-xs text-muted-foreground mt-1">
-                                                    {place.address}
-                                                  </div>
-                                                  {place.distanceMeters && (
-                                                    <div className="text-xs text-muted-foreground">
-                                                      {(place.distanceMeters / 1000).toFixed(1)} km away
-                                                    </div>
-                                                  )}
-                                                </CommandItem>
-                                              ))}
-                                            </CommandGroup>
-                                          )}
+                                         <CommandList>
+                                           {searchingPlaces && (
+                                             <div className="p-2 text-sm text-muted-foreground">
+                                               Searching restaurants...
+                                             </div>
+                                           )}
+                                           {!searchingPlaces && autocompleteResults.length === 0 && formData.restaurantName.length >= 2 && (
+                                             <CommandEmpty>
+                                               No restaurants found. You can still type a custom name.
+                                             </CommandEmpty>
+                                           )}
+                                           {autocompleteResults.length > 0 && (
+                                             <CommandGroup heading="Restaurant Suggestions">
+                                               {autocompleteResults.map((place) => (
+                                                 <CommandItem
+                                                   key={place.placeId}
+                                                   value={place.name}
+                                                   onSelect={() => {
+                                                     setFormData(prev => ({
+                                                       ...prev,
+                                                       restaurantName: place.name,
+                                                       placeId: place.placeId
+                                                     }));
+                                                     setRestaurantOpen(false);
+                                                   }}
+                                                   className="flex flex-col items-start p-3"
+                                                 >
+                                                   <div className="flex items-center justify-between w-full">
+                                                     <div className="flex items-center gap-2">
+                                                       <Check
+                                                         className={`h-4 w-4 ${
+                                                           formData.restaurantName === place.name ? "opacity-100" : "opacity-0"
+                                                         }`}
+                                                       />
+                                                       <span className="font-medium">{place.name}</span>
+                                                     </div>
+                                                   </div>
+                                                   <div className="text-xs text-muted-foreground mt-1">
+                                                     {place.address}
+                                                   </div>
+                                                 </CommandItem>
+                                               ))}
+                                             </CommandGroup>
+                                           )}
                                         </CommandList>
                                       </Command>
                                     </PopoverContent>
