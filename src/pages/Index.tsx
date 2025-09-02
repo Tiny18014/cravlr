@@ -92,7 +92,10 @@ const Index = () => {
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/request-food')}
+            >
               <CardHeader>
                 <CardTitle className="text-center">🍽️ Request Food</CardTitle>
               </CardHeader>
