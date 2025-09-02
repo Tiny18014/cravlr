@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import RequestFood from "./pages/RequestFood";
 import BrowseRequests from "./pages/BrowseRequests";
 import SendRecommendation from "./pages/SendRecommendation";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/request-food" element={<RequestFood />} />
             <Route path="/browse-requests" element={<BrowseRequests />} />
             <Route path="/recommend/:requestId" element={<SendRecommendation />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

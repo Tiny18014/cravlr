@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { Plus, Search, User } from 'lucide-react';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
@@ -91,13 +92,14 @@ const Index = () => {
             Create a request or help others discover amazing restaurants
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             <Card 
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/request-food')}
             >
-              <CardHeader>
-                <CardTitle className="text-center">🍽️ Request Food</CardTitle>
+              <CardHeader className="text-center">
+                <Plus className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <CardTitle>Request Food</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-center">
@@ -110,12 +112,28 @@ const Index = () => {
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/browse-requests')}
             >
-              <CardHeader>
-                <CardTitle className="text-center">💡 Give Recommendations</CardTitle>
+              <CardHeader className="text-center">
+                <Search className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <CardTitle>Give Recommendations</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-center">
                   Share your favorite spots with food lovers in your area
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/dashboard')}
+            >
+              <CardHeader className="text-center">
+                <User className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <CardTitle>My Dashboard</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-center">
+                  Track your requests and recommendations in one place
                 </p>
               </CardContent>
             </Card>
