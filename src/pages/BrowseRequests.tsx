@@ -116,17 +116,34 @@ const BrowseRequests = () => {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('recommendations')
         .insert([{
           request_id: selectedRequest.id,
           recommender_id: user.id,
           restaurant_name: formData.restaurantName.trim(),
-          note: formData.note.trim() || null,
-          link: formData.link.trim() || null
-        }]);
+          notes: formData.note.trim() || null,
+          restaurant_address: null,
+          restaurant_phone: null,
+          confidence_score: 5
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Send notification email
+      try {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            requestId: selectedRequest.id,
+            recommendationId: data.id
+          }
+        });
+      } catch (emailError) {
+        console.error('Error sending notification email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
 
       toast({
         title: "Success!",
