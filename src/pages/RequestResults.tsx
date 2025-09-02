@@ -59,7 +59,7 @@ const RequestResults = () => {
     if (!requestId) return;
 
     try {
-      // Fetch request details
+      // Fetch request details first
       const { data: requestData, error: requestError } = await supabase
         .from('food_requests')
         .select('*')
@@ -73,18 +73,79 @@ const RequestResults = () => {
 
       setRequest(requestData);
 
-      // Fetch aggregated results
-      const { data, error } = await supabase.functions.invoke('request-results', {
-        body: { requestId },
-        headers: { 'Content-Type': 'application/json' }
-      });
+      // For now, let's fetch recommendations directly from the database
+      // until we fix the edge function
+      const { data: recommendations, error: recError } = await supabase
+        .from('recommendations')
+        .select(`
+          *,
+          profiles!inner(email, display_name)
+        `)
+        .eq('request_id', requestId)
+        .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching results:', error);
+      if (recError) {
+        console.error('Error fetching recommendations:', recError);
         return;
       }
 
-      setResults(data);
+      // Simple aggregation for now - group by restaurant name
+      const groups = new Map();
+      
+      for (const rec of recommendations || []) {
+        const key = rec.place_id || rec.restaurant_name.toLowerCase().trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+        
+        if (!groups.has(key)) {
+          groups.set(key, {
+            key,
+            name: rec.restaurant_name,
+            placeId: rec.place_id,
+            mapsUrl: rec.maps_url,
+            count: 0,
+            firstSubmittedAt: rec.created_at,
+            lastSubmittedAt: rec.created_at,
+            notes: [],
+            rating: rec.rating,
+            priceLevel: rec.price_level,
+            photoToken: rec.photo_token,
+            distanceMeters: null
+          });
+        }
+
+        const group = groups.get(key);
+        group.count++;
+        group.lastSubmittedAt = rec.created_at;
+        
+        // Add note if it exists
+        if (rec.notes && rec.notes.trim()) {
+          const displayName = rec.profiles?.display_name || '@' + rec.profiles?.email?.split('@')[0] || 'Anonymous';
+          group.notes.push({
+            by: displayName,
+            text: rec.notes.slice(0, 140)
+          });
+        }
+      }
+
+      // Convert to array and sort by count, then alphabetically
+      const sortedGroups = Array.from(groups.values()).sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Reverse notes to show latest first
+      sortedGroups.forEach(group => {
+        group.notes = group.notes.reverse().slice(0, 3);
+      });
+
+      setResults({
+        requestId,
+        status: requestData.status,
+        expiresAt: requestData.expires_at,
+        totalRecommendations: recommendations?.length || 0,
+        groups: sortedGroups,
+        hasMore: false
+      });
+
     } catch (error) {
       console.error('Error:', error);
     } finally {
