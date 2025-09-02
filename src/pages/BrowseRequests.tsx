@@ -28,6 +28,13 @@ interface PlaceResult {
   distanceMeters?: number;
 }
 
+interface AutocompleteResult {
+  placeId: string;
+  name: string;
+  address: string;
+  description: string;
+}
+
 interface FoodRequest {
   id: string;
   food_type: string;
@@ -57,7 +64,9 @@ const BrowseRequests = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [restaurantOpen, setRestaurantOpen] = useState(false);
   const [searchingPlaces, setSearchingPlaces] = useState(false);
+  const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult[]>([]);
   const [googlePlaces, setGooglePlaces] = useState<PlaceResult[]>([]);
+  const [sessionToken] = useState(() => crypto.randomUUID());
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [formData, setFormData] = useState({
     restaurantName: '',
@@ -138,24 +147,39 @@ const BrowseRequests = () => {
 
   const searchPlaces = async (query: string, request: FoodRequest) => {
     if (!query.trim() || query.length < 2) {
+      setAutocompleteResults([]);
       setGooglePlaces([]);
       return;
     }
 
     setSearchingPlaces(true);
     try {
+      // For now, just use the main search endpoint with query parameter
       const response = await supabase.functions.invoke('places-search', {
         body: {
           zip: `${request.location_city}, ${request.location_state}`,
-          cuisine: query.trim(),
+          query: query.trim(),
           radiusKm: 5
         }
       });
 
       if (response.error) throw response.error;
-      setGooglePlaces(response.data || []);
+      
+      const places = response.data || [];
+      setGooglePlaces(places);
+      
+      // Create autocomplete-style results from the full results
+      const predictions = places.slice(0, 5).map((place: PlaceResult) => ({
+        placeId: place.placeId,
+        name: place.name,
+        address: place.address,
+        description: `${place.name}, ${place.address}`
+      }));
+      setAutocompleteResults(predictions);
+      
     } catch (error) {
       console.error('Error searching places:', error);
+      setAutocompleteResults([]);
       setGooglePlaces([]);
     } finally {
       setSearchingPlaces(false);
