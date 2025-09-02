@@ -6,11 +6,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Send } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+// Popular restaurant chains for autocomplete
+const POPULAR_RESTAURANTS = [
+  "McDonald's", "Burger King", "Subway", "Starbucks", "KFC", "Pizza Hut", "Domino's Pizza",
+  "Taco Bell", "Wendy's", "Chick-fil-A", "Chipotle", "Panera Bread", "Olive Garden",
+  "Applebee's", "Red Lobster", "Outback Steakhouse", "TGI Friday's", "Chili's",
+  "Texas Roadhouse", "Cracker Barrel", "Denny's", "IHOP", "Buffalo Wild Wings",
+  "Five Guys", "In-N-Out Burger", "Shake Shack", "White Castle", "Sonic Drive-In",
+  "Arby's", "Popeyes", "Panda Express", "P.F. Chang's", "The Cheesecake Factory"
+];
 
 interface FoodRequest {
   id: string;
@@ -39,6 +51,7 @@ const BrowseRequests = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<FoodRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [restaurantOpen, setRestaurantOpen] = useState(false);
   const [formData, setFormData] = useState({
     restaurantName: '',
     note: '',
@@ -289,13 +302,54 @@ const BrowseRequests = () => {
                                 
                                 <div className="space-y-2">
                                   <Label htmlFor="restaurantName">Restaurant Name *</Label>
-                                  <Input
-                                    id="restaurantName"
-                                    placeholder="Enter restaurant name"
-                                    value={formData.restaurantName}
-                                    onChange={(e) => setFormData(prev => ({...prev, restaurantName: e.target.value}))}
-                                    maxLength={80}
-                                  />
+                                  <Popover open={restaurantOpen} onOpenChange={setRestaurantOpen}>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={restaurantOpen}
+                                        className="w-full justify-between"
+                                      >
+                                        {formData.restaurantName || "Select or type restaurant name..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                      <Command>
+                                        <CommandInput 
+                                          placeholder="Search restaurants..." 
+                                          value={formData.restaurantName}
+                                          onValueChange={(value) => setFormData(prev => ({...prev, restaurantName: value}))}
+                                        />
+                                        <CommandList>
+                                          <CommandEmpty>No restaurant found.</CommandEmpty>
+                                          <CommandGroup>
+                                            {POPULAR_RESTAURANTS
+                                              .filter(restaurant => 
+                                                restaurant.toLowerCase().includes(formData.restaurantName.toLowerCase())
+                                              )
+                                              .map((restaurant) => (
+                                                <CommandItem
+                                                  key={restaurant}
+                                                  value={restaurant}
+                                                  onSelect={(currentValue) => {
+                                                    setFormData(prev => ({...prev, restaurantName: currentValue}));
+                                                    setRestaurantOpen(false);
+                                                  }}
+                                                >
+                                                  <Check
+                                                    className={`mr-2 h-4 w-4 ${
+                                                      formData.restaurantName === restaurant ? "opacity-100" : "opacity-0"
+                                                    }`}
+                                                  />
+                                                  {restaurant}
+                                                </CommandItem>
+                                              ))}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
                                 </div>
 
                                 <div className="space-y-2">
