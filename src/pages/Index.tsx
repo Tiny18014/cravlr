@@ -106,7 +106,10 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/browse-requests')}
+            >
               <CardHeader>
                 <CardTitle className="text-center">💡 Give Recommendations</CardTitle>
               </CardHeader>
