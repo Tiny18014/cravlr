@@ -149,6 +149,7 @@ export type Database = {
           restaurant_address: string | null
           restaurant_name: string
           restaurant_phone: string | null
+          restaurant_slug: string | null
         }
         Insert: {
           confidence_score?: number
@@ -165,6 +166,7 @@ export type Database = {
           restaurant_address?: string | null
           restaurant_name: string
           restaurant_phone?: string | null
+          restaurant_slug?: string | null
         }
         Update: {
           confidence_score?: number
@@ -181,6 +183,7 @@ export type Database = {
           restaurant_address?: string | null
           restaurant_name?: string
           restaurant_phone?: string | null
+          restaurant_slug?: string | null
         }
         Relationships: [
           {
