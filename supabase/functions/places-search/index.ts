@@ -37,16 +37,22 @@ interface PlaceResult {
 }
 
 async function geocodeZip(zip: string) {
+  console.log(`Geocoding location: ${zip}`);
   const response = await fetch(
-    `https://maps.googleapis.com/maps/api/geocode/json?address=${zip}&key=${GOOGLE_API_KEY}`
+    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(zip)}&key=${GOOGLE_API_KEY}`
   );
   const data = await response.json();
   
-  if (data.results?.length > 0) {
+  console.log('Geocoding response:', JSON.stringify(data, null, 2));
+  
+  if (data.status === 'OK' && data.results?.length > 0) {
     const location = data.results[0].geometry.location;
+    console.log(`Successfully geocoded to: ${location.lat}, ${location.lng}`);
     return { lat: location.lat, lng: location.lng };
   }
-  throw new Error('Could not geocode ZIP code');
+  
+  console.error('Geocoding failed:', data.status, data.error_message);
+  throw new Error(`Could not geocode location: ${data.status || 'Unknown error'}`);
 }
 
 async function searchPlaces(lat: number, lng: number, cuisine: string, radiusKm: number): Promise<PlaceResult[]> {
