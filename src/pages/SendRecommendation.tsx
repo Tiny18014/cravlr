@@ -188,7 +188,7 @@ const SendRecommendation = () => {
                     }
                   </span>
                 </div>
-                <p><strong>Requested by:</strong> {request.profiles.display_name}</p>
+                <p><strong>Requested by:</strong> {request.profiles?.display_name || 'Anonymous'}</p>
                 {request.additional_notes && (
                   <div className="bg-muted/50 p-3 rounded-md mt-3">
                     <p className="text-sm"><strong>Additional notes:</strong> {request.additional_notes}</p>
