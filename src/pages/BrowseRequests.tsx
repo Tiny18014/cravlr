@@ -274,7 +274,7 @@ const BrowseRequests = () => {
   useEffect(() => {
     if (!coords || !user) return;
 
-    console.log('🔴 Setting up Supabase Realtime subscription...');
+    console.log('🔴 Setting up Supabase Realtime subscription...', { coords, userId: user.id });
 
     const channel = supabase
       .channel('food-requests-live')
@@ -285,34 +285,36 @@ const BrowseRequests = () => {
           schema: 'public', 
           table: 'food_requests' 
         },
-        async (payload) => {
+        (payload) => {
           console.log('🆕 New request detected:', payload);
           const newRequest = payload.new as any;
           
-          // Check if request is within radius
+          // Check distance if coordinates exist
           if (newRequest.location_lat && newRequest.location_lng) {
-            const distance = kmBetween(coords, {
-              lat: parseFloat(newRequest.location_lat),
-              lng: parseFloat(newRequest.location_lng)
-            });
-            if (distance > 15) return; // Outside radius
+            const lat = Number(newRequest.location_lat);
+            const lng = Number(newRequest.location_lng);
+            
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              const distance = kmBetween(coords, { lat, lng });
+              console.log(`📍 Distance: ${distance.toFixed(2)}km`);
+              if (distance > 15) {
+                console.log('❌ Outside radius, ignoring');
+                return;
+              }
+            }
+          } else {
+            console.log('⚠️ No coordinates, showing anyway');
           }
-
-          // Fetch profile data for the new request
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('display_name, email')
-            .eq('user_id', newRequest.requester_id)
-            .single();
 
           const requestWithProfile: FoodRequest = {
             ...newRequest,
             recommendation_count: 0,
             user_has_recommended: false,
             urgency: getUrgencyFromResponseWindow(newRequest.response_window),
-            profiles: profileData || { display_name: 'Anonymous', email: '' }
+            profiles: { display_name: 'New User', email: '' }
           };
 
+          console.log('✅ Adding new request to state:', requestWithProfile.id);
           setRequests(prev => ({ ...prev, [newRequest.id]: requestWithProfile }));
 
           // Vibrate for urgent requests
@@ -339,15 +341,20 @@ const BrowseRequests = () => {
           
           setRequests(prev => {
             const existing = prev[updated.id];
-            if (!existing) return prev;
+            if (!existing) {
+              console.log('❌ Updated request not in state, ignoring');
+              return prev;
+            }
 
             // If status changed to closed, remove from list
             if (updated.status === 'closed') {
+              console.log('🚫 Request closed, removing from state');
               const next = { ...prev };
               delete next[updated.id];
               return next;
             }
 
+            console.log('✅ Updating request in state');
             return {
               ...prev,
               [updated.id]: { ...existing, ...updated }
@@ -362,25 +369,23 @@ const BrowseRequests = () => {
           schema: 'public', 
           table: 'recommendations' 
         },
-        async (payload) => {
+        (payload) => {
           console.log('🎯 New recommendation:', payload);
           const newRec = payload.new as any;
           
-          // Update the recommendation count for the request
-          const { count } = await supabase
-            .from('recommendations')
-            .select('*', { count: 'exact', head: true })
-            .eq('request_id', newRec.request_id);
-
           setRequests(prev => {
             const existing = prev[newRec.request_id];
-            if (!existing) return prev;
+            if (!existing) {
+              console.log('❌ Recommendation for unknown request, ignoring');
+              return prev;
+            }
 
+            console.log('✅ Incrementing recommendation count');
             return {
               ...prev,
               [newRec.request_id]: { 
                 ...existing, 
-                recommendation_count: count || 0,
+                recommendation_count: (existing.recommendation_count || 0) + 1,
                 user_has_recommended: newRec.recommender_id === user.id ? true : existing.user_has_recommended
               }
             };
@@ -389,6 +394,11 @@ const BrowseRequests = () => {
       )
       .subscribe((status) => {
         console.log('🔴 Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to realtime updates');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Channel error - realtime not working');
+        }
       });
 
     return () => {
@@ -397,7 +407,7 @@ const BrowseRequests = () => {
     };
   }, [coords, user]);
 
-  // Fallback polling (reduced frequency since we have realtime)
+  // Reduced frequency polling fallback since we have realtime
   useEffect(() => {
     if (!coords || !user) return;
     
