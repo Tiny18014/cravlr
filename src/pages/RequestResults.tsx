@@ -59,6 +59,8 @@ const RequestResults = () => {
     if (!requestId) return;
 
     try {
+      console.log("🔍 RequestResults: Fetching results for request:", requestId);
+      
       // Fetch request details first
       const { data: requestData, error: requestError } = await supabase
         .from('food_requests')
@@ -71,15 +73,15 @@ const RequestResults = () => {
         return;
       }
 
+      console.log("🔍 RequestResults: Found request:", requestData);
       setRequest(requestData);
 
-      // For now, let's fetch recommendations directly from the database
-      // until we fix the edge function
+      // Fetch recommendations with LEFT JOIN to profiles (not requiring profiles to exist)
       const { data: recommendations, error: recError } = await supabase
         .from('recommendations')
         .select(`
           *,
-          profiles!inner(display_name)
+          profiles(display_name)
         `)
         .eq('request_id', requestId)
         .order('created_at', { ascending: true });
@@ -88,6 +90,8 @@ const RequestResults = () => {
         console.error('Error fetching recommendations:', recError);
         return;
       }
+
+      console.log("🔍 RequestResults: Found recommendations:", recommendations);
 
       // Simple aggregation for now - group by restaurant name
       const groups = new Map();
