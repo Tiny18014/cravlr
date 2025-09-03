@@ -144,8 +144,7 @@ const BrowseRequests = () => {
     try {
       setLoading(true);
       
-      // Query for OTHER people's active requests (not your own)
-      // This is for recommenders to give suggestions
+      // Query for active requests (disable radius filter for testing)
       const { data, error } = await supabase
         .from('food_requests')
         .select(`
@@ -160,7 +159,7 @@ const BrowseRequests = () => {
           profiles!inner(display_name)
         `)
         .eq('status', 'active')
-        .neq('requester_id', user.id) // Exclude your own requests
+        // Temporarily disabled for testing: .neq('requester_id', user.id) 
         .order('created_at', { ascending: false });
 
       if (error) throw error;

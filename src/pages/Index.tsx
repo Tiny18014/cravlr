@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,120 +7,12 @@ import { Plus, Search, User } from 'lucide-react';
 import DebugRealtime from '@/components/DebugRealtime';
 import DebugDBRealtime from '@/components/DebugDBRealtime';
 import MobileDebugConsole from '@/components/MobileDebugConsole';
-import LiveRequestPopup from '@/components/LiveRequestPopup';
-import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
-  const [incomingPing, setIncomingPing] = useState<{
-    id: string;
-    type: "request" | "recommendation";
-    foodType: string;
-    location: string;
-    urgency: "quick" | "soon" | "extended";
-    restaurantName?: string;
-  } | null>(null);
 
-   // Real-time listener for new requests and recommendations on landing page
-  useEffect(() => {
-    if (!user) return;
-
-    console.log("🏠 Setting up Index page realtime listener");
-    
-    const channel = supabase
-      .channel('index-realtime')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'food_requests' },
-        (payload) => {
-          console.log("🏠 New request detected on Index page:", payload.new);
-          
-          const request = payload.new;
-          
-          // Don't show notification for your own requests (commented out for testing)
-          // if (request.requester_id === user.id) {
-          //   console.log("🏠 Skipping notification for own request");
-          //   return;
-          // }
-          
-          setIncomingPing({
-            id: request.id,
-            type: "request",
-            foodType: request.food_type,
-            location: `${request.location_city}, ${request.location_state}`,
-            urgency: request.response_window <= 15 ? 'quick' : 
-                    request.response_window <= 60 ? 'soon' : 'extended'
-          });
-        }
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'recommendations' },
-        async (payload) => {
-          console.log("🏠 New recommendation detected on Index page:", payload.new);
-          
-          const recommendation = payload.new;
-          
-          // Check if this recommendation is for the current user's request
-          const { data: request } = await supabase
-            .from('food_requests')
-            .select('*')
-            .eq('id', recommendation.request_id)
-            .eq('requester_id', user.id)
-            .single();
-            
-          if (request) {
-            console.log("🏠 Recommendation is for current user's request");
-            setIncomingPing({
-              id: recommendation.id,
-              type: "recommendation",
-              foodType: request.food_type,
-              location: `${request.location_city}, ${request.location_state}`,
-              urgency: "soon",
-              restaurantName: recommendation.restaurant_name
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log("🏠 Index realtime status:", status);
-      });
-
-    return () => {
-      console.log("🏠 Cleaning up Index realtime listener");
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  const acceptRequest = async (requestId: string) => {
-    console.log("🏠 Accepting notification from Index:", requestId);
-    
-    try {
-      // First, record the acceptance in the backend
-      const { data, error } = await supabase.functions.invoke('request-accept-ignore', {
-        body: { requestId, action: 'accept' }
-      });
-
-      if (error) throw error;
-      console.log("✅ Request accepted successfully:", data);
-
-      if (incomingPing?.type === "recommendation") {
-        // Navigate to dashboard to see the new recommendation
-        navigate('/dashboard');
-      } else {
-        // Navigate to browse requests for food request notifications
-        navigate('/browse-requests');
-      }
-    } catch (error) {
-      console.error("❌ Error accepting request:", error);
-      // Still navigate even if backend call fails
-      navigate('/browse-requests');
-    }
-  };
-
-  const ignoreRequest = async (requestId: string) => {
-    console.log("🏠 Ignoring request from Index:", requestId);
-    setIncomingPing(null);
-  };
+  // Remove individual realtime logic - now handled by global NotificationsProvider
 
   if (loading) {
     return (
@@ -254,18 +146,12 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Live Request Popup */}
-      <LiveRequestPopup
-        nextPing={incomingPing}
-        dnd={false}
-        onAccept={acceptRequest}
-        onIgnore={ignoreRequest}
-      />
-
       {/* Debug components for all pages */}
-      <DebugRealtime user={user} />
-      <DebugDBRealtime user={user} />
-      {user && <MobileDebugConsole />}
+      <div className="fixed bottom-4 right-4 space-y-2">
+        <DebugRealtime user={user} />
+        <DebugDBRealtime user={user} />
+        <MobileDebugConsole />
+      </div>
     </div>
   );
 };

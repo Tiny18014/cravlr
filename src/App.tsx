@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import GlobalLiveRequestPopup from "@/components/GlobalLiveRequestPopup";
+import { OneSignalInit } from "@/components/OneSignalInit";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import RequestFood from "./pages/RequestFood";
@@ -18,23 +21,27 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/request-food" element={<RequestFood />} />
-            <Route path="/browse-requests" element={<BrowseRequests />} />
-            <Route path="/recommend/:requestId" element={<SendRecommendation />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/request/:requestId/results" element={<RequestResults />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <NotificationsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <GlobalLiveRequestPopup />
+          <OneSignalInit />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/request-food" element={<RequestFood />} />
+              <Route path="/browse-requests" element={<BrowseRequests />} />
+              <Route path="/recommend/:requestId" element={<SendRecommendation />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/request/:requestId/results" element={<RequestResults />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </NotificationsProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
