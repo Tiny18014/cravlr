@@ -70,21 +70,29 @@ export default function GlobalLiveRequestPopup() {
   };
 
   const handleAccept = async (id: string) => {
-    await acceptRequest(id);
-    close();
-    
-    // Navigate based on ping type
+    // Handle differently based on notification type
     if (active?.type === "recommendation") {
+      // For recommendations, just dismiss and navigate - no backend call needed
+      close();
       navigate('/dashboard');
     } else {
-      // Navigate directly to recommendation page for the accepted request
+      // For requests, use the existing accept flow
+      await acceptRequest(id);
+      close();
       navigate(`/recommend/${id}`);
     }
   };
 
   const handleIgnore = async (id: string) => {
-    await ignoreRequest(id);
-    close();
+    // Handle differently based on notification type  
+    if (active?.type === "recommendation") {
+      // For recommendations, just dismiss - no backend call needed
+      close();
+    } else {
+      // For requests, use the existing ignore flow
+      await ignoreRequest(id);
+      close();
+    }
   };
 
   if (!active || dnd) return null;
