@@ -147,10 +147,19 @@ const RequestResults = () => {
         group.notes = group.notes.reverse().slice(0, 3);
       });
 
+      console.log('🔍 Debug: Groups before referral generation:', sortedGroups.map(g => ({
+        name: g.name,
+        mapsUrl: g.mapsUrl,
+        recommendationId: g.recommendationId
+      })));
+
       // Generate referral links for each group
       for (const group of sortedGroups) {
+        console.log(`🔗 Processing ${group.name}: hasRecommendationId=${!!group.recommendationId}, hasMapsUrl=${!!group.mapsUrl}`);
+        
         if (group.recommendationId && group.mapsUrl) {
           try {
+            console.log(`🔗 Generating referral link for ${group.name}...`);
             const referralData = await generateReferralLink({
               recommendationId: group.recommendationId,
               requestId,
@@ -161,15 +170,30 @@ const RequestResults = () => {
             
             if (referralData) {
               group.referralUrl = referralData.referralUrl;
-              console.log('✅ Generated referral URL for', group.name);
+              console.log('✅ Generated referral URL for', group.name, referralData.referralUrl);
+            } else {
+              console.warn('⚠️ No referral data returned for', group.name);
+              group.referralUrl = group.mapsUrl;
             }
           } catch (error) {
             console.error('❌ Failed to generate referral for', group.name, error);
             // Fall back to original maps URL
             group.referralUrl = group.mapsUrl;
           }
+        } else {
+          console.warn(`⚠️ Missing data for ${group.name}: recommendationId=${group.recommendationId}, mapsUrl=${group.mapsUrl}`);
+          // If we have a maps URL but no recommendation ID, use the maps URL directly
+          if (group.mapsUrl) {
+            group.referralUrl = group.mapsUrl;
+          }
         }
       }
+
+      console.log('🔍 Final groups with referral URLs:', sortedGroups.map(g => ({
+        name: g.name,
+        referralUrl: g.referralUrl,
+        mapsUrl: g.mapsUrl
+      })));
 
       setResults({
         requestId,
