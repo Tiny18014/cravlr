@@ -890,9 +890,20 @@ const BrowseRequests = () => {
     });
   }, []);
 
-  if (!user) return null;
+  // Emergency debug logs
+  console.log("🚨 BrowseRequests render state:", { 
+    user: user?.email, 
+    loading, 
+    requestsCount: Object.keys(requests).length 
+  });
+
+  if (!user) {
+    console.log("🚨 No user found, redirecting to auth");
+    return null;
+  }
 
   if (loading) {
+    console.log("🚨 Component is in loading state");
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">Loading requests...</div>
