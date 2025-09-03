@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Search, User } from 'lucide-react';
+import DebugRealtime from '@/components/DebugRealtime';
+import DebugDBRealtime from '@/components/DebugDBRealtime';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
@@ -140,6 +142,10 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      {/* Debug components for all pages */}
+      <DebugRealtime user={user} />
+      <DebugDBRealtime user={user} />
     </div>
   );
 };
