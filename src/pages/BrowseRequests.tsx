@@ -785,13 +785,20 @@ const BrowseRequests = () => {
 
   // Accept/Ignore handlers for live popup
   const acceptRequest = async (id: string) => {
+    console.log("🧪 Accept clicked for ID:", id);
+    
     // Handle test popup differently
     if (id === 'debug-1') {
       console.log("🧪 Test Accept clicked - popup working!");
-      setIncomingPing(null); // Close test popup
+      
+      // Close popup safely with timeout
+      setTimeout(() => {
+        setIncomingPing(null);
+      }, 100);
+      
       toast({
         title: "Test successful!",
-        description: "Popup system is working correctly",
+        description: "Popup Accept button works correctly",
       });
       return;
     }
@@ -833,13 +840,20 @@ const BrowseRequests = () => {
   };
 
   const ignoreRequest = async (id: string) => {
+    console.log("🧪 Ignore clicked for ID:", id);
+    
     // Handle test popup differently
     if (id === 'debug-1') {
       console.log("🧪 Test Ignore clicked - popup working!");
-      setIncomingPing(null); // Close test popup
+      
+      // Close popup safely with timeout
+      setTimeout(() => {
+        setIncomingPing(null);
+      }, 100);
+      
       toast({
         title: "Test successful!",
-        description: "Popup system is working correctly",
+        description: "Popup Ignore button works correctly",
       });
       return;
     }

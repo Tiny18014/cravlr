@@ -39,9 +39,13 @@ export default function LiveRequestPopup({
   }, [active]);
 
   const close = () => {
+    console.log("🧪 LiveRequestPopup close() called");
     setActive(null);
     const nxt = queueRef.current.shift();
-    if (nxt) setActive(nxt);
+    if (nxt) {
+      console.log("🧪 Setting next active:", nxt);
+      setActive(nxt);
+    }
   };
 
   if (!active || dnd) return null;
