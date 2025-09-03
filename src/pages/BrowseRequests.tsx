@@ -209,12 +209,14 @@ const BrowseRequests = () => {
 
   const handleRequestAction = async (id: string, action: string) => {
     try {
-      console.log(`Action: ${action} on request ${id}`);
+      console.log(`🎯 Action triggered: ${action} on request ${id}`);
       
       // Call the backend to record the accept/ignore action
       const { data, error } = await supabase.functions.invoke('request-accept-ignore', {
         body: { requestId: id, action }
       });
+
+      console.log('🎯 Backend response:', { data, error });
 
       if (error) throw error;
 
@@ -232,7 +234,7 @@ const BrowseRequests = () => {
   };
 
   const onOpenSuggestion = (request: FoodRequest) => {
-    console.log('Opening suggestion for:', request.id);
+    console.log('🎯 Opening suggestion for:', request.id);
     navigate(`/recommend/${request.id}`);
   };
 
