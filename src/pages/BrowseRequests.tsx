@@ -266,10 +266,10 @@ const BrowseRequests = () => {
         throw response.error;
       }
 
-      // Update local state
+      // Update local state (match what the edge function stores)
       setRequests(prev => prev.map(req => 
         req.id === id 
-          ? { ...req, user_state: action as "accepted" | "ignored" }
+          ? { ...req, user_state: (action === 'accept' ? 'accepted' : 'ignored') as "accepted" | "ignored" }
           : req
       ));
 
