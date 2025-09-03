@@ -112,18 +112,44 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Redirect to the original destination
     if (referralLink.maps_url) {
-      return Response.redirect(referralLink.maps_url, 302);
+      console.log('🔗 Redirecting to:', referralLink.maps_url);
+      
+      // Return a proper redirect response
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': referralLink.maps_url,
+          ...corsHeaders
+        }
+      });
     } else {
       // If no maps URL, return a success page or restaurant info
       return new Response(
-        JSON.stringify({
-          success: true,
-          restaurant: referralLink.restaurant_name,
-          message: 'Click tracked successfully'
-        }),
+        `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Restaurant Recommendation</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .container { max-width: 500px; margin: 0 auto; }
+            .restaurant { font-size: 24px; font-weight: bold; color: #2563eb; }
+            .message { color: #666; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>📍 Restaurant Recommendation</h1>
+            <div class="restaurant">${referralLink.restaurant_name}</div>
+            <div class="message">Thank you for checking out this recommendation!</div>
+            <div class="message">Visit them and enjoy your meal! 🍽️</div>
+          </div>
+        </body>
+        </html>
+        `,
         {
           status: 200,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          headers: { 'Content-Type': 'text/html', ...corsHeaders },
         }
       );
     }
