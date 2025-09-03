@@ -1387,51 +1387,6 @@ const BrowseRequests = () => {
   );
 };
 
-      {/* Step 2: Realtime indicator strip */}
-      {rtIndicator && (
-        <div style={{
-          position:'fixed', 
-          top:0, 
-          left:0, 
-          right:0, 
-          zIndex: 10001, 
-          background:'#10b981', 
-          color:'#fff', 
-          padding:'4px 8px',
-          textAlign: 'center',
-          fontSize: '12px'
-        }}>
-          Realtime: {rtIndicator}
-        </div>
-      )}
-
-      {/* Step 1: Debug trigger button */}
-      <button
-        style={{
-          position:'fixed', 
-          right:12, 
-          bottom:12, 
-          zIndex:9999,
-          background: '#3b82f6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '8px 16px',
-          fontSize: '14px',
-          cursor: 'pointer'
-        }}
-        onClick={() => setIncomingPing({
-          id: 'debug-1',
-          foodType: 'Sushi',
-          location: 'Concord, NC',
-          urgency: 'quick'
-        })}
-      >
-        🔔 Test Popup
-      </button>
-    </div>
-  );
-};
 
 // Live countdown badge component
 const LiveCountdownBadge = ({ urgency, expiresAt, clockSkew }: { 
@@ -1506,4 +1461,7 @@ const LiveCountdownBadge = ({ urgency, expiresAt, clockSkew }: {
     >
       {getUrgencyDisplayText()} — {timeLeft}
     </Badge>
+  );
+};
+
 export default BrowseRequests;

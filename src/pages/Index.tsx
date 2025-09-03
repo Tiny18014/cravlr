@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Search, User } from 'lucide-react';
 import DebugRealtime from '@/components/DebugRealtime';
 import DebugDBRealtime from '@/components/DebugDBRealtime';
+import MobileDebugConsole from '@/components/MobileDebugConsole';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
@@ -146,6 +147,7 @@ const Index = () => {
       {/* Debug components for all pages */}
       <DebugRealtime user={user} />
       <DebugDBRealtime user={user} />
+      {user && <MobileDebugConsole />}
     </div>
   );
 };
