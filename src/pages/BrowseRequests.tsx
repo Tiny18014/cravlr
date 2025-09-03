@@ -164,6 +164,7 @@ const BrowseRequests = () => {
 
   const fetchInitialRequests = async () => {
     try {
+      setLoading(true);
       console.log('📥 Fetching initial requests...');
       
       // Fetch active requests with recommendation counts and user's recommendation status
@@ -177,41 +178,57 @@ const BrowseRequests = () => {
         .gt('expires_at', 'now()')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase query error:', error);
+        throw error;
+      }
 
       console.log(`📥 Found ${data?.length || 0} active requests`);
 
       // For each request, get recommendation count, user recommendation status, and accept/ignore state
       const requestsWithCounts = await Promise.all(
-        (data || []).map(async (request) => {
-          // Get recommendation count
-          const { count } = await supabase
-            .from('recommendations')
-            .select('*', { count: 'exact', head: true })
-            .eq('request_id', request.id);
+        (data || []).map(async (request, index) => {
+          try {
+            console.log(`📥 Processing request ${index + 1}/${data.length}: ${request.id}`);
+            
+            // Get recommendation count
+            const { count } = await supabase
+              .from('recommendations')
+              .select('*', { count: 'exact', head: true })
+              .eq('request_id', request.id);
 
           // Check if current user has already recommended
           let userHasRecommended = false;
           if (user) {
-            const { data: userRec } = await supabase
-              .from('recommendations')
-              .select('id')
-              .eq('request_id', request.id)
-              .eq('recommender_id', user.id)
-              .single();
-            userHasRecommended = !!userRec;
+            try {
+              const { data: userRec } = await supabase
+                .from('recommendations')
+                .select('id')
+                .eq('request_id', request.id)
+                .eq('recommender_id', user.id)
+                .single();
+              userHasRecommended = !!userRec;
+            } catch (error) {
+              console.log(`📥 No recommendation found for user ${user.id} on request ${request.id}`);
+              userHasRecommended = false;
+            }
           }
 
           // Get user's accept/ignore state for this request
           let userState = null;
           if (user) {
-            const { data: userStateData } = await supabase
-              .from('request_user_state')
-              .select('state')
-              .eq('request_id', request.id)
-              .eq('user_id', user.id)
-              .single();
-            userState = userStateData?.state || null;
+            try {
+              const { data: userStateData } = await supabase
+                .from('request_user_state')
+                .select('state')
+                .eq('request_id', request.id)
+                .eq('user_id', user.id)
+                .single();
+              userState = userStateData?.state || null;
+            } catch (error) {
+              console.log(`📥 No user state found for user ${user.id} on request ${request.id}`);
+              userState = null;
+            }
           }
 
           // Calculate distance if coordinates available
@@ -223,7 +240,7 @@ const BrowseRequests = () => {
             });
           }
 
-          return {
+          const processedRequest = {
             ...request,
             recommendation_count: count || 0,
             user_has_recommended: userHasRecommended,
@@ -231,6 +248,22 @@ const BrowseRequests = () => {
             urgency: getUrgencyFromResponseWindow(request.response_window),
             distance_km: distanceKm
           };
+          
+          console.log(`📥 Processed request ${request.id} successfully`);
+          return processedRequest;
+          
+          } catch (requestError) {
+            console.error(`❌ Error processing request ${request.id}:`, requestError);
+            // Return basic request data if processing fails
+            return {
+              ...request,
+              recommendation_count: 0,
+              user_has_recommended: false,
+              user_state: null,
+              urgency: getUrgencyFromResponseWindow(request.response_window),
+              distance_km: null
+            };
+          }
         })
       );
 
@@ -247,9 +280,12 @@ const BrowseRequests = () => {
       setRequests(requestsRecord);
     } catch (error) {
       console.error('❌ Error fetching requests:', error);
+      
+      // Show error but don't crash the page
+      setRequests({});
       toast({
         title: "Error",
-        description: "Failed to load food requests",
+        description: "Failed to load food requests. Please try refreshing.",
         variant: "destructive",
       });
     } finally {
