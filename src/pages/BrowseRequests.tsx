@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +23,6 @@ import LiveRequestPopup from '@/components/LiveRequestPopup';
 import DebugRealtime from '@/components/DebugRealtime';
 import DebugDBRealtime from '@/components/DebugDBRealtime';
 import MobileDebugConsole from '@/components/MobileDebugConsole';
-import { ContributionDashboard } from '@/components/ContributionDashboard';
 
 interface PlaceResult {
   placeId: string;
@@ -1352,22 +1350,8 @@ const BrowseRequests = () => {
                     </div>
                   </CardContent>
                  </Card>
-               ))
-            }
+                ))}
           </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="contributions">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold mb-2">Your Recommendations</h2>
-                <p className="text-muted-foreground">
-                  Track your contributions and see how you're helping fellow food lovers
-                </p>
-              </div>
-              <ContributionDashboard />
-            </TabsContent>
-          </Tabs>
         </div>
 
         <PWAInstallBanner />
