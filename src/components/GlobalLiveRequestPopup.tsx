@@ -90,11 +90,10 @@ export default function GlobalLiveRequestPopup() {
 
   return (
     <div 
-      className="fixed left-3 right-3 bottom-4"
+      className="fixed inset-0 flex items-center justify-center p-4"
       style={{ 
         zIndex: 100000,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        position: 'fixed'
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}
     >
       <div className="rounded-2xl shadow-xl border bg-white p-3 animate-[slide-up_180ms_ease] text-black">
