@@ -47,8 +47,15 @@ export default function LiveRequestPopup({
   if (!active || dnd) return null;
 
   return (
-    <div className="fixed left-3 right-3 bottom-4 z-[1000]">
-      <div className="rounded-2xl shadow-xl border bg-white p-3 animate-[slide-up_180ms_ease]">
+    <div 
+      className="fixed left-3 right-3 bottom-4"
+      style={{ 
+        zIndex: 10000, 
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        position: 'fixed'
+      }}
+    >
+      <div className="rounded-2xl shadow-xl border bg-white p-3 animate-[slide-up_180ms_ease] text-black">
         <div className="text-sm text-gray-600 mb-1">New request nearby</div>
         <div className="font-semibold text-base">
           {active.foodType} • {active.location}

@@ -92,6 +92,7 @@ const BrowseRequests = () => {
   const [recentRequests, setRecentRequests] = useState<string[]>([]);
   const [dnd, setDnd] = useState(false);
   const [incomingPing, setIncomingPing] = useState<any | null>(null);
+  const [rtIndicator, setRtIndicator] = useState<string>('');
   const [formData, setFormData] = useState({
     restaurantName: '',
     note: '',
@@ -348,6 +349,15 @@ const BrowseRequests = () => {
           table: 'food_requests' 
         },
         (payload) => {
+          // Step 2: Prove the handler fires
+          setRtIndicator(`INSERT ${new Date().toLocaleTimeString()}`);
+          
+          // Nuclear debug - visible HTML injection
+          document.body.insertAdjacentHTML(
+            'beforeend',
+            '<div style="position:fixed;bottom:60px;left:10px;z-index:99999;background:#111;color:#fff;padding:6px 8px;border-radius:8px">INSERT fired</div>'
+          );
+          
           console.log('🆕 === INSERT EVENT RECEIVED ===');
           console.log('Full payload:', JSON.stringify(payload, null, 2));
           
@@ -413,6 +423,18 @@ const BrowseRequests = () => {
             navigator.vibrate([100, 50, 100]);
             console.log('📳 Vibration triggered for urgent request');
           }
+
+          // Step 3: Always trigger popup (no distance filtering for debug)
+          const location = Number.isFinite(lat) && Number.isFinite(lng)
+            ? `${distance?.toFixed(1)}km away`
+            : `${r.location_city}, ${r.location_state}`;
+            
+          setIncomingPing({
+            id: r.id,
+            foodType: r.food_type,
+            location,
+            urgency: r.response_window <= 5 ? 'quick' : r.response_window <= 30 ? 'soon' : 'extended'
+          });
 
           // Enhanced toast with precision info
           const locationInfo = precision === "gps" 
@@ -590,77 +612,55 @@ const BrowseRequests = () => {
     setRestaurantOpen(false);
   };
 
-  async function acceptRequest(id: string) {
-    if (!user) return;
-    // pin at top, open Suggest modal
-    try {
-      await supabase.from('request_user_state')
-        .upsert({ 
-          request_id: id, 
-          user_id: user.id, 
-          state: 'accepted'
-        });
-      
-      // Find and set the selected request
-      const request = requests[id];
-      if (request) {
-        setSelectedRequest(request);
-      }
-    } catch (error) {
-      console.error('Error accepting request:', error);
-    }
-  }
-
-  async function ignoreRequest(id: string) {
-    if (!user) return;
-    try {
-      await supabase.from('request_user_state')
-        .upsert({ 
-          request_id: id, 
-          user_id: user.id, 
-          state: 'ignored'
-        });
-      
-      // Hide the card locally
-      setRequests(prev => {
-        const next = { ...prev };
-        if (next[id]) next[id].__hiddenByUser = true;
-        return next;
-      });
-    } catch (error) {
-      console.error('Error ignoring request:', error);
-    }
-  }
-
   const handleSubmitRecommendation = async () => {
-    if (!selectedRequest || !user || !formData.restaurantName.trim()) return;
+    if (!selectedRequest || !user) return;
+    if (!formData.restaurantName.trim()) return;
 
     setIsSubmitting(true);
+
     try {
+      console.log('📝 Submitting recommendation...', {
+        requestId: selectedRequest.id,
+        restaurantName: formData.restaurantName.trim(),
+        note: formData.note.trim() || null,
+        link: formData.link.trim() || null,
+        placeId: formData.placeId || null
+      });
+
       const { data, error } = await supabase
         .from('recommendations')
-        .insert([{
+        .insert({
           request_id: selectedRequest.id,
           recommender_id: user.id,
           restaurant_name: formData.restaurantName.trim(),
-          notes: formData.note.trim() || null,
-          restaurant_address: selectedPlace?.address || null,
-          restaurant_phone: null,
-          confidence_score: 5,
+          note: formData.note.trim() || null,
+          link: formData.link.trim() || null,
           place_id: formData.placeId || null,
           maps_url: formData.mapsUrl || null,
           photo_token: formData.photoToken || null,
           rating: formData.rating,
           price_level: formData.priceLevel
-        }])
+        })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Send notification email
-      console.log('📧 Sending notification email for recommendation:', data.id);
+      console.log('✅ Recommendation created:', data);
+
+      // Update the local state to reflect the new recommendation count
+      setRequests(prev => ({
+        ...prev,
+        [selectedRequest.id]: {
+          ...prev[selectedRequest.id],
+          recommendation_count: (prev[selectedRequest.id].recommendation_count || 0) + 1,
+          user_has_recommended: true
+        }
+      }));
+
+      // Send notification email to requester
       try {
+        console.log('📧 Sending notification email...');
         const emailResult = await supabase.functions.invoke('send-notification', {
           body: {
             requestId: selectedRequest.id,
@@ -692,20 +692,19 @@ const BrowseRequests = () => {
       setSelectedPlace(null);
       setGooglePlaces([]);
       setSelectedRequest(null);
-      
-      // Refresh the requests list
-      fetchInitialRequests();
-    } catch (error: any) {
-      console.error('Error submitting recommendation:', error);
+
+    } catch (error) {
+      console.error('❌ Error submitting recommendation:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to submit recommendation",
+        description: "Failed to submit recommendation. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   // Handle Accept/Ignore actions
   const handleRequestAction = async (requestId: string, action: 'accept' | 'ignore') => {
@@ -773,6 +772,75 @@ const BrowseRequests = () => {
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
     return `${hours}h ${mins}m left`;
+  };
+
+  // Accept/Ignore handlers for live popup
+  const acceptRequest = async (id: string) => {
+    try {
+      // Update user state to accepted
+      await supabase.from('request_user_state')
+        .upsert({ 
+          request_id: id, 
+          user_id: user.id, 
+          state: 'accepted', 
+          decided_at: new Date().toISOString() 
+        });
+
+      // Update local state
+      setRequests(prev => ({
+        ...prev,
+        [id]: { ...prev[id], user_state: 'accepted' }
+      }));
+
+      // Auto-open suggest modal
+      const request = requests[id];
+      if (request) {
+        setSelectedRequest(request);
+      }
+
+      toast({
+        title: "Request accepted!",
+        description: "Opening suggestion form...",
+      });
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const ignoreRequest = async (id: string) => {
+    try {
+      // Update user state to ignored
+      await supabase.from('request_user_state')
+        .upsert({ 
+          request_id: id, 
+          user_id: user.id, 
+          state: 'ignored', 
+          decided_at: new Date().toISOString() 
+        });
+
+      // Hide the card locally
+      setRequests(prev => ({
+        ...prev,
+        [id]: { ...prev[id], __hiddenByUser: true, user_state: 'ignored' }
+      }));
+
+      toast({
+        title: "Request ignored",
+        description: "Hidden from your feed",
+      });
+    } catch (error) {
+      console.error('Error ignoring request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to ignore request",
+        variant: "destructive",
+      });
+    }
   };
 
   const getUrgencyFromResponseWindow = (responseWindow: number): "quick" | "soon" | "extended" => {
@@ -1193,6 +1261,49 @@ const BrowseRequests = () => {
 
       <PushNotificationSetup />
       <PWAInstallBanner />
+
+      {/* Step 2: Realtime indicator strip */}
+      {rtIndicator && (
+        <div style={{
+          position:'fixed', 
+          top:0, 
+          left:0, 
+          right:0, 
+          zIndex: 10001, 
+          background:'#10b981', 
+          color:'#fff', 
+          padding:'4px 8px',
+          textAlign: 'center',
+          fontSize: '12px'
+        }}>
+          Realtime: {rtIndicator}
+        </div>
+      )}
+
+      {/* Step 1: Debug trigger button */}
+      <button
+        style={{
+          position:'fixed', 
+          right:12, 
+          bottom:12, 
+          zIndex:9999,
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '8px 16px',
+          fontSize: '14px',
+          cursor: 'pointer'
+        }}
+        onClick={() => setIncomingPing({
+          id: 'debug-1',
+          foodType: 'Sushi',
+          location: 'Concord, NC',
+          urgency: 'quick'
+        })}
+      >
+        🔔 Test Popup
+      </button>
     </div>
   );
 };
