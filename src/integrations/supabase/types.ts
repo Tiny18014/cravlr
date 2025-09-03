@@ -259,6 +259,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_safe_profile_data: {
+        Args: { profile_user_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       request_status: "active" | "completed" | "expired"
