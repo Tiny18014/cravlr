@@ -141,6 +141,46 @@ const BrowseRequests = () => {
     }
   }, [user]);
 
+  // Add realtime subscription for new requests
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('browse-requests-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'food_requests'
+        },
+        (payload) => {
+          console.log('🎯 New request created, refreshing list:', payload.new);
+          // Only refresh if it's not the current user's request
+          if (payload.new.requester_id !== user.id) {
+            fetchRequests();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'food_requests'
+        },
+        (payload) => {
+          console.log('🎯 Request updated, refreshing list:', payload.new);
+          fetchRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
