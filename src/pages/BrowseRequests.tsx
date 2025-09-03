@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +24,7 @@ import LiveRequestPopup from '@/components/LiveRequestPopup';
 import DebugRealtime from '@/components/DebugRealtime';
 import DebugDBRealtime from '@/components/DebugDBRealtime';
 import MobileDebugConsole from '@/components/MobileDebugConsole';
+import { ContributionDashboard } from '@/components/ContributionDashboard';
 
 interface PlaceResult {
   placeId: string;
@@ -1020,7 +1022,7 @@ const BrowseRequests = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Home
           </Button>
-          <h1 className="text-2xl font-bold">Nearby Requests</h1>
+          <h1 className="text-2xl font-bold">Give Recommendations</h1>
           <div className="ml-auto flex items-center gap-4">
             {profile && (
               <DoNotDisturbToggle 
@@ -1043,6 +1045,15 @@ const BrowseRequests = () => {
             <p className="text-muted-foreground">
               Share your favorite restaurants and earn points for quick responses
             </p>
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/dashboard')} 
+                className="mr-2"
+              >
+                View Your Recommendations
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -1344,7 +1355,23 @@ const BrowseRequests = () => {
                ))
             }
           </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contributions">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold mb-2">Your Recommendations</h2>
+                <p className="text-muted-foreground">
+                  Track your contributions and see how you're helping fellow food lovers
+                </p>
+              </div>
+              <ContributionDashboard />
+            </TabsContent>
+          </Tabs>
         </div>
+
+        <PWAInstallBanner />
+        <PushNotificationSetup />
       </main>
 
       {/* Toast notifications for recent requests */}
