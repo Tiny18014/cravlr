@@ -32,12 +32,12 @@ interface Recommendation {
   awarded_points?: number;
   created_at: string;
   request_id: string;
-  food_requests: {
+  food_requests?: {
     food_type: string;
     location_city: string;
     location_state: string;
   };
-  profiles: {
+  profiles?: {
     display_name: string;
   };
 }
@@ -51,10 +51,10 @@ interface ReceivedRecommendation {
   confidence_score: number;
   awarded_points?: number;
   created_at: string;
-  profiles: {
+  profiles?: {
     display_name: string;
   };
-  food_requests: {
+  food_requests?: {
     food_type: string;
   };
 }
@@ -97,23 +97,29 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch user's requests with recommendation counts using joins
+      // Fetch user's requests with recommendation counts
       const { data: requests, error: requestsError } = await supabase
         .from('food_requests')
-        .select(`
-          *,
-          recommendations (count)
-        `)
+        .select('*')
         .eq('requester_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (requestsError) throw requestsError;
 
-      // Transform the data to include recommendation counts
-      const requestsWithCounts = (requests || []).map(request => ({
-        ...request,
-        recommendation_count: request.recommendations?.length || 0
-      }));
+      // Add recommendation count to each request
+      const requestsWithCounts = await Promise.all(
+        (requests || []).map(async (request) => {
+          const { count } = await supabase
+            .from('recommendations')
+            .select('*', { count: 'exact', head: true })
+            .eq('request_id', request.id);
+          
+          return {
+            ...request,
+            recommendation_count: count || 0
+          };
+        })
+      );
 
       setMyRequests(requestsWithCounts);
 
@@ -317,7 +323,7 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        For: {rec.food_requests.food_type} in {rec.food_requests.location_city}, {rec.food_requests.location_state}
+                        For: {rec.food_requests?.food_type} in {rec.food_requests?.location_city}, {rec.food_requests?.location_state}
                       </p>
                       {rec.restaurant_address && (
                         <div className="flex items-center text-sm text-muted-foreground">
@@ -374,7 +380,7 @@ const Dashboard = () => {
                         Recommended by {rec.profiles?.display_name || 'Anonymous'}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        For your: {rec.food_requests.food_type} request
+                        For your: {rec.food_requests?.food_type} request
                       </p>
                       {rec.restaurant_address && (
                         <div className="flex items-center text-sm text-muted-foreground">
