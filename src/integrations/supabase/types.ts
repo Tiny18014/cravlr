@@ -341,7 +341,7 @@ export type Database = {
           conversion_at: string | null
           conversion_method: string | null
           conversion_value: number | null
-          converted: boolean | null
+          converted: boolean
           converted_at: string | null
           id: string
           ip_address: unknown | null
@@ -366,7 +366,7 @@ export type Database = {
           conversion_at?: string | null
           conversion_method?: string | null
           conversion_value?: number | null
-          converted?: boolean | null
+          converted?: boolean
           converted_at?: string | null
           id?: string
           ip_address?: unknown | null
@@ -391,7 +391,7 @@ export type Database = {
           conversion_at?: string | null
           conversion_method?: string | null
           conversion_value?: number | null
-          converted?: boolean | null
+          converted?: boolean
           converted_at?: string | null
           id?: string
           ip_address?: unknown | null
