@@ -515,7 +515,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      view_referral_conversions_recent: {
+        Row: {
+          awarded_points: number | null
+          click_source: string | null
+          clicked_at: string | null
+          commission_amount: number | null
+          commission_paid: boolean | null
+          commission_paid_at: string | null
+          commission_rate: number | null
+          conversion_at: string | null
+          conversion_method: string | null
+          conversion_value: number | null
+          converted: boolean | null
+          converted_at: string | null
+          id: string | null
+          ip_address: unknown | null
+          notes: string | null
+          place_id: string | null
+          recommendation_id: string | null
+          recommender_id: string | null
+          recommender_name: string | null
+          referral_link_id: string | null
+          reported_by: string | null
+          request_id: string | null
+          requester_id: string | null
+          requester_name: string | null
+          restaurant_name: string | null
+          user_agent: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_clicks_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_clicks_referral_link_id_fkey"
+            columns: ["referral_link_id"]
+            isOneToOne: false
+            referencedRelation: "referral_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_clicks_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       award_points_for_request: {
