@@ -56,11 +56,35 @@ const handler = async (req: Request): Promise<Response> => {
       throw updateError;
     }
 
-    console.log(`Successfully closed ${expiredRequests.length} expired requests`);
+    // Award points for recommendations in closed requests
+    let totalPointsAwarded = 0;
+    for (const request of expiredRequests) {
+      try {
+        console.log(`Awarding points for expired request: ${request.id}`);
+        
+        // Call the database function to award points for this request
+        const { data: pointsData, error: pointsError } = await supabase
+          .rpc('award_points_for_request', { 
+            request_id_param: request.id 
+          });
+
+        if (pointsError) {
+          console.error(`Error awarding points for request ${request.id}:`, pointsError);
+        } else {
+          totalPointsAwarded += (pointsData || 0);
+          console.log(`Awarded ${pointsData || 0} total points for request ${request.id}`);
+        }
+      } catch (error) {
+        console.error(`Unexpected error awarding points for request ${request.id}:`, error);
+      }
+    }
+
+    console.log(`Successfully closed ${expiredRequests.length} expired requests and awarded ${totalPointsAwarded} total points`);
 
     return new Response(JSON.stringify({ 
-      message: 'Successfully closed expired requests',
-      closedCount: expiredRequests.length
+      message: 'Successfully closed expired requests and awarded points',
+      closedCount: expiredRequests.length,
+      totalPointsAwarded: totalPointsAwarded
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
