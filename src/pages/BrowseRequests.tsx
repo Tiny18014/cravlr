@@ -254,13 +254,17 @@ const BrowseRequests = () => {
       console.log(`🎯 Action triggered: ${action} on request ${id}`);
       
       // Call the backend to record the accept/ignore action
-      const { data, error } = await supabase.functions.invoke('request-accept-ignore', {
+      const response = await supabase.functions.invoke('request-accept-ignore', {
         body: { requestId: id, action }
       });
 
-      console.log('🎯 Backend response:', { data, error });
+      console.log('🎯 Backend response:', response);
 
-      if (error) throw error;
+      // Check if there's an error in the response
+      if (response.error) {
+        console.error('🎯 Edge function error:', response.error);
+        throw response.error;
+      }
 
       // Update local state
       setRequests(prev => prev.map(req => 
@@ -272,6 +276,23 @@ const BrowseRequests = () => {
       console.log(`✅ Successfully ${action}ed request ${id}`);
     } catch (error) {
       console.error(`❌ Error ${action}ing request:`, error);
+      
+      // Log more details about the error
+      if (error instanceof Error) {
+        console.error('❌ Error name:', error.name);
+        console.error('❌ Error message:', error.message);
+      }
+      
+      // If it's a FunctionsHttpError, try to get more details
+      if (error && typeof error === 'object' && 'context' in error) {
+        console.error('❌ Error context:', error.context);
+        try {
+          const errorText = await (error.context as Response).text();
+          console.error('❌ Error response text:', errorText);
+        } catch (e) {
+          console.error('❌ Could not read error response text:', e);
+        }
+      }
     }
   };
 
