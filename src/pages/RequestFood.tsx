@@ -134,7 +134,8 @@ const RequestFood = () => {
           additional_notes: formData.additionalNotes || null,
           response_window: formData.responseWindow,
           location_lat: lat,
-          location_lng: lng
+          location_lng: lng,
+          status: 'active'  // 🔥 CRITICAL: Explicitly set to make visible to others
         })
         .select()
         .single();

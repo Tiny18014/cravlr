@@ -1,7 +1,12 @@
--- Test SQL to manually insert food requests and verify real-time notifications
--- Run these in the SQL Editor to test if the second account sees the cards instantly
+-- 🔥 COMPREHENSIVE REAL-TIME TEST SCRIPT 🔥
+-- Run these tests to verify the 4 fixes are working:
+-- 1. Subscription doesn't require coords 
+-- 2. Explicit status: 'active' 
+-- 3. Shows events even without coords 
+-- 4. Realtime status verification
 
--- Test 1: City-only request (no coordinates) - should now appear with hotfix
+-- ======= IMMEDIATE TEST (Run this first) =======
+-- Test 1: City-only request (no coordinates) - should now appear instantly!
 INSERT INTO public.food_requests (
   id,
   requester_id, 
@@ -10,21 +15,30 @@ INSERT INTO public.food_requests (
   location_state,
   additional_notes,
   response_window,
-  status,
+  status,  -- 🔥 EXPLICIT status: 'active'
   created_at,
   expires_at
 ) VALUES (
   gen_random_uuid(),
   (SELECT id FROM auth.users LIMIT 1), -- Use any existing user ID
-  'Indian Curry',
+  'Test City-Level Request',
   'Concord',
   'North Carolina', 
-  'City-level test - should appear with hotfix!',
-  5, -- 5 minute quick request
-  'active',
+  '🔥 HOTFIX TEST: Should appear even without GPS coordinates!',
+  5, -- 5 minute quick request (should vibrate)
+  'active',  -- 🔥 CRITICAL: Must be active to pass RLS
   now(),
   now() + interval '5 minutes'
 );
+
+-- Watch for these logs in recommender console:
+-- 🔴 Realtime subscription status: SUBSCRIBED
+-- 🆕 === INSERT EVENT RECEIVED ===
+-- ⚠️ No GPS coordinates - showing city-level
+-- In range? true Precision: city
+-- ✅ Adding new request to state
+
+-- ======= GPS TEST =======
 
 -- Test 2: Quick request WITH GPS coordinates
 INSERT INTO public.food_requests (

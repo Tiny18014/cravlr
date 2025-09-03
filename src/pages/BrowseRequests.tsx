@@ -113,10 +113,9 @@ const BrowseRequests = () => {
       return;
     }
     
-    if (coords) {
-      fetchInitialRequests();
-    }
-  }, [user, navigate, coords]);
+    // Always fetch initial requests, even without coords
+    fetchInitialRequests();
+  }, [user, navigate]);
 
   const fetchInitialRequests = async () => {
     try {
@@ -301,11 +300,11 @@ const BrowseRequests = () => {
     return R * c;
   };
 
-  // Set up Supabase Realtime subscription
+  // Set up Supabase Realtime subscription (don't gate on coords!)
   useEffect(() => {
-    if (!coords || !user) return;
+    if (!user) return;
 
-    console.log('🔴 Setting up Supabase Realtime subscription...', { coords, userId: user.id });
+    console.log('🔴 Setting up Supabase Realtime subscription...', { userId: user.id });
 
     const channel = supabase
       .channel('food-requests-live')
@@ -331,27 +330,23 @@ const BrowseRequests = () => {
           const lat = r.location_lat != null ? Number(r.location_lat) : NaN;
           const lng = r.location_lng != null ? Number(r.location_lng) : NaN;
           console.log('Parsed coordinates:', { lat, lng });
-          console.log('Are coordinates finite?', Number.isFinite(lat), Number.isFinite(lng));
           
-          // Normalize helper for city/state matching
-          const norm = (s?: string) => (s ?? "").toLowerCase().replace(/\s+/g, "");
-          
-          let inRange = false;
+          let inRange = true;  // 🔥 DEFAULT TRUE so you SEE the card
+          let distance: number | null = null;
           let precision = "city";
-          let distance = null;
-          
-          if (Number.isFinite(lat) && Number.isFinite(lng) && coords) {
-            // GPS-based filtering
+
+          if (coords && Number.isFinite(lat) && Number.isFinite(lng)) {
+            // GPS-based filtering when we have both user coords and request coords
             distance = kmBetween(coords, { lat, lng });
             console.log(`📍 GPS Distance: ${distance.toFixed(2)}km`);
             inRange = distance <= 15;
             precision = "gps";
+          } else if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            console.log('⚠️ Request has coords but user location not available - showing anyway');
+            precision = "gps";
           } else {
-            // Fallback to city/state matching or show all for now
-            console.log('⚠️ No GPS coordinates - using city fallback');
-            // For now, show all city-level requests to test real-time
-            inRange = true; // TODO: implement city/state matching with user profile
-            precision = "city";
+            console.log('⚠️ No GPS coordinates - showing city-level');
+            // Could add city/state matching here later if needed
           }
           
           console.log('In range?', inRange, 'Precision:', precision);
@@ -474,7 +469,7 @@ const BrowseRequests = () => {
       console.log('🔴 Cleaning up Realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [coords, user]);
+  }, [user]);
 
   // Reduced frequency polling fallback since we have realtime
   useEffect(() => {
