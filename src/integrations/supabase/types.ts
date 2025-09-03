@@ -81,6 +81,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          do_not_disturb: boolean
           email: string
           id: string
           is_active: boolean
@@ -91,6 +92,9 @@ export type Database = {
           notification_email: string | null
           points_this_month: number
           points_total: number
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          timezone: string | null
           updated_at: string
           user_id: string
           user_role: Database["public"]["Enums"]["user_role"]
@@ -99,6 +103,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          do_not_disturb?: boolean
           email: string
           id?: string
           is_active?: boolean
@@ -109,6 +114,9 @@ export type Database = {
           notification_email?: string | null
           points_this_month?: number
           points_total?: number
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id: string
           user_role?: Database["public"]["Enums"]["user_role"]
@@ -117,6 +125,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          do_not_disturb?: boolean
           email?: string
           id?: string
           is_active?: boolean
@@ -127,6 +136,9 @@ export type Database = {
           notification_email?: string | null
           points_this_month?: number
           points_total?: number
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string
           user_role?: Database["public"]["Enums"]["user_role"]
@@ -195,6 +207,38 @@ export type Database = {
           },
           {
             foreignKeyName: "recommendations_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_user_state: {
+        Row: {
+          created_at: string
+          id: string
+          request_id: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_id: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_id?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_user_state_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "food_requests"

@@ -48,16 +48,17 @@ interface FoodRequest {
   expires_at: string;
   closed_at?: string;
   response_window: number;
+  location_lat?: number;
+  location_lng?: number;
   profiles: {
     display_name: string;
     email: string;
   };
   recommendation_count?: number;
   user_has_recommended?: boolean;
-  // Real-time specific fields
-  lat?: number;
-  lng?: number;
   urgency?: "quick" | "soon" | "extended";
+  user_state?: "accepted" | "ignored" | null;
+  distance_km?: number;
 }
 
 type LiveEvent = 
@@ -120,6 +121,8 @@ const BrowseRequests = () => {
 
   const fetchInitialRequests = async () => {
     try {
+      console.log('📥 Fetching initial requests...');
+      
       // Fetch active requests with recommendation counts and user's recommendation status
       const { data, error } = await supabase
         .from('food_requests')
@@ -133,7 +136,9 @@ const BrowseRequests = () => {
 
       if (error) throw error;
 
-      // For each request, get recommendation count and check if user has recommended
+      console.log(`📥 Found ${data?.length || 0} active requests`);
+
+      // For each request, get recommendation count, user recommendation status, and accept/ignore state
       const requestsWithCounts = await Promise.all(
         (data || []).map(async (request) => {
           // Get recommendation count
@@ -154,24 +159,51 @@ const BrowseRequests = () => {
             userHasRecommended = !!userRec;
           }
 
+          // Get user's accept/ignore state for this request
+          let userState = null;
+          if (user) {
+            const { data: userStateData } = await supabase
+              .from('request_user_state')
+              .select('state')
+              .eq('request_id', request.id)
+              .eq('user_id', user.id)
+              .single();
+            userState = userStateData?.state || null;
+          }
+
+          // Calculate distance if coordinates available
+          let distanceKm = null;
+          if (coords && request.location_lat && request.location_lng) {
+            distanceKm = kmBetween(coords, {
+              lat: Number(request.location_lat),
+              lng: Number(request.location_lng)
+            });
+          }
+
           return {
             ...request,
             recommendation_count: count || 0,
             user_has_recommended: userHasRecommended,
-            urgency: getUrgencyFromResponseWindow(request.response_window)
+            user_state: userState,
+            urgency: getUrgencyFromResponseWindow(request.response_window),
+            distance_km: distanceKm
           };
         })
       );
 
-      // Convert to record keyed by id
+      // Convert to record keyed by id - filter by distance if coordinates available
       const requestsRecord: Record<string, FoodRequest> = {};
       requestsWithCounts.forEach(req => {
-        requestsRecord[req.id] = req;
+        // Only include requests within 15km if we have coordinates
+        if (!coords || !req.distance_km || req.distance_km <= 15) {
+          requestsRecord[req.id] = req;
+        }
       });
 
+      console.log(`📥 Loaded ${Object.keys(requestsRecord).length} nearby requests`);
       setRequests(requestsRecord);
     } catch (error) {
-      console.error('Error fetching requests:', error);
+      console.error('❌ Error fetching requests:', error);
       toast({
         title: "Error",
         description: "Failed to load food requests",
@@ -566,6 +598,42 @@ const BrowseRequests = () => {
     }
   };
 
+  // Handle Accept/Ignore actions
+  const handleRequestAction = async (requestId: string, action: 'accept' | 'ignore') => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke('request-accept-ignore', {
+        body: { requestId, action }
+      });
+
+      if (error) throw error;
+
+      // Update local state
+      setRequests(prev => ({
+        ...prev,
+        [requestId]: {
+          ...prev[requestId],
+          user_state: action === 'accept' ? 'accepted' : 'ignored'
+        }
+      }));
+
+      toast({
+        title: action === 'accept' ? "Request accepted!" : "Request ignored",
+        description: action === 'accept' 
+          ? "You can now suggest a restaurant for this request" 
+          : "This request will be hidden from future notifications",
+      });
+    } catch (error: any) {
+      console.error(`Error ${action}ing request:`, error);
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${action} request`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -741,20 +809,48 @@ const BrowseRequests = () => {
                         <div className="text-sm text-muted-foreground">
                           {request.recommendation_count}/10 recommendations
                         </div>
-                        {request.user_has_recommended ? (
-                          <Badge variant="outline">Already suggested</Badge>
-                        ) : (
-                          <Dialog open={selectedRequest?.id === request.id} onOpenChange={(open) => !open && setSelectedRequest(null)}>
-                            <DialogTrigger asChild>
-                              <Button 
+                        <div className="flex items-center gap-2">
+                          {request.user_state === 'ignored' ? (
+                            <Badge variant="secondary">Ignored</Badge>
+                          ) : request.user_state === 'accepted' ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              Accepted
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
                                 size="sm"
-                                onClick={() => setSelectedRequest(request)}
-                                disabled={request.recommendation_count! >= 10}
+                                onClick={() => handleRequestAction(request.id, 'ignore')}
+                                className="text-muted-foreground hover:text-foreground"
                               >
-                                <Send className="h-4 w-4 mr-2" />
-                                Suggest Spot
+                                Ignore
                               </Button>
-                            </DialogTrigger>
+                              <Button
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleRequestAction(request.id, 'accept')}
+                                className="text-green-700 border-green-200 hover:bg-green-50"
+                              >
+                                Accept
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {request.user_has_recommended ? (
+                            <Badge variant="outline">Already suggested</Badge>
+                          ) : request.user_state === 'accepted' ? (
+                            <Dialog open={selectedRequest?.id === request.id} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  size="sm"
+                                  onClick={() => setSelectedRequest(request)}
+                                  disabled={request.recommendation_count! >= 10}
+                                >
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Suggest Spot
+                                </Button>
+                              </DialogTrigger>
                             <DialogContent className="sm:max-w-md">
                               <DialogHeader>
                                 <DialogTitle>Suggest a Restaurant</DialogTitle>
@@ -934,8 +1030,9 @@ const BrowseRequests = () => {
                                 </div>
                               </div>
                             </DialogContent>
-                          </Dialog>
-                        )}
+                            </Dialog>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
