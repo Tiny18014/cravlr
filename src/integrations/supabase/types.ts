@@ -76,6 +76,33 @@ export type Database = {
           },
         ]
       }
+      points_events: {
+        Row: {
+          created_at: string
+          id: string
+          points: number
+          referral_click_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points: number
+          referral_click_id?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points?: number
+          referral_click_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approval_rate: number | null
