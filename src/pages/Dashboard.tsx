@@ -78,6 +78,19 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [user, navigate]);
 
+  // Refresh data when tab becomes visible (user returns from notification)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        console.log("📊 Dashboard tab visible, refreshing data...");
+        fetchDashboardData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user]);
+
   const fetchDashboardData = async () => {
     try {
       // Fetch user's requests with recommendation counts
