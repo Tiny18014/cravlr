@@ -55,6 +55,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             
             const request = payload.new;
             
+            // Skip notifications for your own requests
+            if (request.requester_id === user.id) {
+              console.log("🌍 Skipping ping for own request:", request.id);
+              return;
+            }
+            
             // Create ping (dedupe will be handled in popup component)
             const ping: LivePing = {
               id: request.id,
