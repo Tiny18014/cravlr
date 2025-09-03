@@ -173,7 +173,7 @@ const BrowseRequests = () => {
         .from('food_requests')
         .select(`
           *,
-          profiles (display_name)
+          profiles!requester_id (display_name)
         `)
         .eq('status', 'active')
         .gt('expires_at', 'now()')
