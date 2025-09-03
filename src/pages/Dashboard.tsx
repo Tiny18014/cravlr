@@ -74,7 +74,8 @@ const Dashboard = () => {
     reputation_score: 0,
     approval_rate: 0,
     total_feedbacks: 0,
-    positive_feedbacks: 0
+    positive_feedbacks: 0,
+    is_admin: false
   });
   const [loading, setLoading] = useState(true);
   
@@ -162,7 +163,7 @@ const Dashboard = () => {
       // Fetch user points
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks')
+        .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks, is_admin')
         .eq('user_id', user?.id)
         .single();
 
@@ -175,7 +176,8 @@ const Dashboard = () => {
           reputation_score: profile.reputation_score || 0,
           approval_rate: profile.approval_rate || 0,
           total_feedbacks: profile.total_feedbacks || 0,
-          positive_feedbacks: profile.positive_feedbacks || 0
+          positive_feedbacks: profile.positive_feedbacks || 0,
+          is_admin: profile.is_admin || false
         });
       }
 
@@ -281,13 +283,18 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           <Button onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
             Request Food
           </Button>
           <Button variant="outline" onClick={() => navigate('/browse-requests')} className="flex-1 md:flex-none">
             Browse Requests
           </Button>
+          {userPoints.is_admin && (
+            <Button variant="secondary" onClick={() => navigate('/admin/conversions')} className="flex-1 md:flex-none">
+              Admin Panel
+            </Button>
+          )}
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">

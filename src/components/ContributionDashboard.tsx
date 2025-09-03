@@ -41,7 +41,8 @@ export const ContributionDashboard = () => {
   const [stats, setStats] = useState({
     totalRecommendations: 0,
     totalPoints: 0,
-    thisMonthPoints: 0
+    thisMonthPoints: 0,
+    conversionBonusesThisMonth: 0
   });
 
   useEffect(() => {
@@ -127,10 +128,28 @@ export const ContributionDashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('recommender_id', user?.id);
 
+      // Get conversion bonuses from this month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data: conversionBonuses } = await supabase
+        .from('points_events')
+        .select('points')
+        .eq('user_id', user?.id)
+        .eq('type', 'conversion_bonus')
+        .gte('created_at', startOfMonth.toISOString());
+
+      const conversionBonusesThisMonth = conversionBonuses?.reduce(
+        (sum, bonus) => sum + bonus.points, 
+        0
+      ) || 0;
+
       setStats({
         totalRecommendations: totalRecs || 0,
         totalPoints: profile?.points_total || 0,
-        thisMonthPoints: profile?.points_this_month || 0
+        thisMonthPoints: profile?.points_this_month || 0,
+        conversionBonusesThisMonth
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -186,7 +205,7 @@ export const ContributionDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Stats Header */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">{stats.totalRecommendations}</div>
@@ -203,6 +222,15 @@ export const ContributionDashboard = () => {
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-primary">{stats.thisMonthPoints}</div>
             <div className="text-sm text-muted-foreground">This Month</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{stats.conversionBonusesThisMonth}</div>
+            <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+              <Award className="h-3 w-3" />
+              Conversion Bonuses
+            </div>
           </CardContent>
         </Card>
       </div>

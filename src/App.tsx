@@ -14,6 +14,7 @@ import BrowseRequests from "./pages/BrowseRequests";
 import SendRecommendation from "./pages/SendRecommendation";
 import Dashboard from "./pages/Dashboard";
 import RequestResults from "./pages/RequestResults";
+import AdminConversions from "./pages/AdminConversions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/recommend/:requestId" element={<SendRecommendation />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/request/:requestId/results" element={<RequestResults />} />
+              <Route path="/admin/conversions" element={<AdminConversions />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
