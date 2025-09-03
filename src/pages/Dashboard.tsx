@@ -202,8 +202,15 @@ const Dashboard = () => {
     );
   }
 
-  const activeRequests = myRequests.filter(req => req.status === 'active');
-  const expiredRequests = myRequests.filter(req => req.status === 'expired' || req.status === 'closed');
+  // Filter requests with client-side expiration check as backup
+  const now = new Date();
+  const activeRequests = myRequests.filter(req => 
+    req.status === 'active' && new Date(req.expires_at) > now
+  );
+  const expiredRequests = myRequests.filter(req => 
+    req.status === 'expired' || req.status === 'closed' || 
+    (req.status === 'active' && new Date(req.expires_at) <= now)
+  );
   const recentRequests = myRequests.slice(0, 3); // Show only last 3 requests
   const totalRecommendationsReceived = receivedRecommendations.length;
 
