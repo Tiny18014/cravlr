@@ -87,11 +87,25 @@ const Index = () => {
   const acceptRequest = async (requestId: string) => {
     console.log("🏠 Accepting notification from Index:", requestId);
     
-    if (incomingPing?.type === "recommendation") {
-      // Navigate to dashboard to see the new recommendation
-      navigate('/dashboard');
-    } else {
-      // Navigate to browse requests for food request notifications
+    try {
+      // First, record the acceptance in the backend
+      const { data, error } = await supabase.functions.invoke('request-accept-ignore', {
+        body: { requestId, action: 'accept' }
+      });
+
+      if (error) throw error;
+      console.log("✅ Request accepted successfully:", data);
+
+      if (incomingPing?.type === "recommendation") {
+        // Navigate to dashboard to see the new recommendation
+        navigate('/dashboard');
+      } else {
+        // Navigate to browse requests for food request notifications
+        navigate('/browse-requests');
+      }
+    } catch (error) {
+      console.error("❌ Error accepting request:", error);
+      // Still navigate even if backend call fails
       navigate('/browse-requests');
     }
   };
