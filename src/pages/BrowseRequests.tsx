@@ -207,18 +207,33 @@ const BrowseRequests = () => {
     }
   };
 
-  const handleRequestAction = (id: string, action: string) => {
-    console.log(`Action: ${action} on request ${id}`);
-    setRequests(prev => prev.map(req => 
-      req.id === id 
-        ? { ...req, user_state: action as "accepted" | "ignored" }
-        : req
-    ));
+  const handleRequestAction = async (id: string, action: string) => {
+    try {
+      console.log(`Action: ${action} on request ${id}`);
+      
+      // Call the backend to record the accept/ignore action
+      const { data, error } = await supabase.functions.invoke('request-accept-ignore', {
+        body: { requestId: id, action }
+      });
+
+      if (error) throw error;
+
+      // Update local state
+      setRequests(prev => prev.map(req => 
+        req.id === id 
+          ? { ...req, user_state: action as "accepted" | "ignored" }
+          : req
+      ));
+
+      console.log(`✅ Successfully ${action}ed request ${id}`);
+    } catch (error) {
+      console.error(`❌ Error ${action}ing request:`, error);
+    }
   };
 
   const onOpenSuggestion = (request: FoodRequest) => {
     console.log('Opening suggestion for:', request.id);
-    // This would open the suggestion modal
+    navigate(`/recommend/${request.id}`);
   };
 
   if (!user) return null;
