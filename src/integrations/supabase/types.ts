@@ -90,6 +90,7 @@ export type Database = {
           location_lng: number | null
           location_state: string | null
           notification_email: string | null
+          notify_recommender: boolean
           points_this_month: number
           points_total: number
           quiet_hours_end: string | null
@@ -112,6 +113,7 @@ export type Database = {
           location_lng?: number | null
           location_state?: string | null
           notification_email?: string | null
+          notify_recommender?: boolean
           points_this_month?: number
           points_total?: number
           quiet_hours_end?: string | null
@@ -134,6 +136,7 @@ export type Database = {
           location_lng?: number | null
           location_state?: string | null
           notification_email?: string | null
+          notify_recommender?: boolean
           points_this_month?: number
           points_total?: number
           quiet_hours_end?: string | null
@@ -142,6 +145,33 @@ export type Database = {
           updated_at?: string
           user_id?: string
           user_role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          endpoint: string | null
+          id: string
+          player_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          player_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          player_id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

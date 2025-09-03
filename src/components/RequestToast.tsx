@@ -14,7 +14,7 @@ interface RequestToastProps {
     food_type: string;
     location_city: string;
     location_state: string;
-    urgency: 'low' | 'medium' | 'high';
+    urgency: 'quick' | 'soon' | 'extended';
     distance_km?: number | null;
   };
   onDismiss: () => void;
@@ -77,8 +77,8 @@ export function RequestToast({ request, onDismiss }: RequestToastProps) {
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'high': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'medium': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'quick': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'soon': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       default: return 'bg-green-500/10 text-green-500 border-green-500/20';
     }
   };

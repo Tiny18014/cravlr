@@ -14,6 +14,10 @@ import { useToast } from '@/hooks/use-toast';
 
 import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown, Star, ExternalLink, Phone, Wifi, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { DoNotDisturbToggle } from '@/components/DoNotDisturbToggle';
+import { RequestToast } from '@/components/RequestToast';
+import { PWAInstallBanner } from '@/components/PWAInstallBanner';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface PlaceResult {
   placeId: string;
@@ -68,6 +72,7 @@ const BrowseRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { requestPermission, isSupported, isSubscribed } = usePushNotifications();
   const [requests, setRequests] = useState<Record<string, FoodRequest>>({});
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
@@ -80,6 +85,8 @@ const BrowseRequests = () => {
   const [sessionToken] = useState(() => crypto.randomUUID());
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [clockSkew, setClockSkew] = useState(0);
+  const [profile, setProfile] = useState<{notify_recommender: boolean} | null>(null);
+  const [recentRequests, setRecentRequests] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     restaurantName: '',
     note: '',
@@ -115,7 +122,27 @@ const BrowseRequests = () => {
     
     // Always fetch initial requests, even without coords
     fetchInitialRequests();
+    
+    // Fetch user profile for DND toggle
+    fetchProfile();
   }, [user, navigate]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('notify_recommender')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const fetchInitialRequests = async () => {
     try {
@@ -372,6 +399,9 @@ const BrowseRequests = () => {
             console.log('Updated requests count:', Object.keys(updated).length);
             return updated;
           });
+
+          // Add to recent requests for toast display
+          setRecentRequests(prev => [r.id, ...prev.slice(0, 4)]);
 
           // Vibrate for urgent requests
           if (r.response_window <= 5 && 'vibrate' in navigator) {
@@ -757,9 +787,17 @@ const BrowseRequests = () => {
             Home
           </Button>
           <h1 className="text-2xl font-bold">Nearby Requests</h1>
-          <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
-            <Wifi className="h-4 w-4 text-green-500" />
-            Live updates
+          <div className="ml-auto flex items-center gap-4">
+            {profile && (
+              <DoNotDisturbToggle 
+                notifyRecommender={profile.notify_recommender}
+                onToggle={(enabled) => setProfile(prev => prev ? {...prev, notify_recommender: enabled} : null)}
+              />
+            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Wifi className="h-4 w-4 text-green-500" />
+              Live updates
+            </div>
           </div>
         </div>
       </header>
@@ -1074,6 +1112,31 @@ const BrowseRequests = () => {
           </div>
         </div>
       </main>
+
+      {/* Toast notifications for recent requests */}
+      <div className="fixed bottom-4 left-4 right-4 z-50 space-y-3 max-w-sm mx-auto">
+        {recentRequests.slice(0, 2).map(requestId => {
+          const request = requests[requestId];
+          if (!request || request.user_state) return null;
+          
+          return (
+            <RequestToast
+              key={requestId}
+              request={{
+                id: request.id,
+                food_type: request.food_type,
+                location_city: request.location_city,
+                location_state: request.location_state,
+                urgency: request.urgency || 'extended',
+                distance_km: request.distance_km
+              }}
+              onDismiss={() => setRecentRequests(prev => prev.filter(id => id !== requestId))}
+            />
+          );
+        })}
+      </div>
+
+      <PWAInstallBanner />
     </div>
   );
 };
