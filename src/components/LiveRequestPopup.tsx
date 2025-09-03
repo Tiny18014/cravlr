@@ -21,12 +21,24 @@ export default function LiveRequestPopup({
   const [active, setActive] = useState<LivePing | null>(null);
 
   useEffect(() => {
-    if (!nextPing || dnd) return;
+    console.log("🎯 LiveRequestPopup effect triggered:", { nextPing, dnd, active });
+    
+    if (!nextPing || dnd) {
+      console.log("🎯 Skipping ping:", { hasNextPing: !!nextPing, dnd });
+      return;
+    }
+    
     // dedupe
     if (!queueRef.current.find(q => q.id === nextPing.id) &&
         active?.id !== nextPing.id) {
+      console.log("🎯 Adding ping to queue:", nextPing);
       queueRef.current.push(nextPing);
-      if (!active) setActive(queueRef.current.shift()!);
+      if (!active) {
+        console.log("🎯 Setting active immediately:", nextPing);
+        setActive(queueRef.current.shift()!);
+      }
+    } else {
+      console.log("🎯 Ping already exists, skipping:", nextPing.id);
     }
   }, [nextPing, dnd, active]);
 

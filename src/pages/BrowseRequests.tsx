@@ -438,12 +438,17 @@ const BrowseRequests = () => {
 
           // Stage C: Always trigger popup (unconditional for debug)
           console.log('🚀 Setting incoming ping unconditionally');
-          setIncomingPing({
+          console.log('🚀 Request data:', { id: r.id, foodType: r.food_type, location: `${r.location_city}, ${r.location_state}` });
+          
+          const newPing = {
             id: r.id,
             foodType: r.food_type,
             location: `${r.location_city}, ${r.location_state}`,
             urgency: r.response_window <= 5 ? 'quick' : r.response_window <= 30 ? 'soon' : 'extended'
-          });
+          };
+          
+          console.log('🚀 Setting incomingPing to:', newPing);
+          setIncomingPing(newPing);
 
           // Enhanced toast with precision info
           const locationInfo = precision === "gps" 
