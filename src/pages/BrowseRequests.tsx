@@ -472,15 +472,17 @@ const BrowseRequests = () => {
       if (error) throw error;
 
       // Send notification email
+      console.log('📧 Sending notification email for recommendation:', data.id);
       try {
-        await supabase.functions.invoke('send-notification', {
+        const emailResult = await supabase.functions.invoke('send-notification', {
           body: {
             requestId: selectedRequest.id,
             recommendationId: data.id
           }
         });
+        console.log('✅ Email notification sent successfully:', emailResult);
       } catch (emailError) {
-        console.error('Error sending notification email:', emailError);
+        console.error('❌ Error sending notification email:', emailError);
         // Don't fail the whole operation if email fails
       }
 
