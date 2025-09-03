@@ -77,7 +77,8 @@ export default function GlobalLiveRequestPopup() {
     if (active?.type === "recommendation") {
       navigate('/dashboard');
     } else {
-      navigate('/browse-requests');
+      // Navigate directly to recommendation page for the accepted request
+      navigate(`/recommend/${id}`);
     }
   };
 

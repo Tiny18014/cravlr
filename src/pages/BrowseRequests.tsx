@@ -159,10 +159,12 @@ const BrowseRequests = () => {
           profiles!inner(display_name)
         `)
         .eq('status', 'active')
-        // Temporarily disabled for testing: .neq('requester_id', user.id) 
+        .neq('requester_id', user.id) // Hide your own requests
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log(`🎯 Fetched ${data?.length || 0} active requests (excluding own requests)`);
 
       // For each request, get recommendation count and user state
       const enrichedRequests = await Promise.all(
