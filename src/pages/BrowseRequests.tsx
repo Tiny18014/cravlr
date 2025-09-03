@@ -981,22 +981,36 @@ const BrowseRequests = () => {
   console.log("🚨 BrowseRequests render state:", { 
     user: user?.email, 
     loading, 
-    requestsCount: Object.keys(requests).length 
+    requestsCount: Object.keys(requests).length,
+    coords: coords ? `${coords.lat.toFixed(2)}, ${coords.lng.toFixed(2)}` : "none"
   });
 
   if (!user) {
     console.log("🚨 No user found, redirecting to auth");
-    return null;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p>Please log in to view requests</p>
+          <Button onClick={() => navigate('/auth')}>Go to Login</Button>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
     console.log("🚨 Component is in loading state");
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">Loading requests...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <div>Loading requests...</div>
+        </div>
       </div>
     );
   }
+
+  // Emergency fallback - never show blank page
+  console.log("🚨 Rendering main page content");
 
   return (
     <div className="min-h-screen bg-background">
