@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, MapPin, Clock, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CountdownTimer from '@/components/CountdownTimer';
+import { ReputationBadge } from '@/components/ReputationBadge';
 
 interface FoodRequest {
   id: string;

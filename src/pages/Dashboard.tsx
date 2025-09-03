@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Clock, Star, User } from 'lucide-react';
+import { ReputationBadge } from '@/components/ReputationBadge';
 
 interface FoodRequest {
   id: string;
@@ -67,7 +68,14 @@ const Dashboard = () => {
   const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
   const [myRecommendations, setMyRecommendations] = useState<Recommendation[]>([]);
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
-  const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
+  const [userPoints, setUserPoints] = useState({ 
+    total: 0, 
+    thisMonth: 0,
+    reputation_score: 0,
+    approval_rate: 0,
+    total_feedbacks: 0,
+    positive_feedbacks: 0
+  });
   const [loading, setLoading] = useState(true);
   
   // Get the default tab from URL parameter
@@ -154,7 +162,7 @@ const Dashboard = () => {
       // Fetch user points
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('points_total, points_this_month')
+        .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks')
         .eq('user_id', user?.id)
         .single();
 
@@ -163,7 +171,11 @@ const Dashboard = () => {
       } else if (profile) {
         setUserPoints({
           total: profile.points_total || 0,
-          thisMonth: profile.points_this_month || 0
+          thisMonth: profile.points_this_month || 0,
+          reputation_score: profile.reputation_score || 0,
+          approval_rate: profile.approval_rate || 0,
+          total_feedbacks: profile.total_feedbacks || 0,
+          positive_feedbacks: profile.positive_feedbacks || 0
         });
       }
 
@@ -235,7 +247,14 @@ const Dashboard = () => {
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-primary mb-1">{userPoints.total}</div>
-              <div className="text-sm text-muted-foreground">Total Points</div>
+              <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+                <span>Total Points</span>
+                <ReputationBadge 
+                  reputationScore={userPoints.reputation_score}
+                  approvalRate={userPoints.approval_rate}
+                  totalFeedbacks={userPoints.total_feedbacks}
+                />
+              </div>
             </CardContent>
           </Card>
           

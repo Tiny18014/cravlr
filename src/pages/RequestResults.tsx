@@ -7,6 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronUp, ArrowLeft, MapPin, Star, DollarSign, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useReferralLinks } from "@/hooks/useReferralLinks";
+import { FeedbackButtons } from "@/components/FeedbackButtons";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Note {
   by: string;
@@ -42,6 +44,7 @@ interface RequestResultsData {
 
 interface FoodRequest {
   id: string;
+  requester_id: string;
   food_type: string;
   location_city: string;
   location_state: string;
@@ -52,6 +55,7 @@ interface FoodRequest {
 const RequestResults = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [results, setResults] = useState<RequestResultsData | null>(null);
   const [request, setRequest] = useState<FoodRequest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -477,6 +481,16 @@ const RequestResults = () => {
                             )}
                           </div>
                         </div>
+
+                        {/* Feedback Section - Only show to the requester */}
+                        {user && request && user.id === request.requester_id && group.recommendationId && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <FeedbackButtons 
+                              recommendationId={group.recommendationId}
+                              className="w-full"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>

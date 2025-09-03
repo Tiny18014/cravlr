@@ -78,6 +78,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approval_rate: number | null
           avatar_url: string | null
           created_at: string
           display_name: string | null
@@ -93,14 +94,18 @@ export type Database = {
           notify_recommender: boolean
           points_this_month: number
           points_total: number
+          positive_feedbacks: number | null
           quiet_hours_end: string | null
           quiet_hours_start: string | null
+          reputation_score: number | null
           timezone: string | null
+          total_feedbacks: number | null
           updated_at: string
           user_id: string
           user_role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          approval_rate?: number | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -116,14 +121,18 @@ export type Database = {
           notify_recommender?: boolean
           points_this_month?: number
           points_total?: number
+          positive_feedbacks?: number | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          reputation_score?: number | null
           timezone?: string | null
+          total_feedbacks?: number | null
           updated_at?: string
           user_id: string
           user_role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          approval_rate?: number | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -139,9 +148,12 @@ export type Database = {
           notify_recommender?: boolean
           points_this_month?: number
           points_total?: number
+          positive_feedbacks?: number | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          reputation_score?: number | null
           timezone?: string | null
+          total_feedbacks?: number | null
           updated_at?: string
           user_id?: string
           user_role?: Database["public"]["Enums"]["user_role"]
@@ -175,8 +187,45 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_feedback: {
+        Row: {
+          created_at: string
+          feedback_type: Database["public"]["Enums"]["feedback_type"]
+          id: string
+          recommendation_id: string
+          requester_id: string
+          star_rating: number | null
+        }
+        Insert: {
+          created_at?: string
+          feedback_type: Database["public"]["Enums"]["feedback_type"]
+          id?: string
+          recommendation_id: string
+          requester_id: string
+          star_rating?: number | null
+        }
+        Update: {
+          created_at?: string
+          feedback_type?: Database["public"]["Enums"]["feedback_type"]
+          id?: string
+          recommendation_id?: string
+          requester_id?: string
+          star_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_feedback_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommendations: {
         Row: {
+          awarded_at: string | null
+          awarded_points: number | null
           confidence_score: number
           created_at: string
           id: string
@@ -187,6 +236,7 @@ export type Database = {
           price_level: number | null
           rating: number | null
           recommender_id: string
+          reputation_multiplier: number | null
           request_id: string
           restaurant_address: string | null
           restaurant_name: string
@@ -194,6 +244,8 @@ export type Database = {
           restaurant_slug: string | null
         }
         Insert: {
+          awarded_at?: string | null
+          awarded_points?: number | null
           confidence_score?: number
           created_at?: string
           id?: string
@@ -204,6 +256,7 @@ export type Database = {
           price_level?: number | null
           rating?: number | null
           recommender_id: string
+          reputation_multiplier?: number | null
           request_id: string
           restaurant_address?: string | null
           restaurant_name: string
@@ -211,6 +264,8 @@ export type Database = {
           restaurant_slug?: string | null
         }
         Update: {
+          awarded_at?: string | null
+          awarded_points?: number | null
           confidence_score?: number
           created_at?: string
           id?: string
@@ -221,6 +276,7 @@ export type Database = {
           price_level?: number | null
           rating?: number | null
           recommender_id?: string
+          reputation_multiplier?: number | null
           request_id?: string
           restaurant_address?: string | null
           restaurant_name?: string
@@ -412,6 +468,10 @@ export type Database = {
         Args: { request_id_param: string }
         Returns: number
       }
+      award_points_with_feedback: {
+        Args: { base_points: number; feedback_bonus?: number; rec_id: string }
+        Returns: undefined
+      }
       close_expired_requests: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -420,8 +480,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      update_recommender_reputation: {
+        Args: { rec_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      feedback_type: "thumbs_up" | "thumbs_down"
       request_status: "active" | "completed" | "expired"
       user_role: "requester" | "recommender" | "both"
     }
@@ -551,6 +616,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      feedback_type: ["thumbs_up", "thumbs_down"],
       request_status: ["active", "completed", "expired"],
       user_role: ["requester", "recommender", "both"],
     },
