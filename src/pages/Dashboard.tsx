@@ -217,12 +217,15 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="container mx-auto px-4 py-6 flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Home
           </Button>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Your Food Requests 📝</h1>
+            <p className="text-muted-foreground mt-1">Track responses and see recommendations.</p>
+          </div>
         </div>
       </header>
 
@@ -278,58 +281,71 @@ const Dashboard = () => {
             {recentRequests.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">You haven't made any food requests yet.</p>
+                  <div className="text-6xl mb-4">🍴</div>
+                  <p className="text-muted-foreground mb-2">You haven't created any food requests yet.</p>
+                  <p className="text-sm text-muted-foreground mb-4">👉 Tap below to get started!</p>
                   <Button onClick={() => navigate('/request-food')}>
-                    Make Your First Request
+                    Create Food Request
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               <>
-                {recentRequests.map((request) => (
-                  <Card key={request.id}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{request.food_type}</CardTitle>
-                        <Badge className={getStatusColor(request.status)}>
-                          {request.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            {request.location_city}, {request.location_state}
-                            {request.location_address && ` - ${request.location_address}`}
+                {recentRequests.map((request) => {
+                  const isExpired = request.status === 'expired' || request.status === 'closed' || 
+                    (request.status === 'active' && new Date(request.expires_at) <= now);
+                  const statusText = isExpired ? 'Expired' : request.status === 'active' ? 'Active' : 'Closed';
+                  const statusColor = isExpired ? 'bg-gray-500' : request.status === 'active' ? 'bg-green-500' : 'bg-gray-500';
+                  
+                  return (
+                    <Card key={request.id}>
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* Food type - big and bold */}
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-2xl font-bold">{request.food_type}</h3>
+                            <Badge className={statusColor}>
+                              {statusText}
+                            </Badge>
                           </div>
-                          <Badge variant="outline">
-                            {request.recommendation_count || 0} recommendations
-                          </Badge>
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-2" />
-                          Created {formatDate(request.created_at)} • Expires {formatDate(request.expires_at)}
-                        </div>
-                        {request.additional_notes && (
-                          <p className="text-sm mt-2">{request.additional_notes}</p>
-                        )}
-                        {(request.recommendation_count || 0) > 0 && (
-                          <div className="mt-3 pt-3 border-t">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => navigate(`/request/${request.id}/results`)}
-                            >
-                              View {request.recommendation_count} recommendation{request.recommendation_count !== 1 ? 's' : ''}
-                            </Button>
+                          
+                          {/* Location and timing */}
+                          <div className="space-y-2">
+                            <div className="flex items-center text-muted-foreground">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              {request.location_city}, {request.location_state}
+                              {request.location_address && ` - ${request.location_address}`}
+                            </div>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4 mr-2" />
+                              Created {formatDate(request.created_at)} • Expires {formatDate(request.expires_at)}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                          {/* Recommendation counter and action */}
+                          <div className="flex justify-between items-center pt-2">
+                            <div className="text-sm text-muted-foreground">
+                              {request.recommendation_count || 0}/10 recommendations
+                            </div>
+                            {(request.recommendation_count || 0) > 0 && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => navigate(`/request/${request.id}/results`)}
+                              >
+                                View Recommendations
+                              </Button>
+                            )}
+                          </div>
+                          
+                          {request.additional_notes && (
+                            <p className="text-sm text-muted-foreground border-t pt-3">{request.additional_notes}</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
                 
                 {myRequests.length > 3 && (
                   <Card>

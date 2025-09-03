@@ -73,34 +73,34 @@ const ActionRow = ({
   
   // 1. Inactive states
   if (inactive) {
-    if (is_full) return <Badge variant="secondary">Full (10/10)</Badge>;
+    if (is_full) return <Badge variant="secondary">Already Full</Badge>;
     if (expired) return <Badge variant="secondary">Expired</Badge>;
     return <Badge variant="secondary">Closed</Badge>;
   }
 
-  // 2. Already recommended
+  // 2. Already recommended - show as status chip
   if (request.user_has_recommended) {
-    return <Badge variant="outline" className="bg-green-50 text-green-700">✅ Already suggested</Badge>;
+    return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">✅ Already Suggested</Badge>;
   }
 
-  // 3. Ignored state
+  // 3. Ignored state - show as status chip
   if (request.user_state === 'ignored') {
-    return <Badge variant="secondary">🙈 Ignored</Badge>;
+    return <Badge variant="secondary" className="text-muted-foreground">Ignored</Badge>;
   }
 
-  // 4. Accepted but hasn't recommended yet
+  // 4. Accepted but hasn't recommended yet - show status chip + action
   if (request.user_state === 'accepted' && !request.user_has_recommended) {
     return (
       <div className="flex items-center gap-2">
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-          You accepted
+          You Accepted
         </Badge>
         <Button 
           size="sm"
           onClick={() => onOpenSuggestion(request)}
         >
           <Send className="h-4 w-4 mr-2" />
-          Suggest now
+          Suggest Now
         </Button>
       </div>
     );
@@ -118,10 +118,9 @@ const ActionRow = ({
         Ignore
       </Button>
       <Button
-        variant="outline" 
         size="sm"
         onClick={() => handleRequestAction(request.id, 'accept')}
-        className="text-green-700 border-green-200 hover:bg-green-50"
+        className="bg-primary text-primary-foreground hover:bg-primary/90"
       >
         Accept
       </Button>
@@ -306,23 +305,20 @@ const BrowseRequests = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="container mx-auto px-4 py-6 flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Home
           </Button>
-          <h1 className="text-2xl font-bold">Give Recommendations</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Requests Near You 🍽️</h1>
+            <p className="text-muted-foreground mt-1">Tap a request to share your favorite spot.</p>
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-2">Help Fellow Food Lovers!</h2>
-            <p className="text-muted-foreground">
-              Share your favorite restaurants with people in your area
-            </p>
-          </div>
 
           {loading ? (
             <div className="text-center py-8">
@@ -332,38 +328,41 @@ const BrowseRequests = () => {
           ) : requests.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No food requests from other users found nearby.</p>
-                <p className="text-sm text-muted-foreground">Check back later or create your own request!</p>
-                <Button onClick={() => navigate('/request-food')} className="mt-4">
-                  Create Food Request
-                </Button>
+                <div className="text-6xl mb-4">🚀</div>
+                <p className="text-muted-foreground mb-2">No food requests nearby right now.</p>
+                <p className="text-sm text-muted-foreground">Check back later to help food lovers in your area.</p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
               {requests.map((request) => (
                 <Card key={request.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{request.food_type}</CardTitle>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Requested by {request.profiles?.display_name || 'Anonymous'}
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {request.location_city}, {request.location_state}
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Food type - big and bold */}
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-bold">{request.food_type}</h3>
+                        <div className="flex items-center gap-2">
+                          <CountdownTimer expiresAt={request.expires_at} />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CountdownTimer expiresAt={request.expires_at} />
+                      
+                      {/* Requester and location */}
+                      <div className="space-y-2">
+                        <p className="text-muted-foreground">
+                          Requested by {request.profiles?.display_name || 'Anonymous'}
+                        </p>
+                        <div className="flex items-center text-muted-foreground">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {request.location_city}, {request.location_state}
+                        </div>
+                      </div>
+
+                      {/* Recommendation count and actions */}
+                      <div className="flex justify-between items-center pt-2">
                         <div className="text-sm text-muted-foreground">
                           {request.recommendation_count}/10 recommendations
                         </div>
-                      </div>
-                      <div className="flex justify-between items-center pt-4">
                         <ActionRow 
                           request={request} 
                           user={user} 
