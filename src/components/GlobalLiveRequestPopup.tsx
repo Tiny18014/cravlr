@@ -12,7 +12,7 @@ type LivePing = {
 };
 
 export default function GlobalLiveRequestPopup() {
-  const { nextPing, dnd, acceptRequest, ignoreRequest } = useNotifications();
+  const { nextPing, dnd, acceptRequest, ignoreRequest, clearPing } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const queueRef = useRef<LivePing[]>([]);
@@ -89,6 +89,9 @@ export default function GlobalLiveRequestPopup() {
       setActive(null);
       queueRef.current = []; // Clear queue to prevent popup from reappearing
       
+      // Clear the ping from context to prevent re-triggering
+      clearPing();
+      
       // Always navigate to dashboard with received tab, don't use reload
       console.log("🎯 Navigating to dashboard with received tab");
       navigate('/dashboard?tab=received', { replace: true });
@@ -121,7 +124,8 @@ export default function GlobalLiveRequestPopup() {
     // Handle differently based on notification type  
     if (active?.type === "recommendation") {
       console.log("🎯 Dismissing recommendation notification");
-      // For recommendations, just dismiss - no backend call needed
+      // For recommendations, clear the ping from context
+      clearPing();
     } else {
       console.log("🎯 Ignoring request notification");
       // For requests, use the existing ignore flow

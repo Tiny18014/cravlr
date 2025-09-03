@@ -17,6 +17,7 @@ type NotificationsContextType = {
   setDnd: (value: boolean) => void;
   acceptRequest: (id: string) => void;
   ignoreRequest: (id: string) => void;
+  clearPing: () => void;
 };
 
 const NotificationsContext = createContext<NotificationsContextType | null>(null);
@@ -196,13 +197,19 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     setNextPing(null);
   };
 
+  const clearPing = () => {
+    console.log("🌍 Clearing current ping");
+    setNextPing(null);
+  };
+
   return (
     <NotificationsContext.Provider value={{
       nextPing,
       dnd,
       setDnd,
       acceptRequest,
-      ignoreRequest
+      ignoreRequest,
+      clearPing
     }}>
       {children}
     </NotificationsContext.Provider>
