@@ -128,103 +128,84 @@ const ActionRow = ({
   );
 };
 
-const BrowseRequestsWorking = () => {
+const BrowseRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for testing
   useEffect(() => {
     if (user) {
-      const mockRequests: FoodRequest[] = [
-        {
-          id: '1',
-          requester_id: 'other-user-id', // Different from current user
-          food_type: 'Pizza',
-          location_city: 'Charlotte',
-          location_state: 'NC',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now
-          profiles: { display_name: 'John Doe' },
-          recommendation_count: 3,
-          user_has_recommended: false,
-          user_state: null
-        },
-        {
-          id: '2',
-          requester_id: user.id, // Current user is requester
-          food_type: 'Sushi',
-          location_city: 'Charlotte',
-          location_state: 'NC',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          profiles: { display_name: user.email },
-          recommendation_count: 5,
-          user_has_recommended: false,
-          user_state: null
-        },
-        {
-          id: '3',
-          requester_id: 'other-user-id',
-          food_type: 'Burgers',
-          location_city: 'Charlotte',
-          location_state: 'NC',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          profiles: { display_name: 'Jane Smith' },
-          recommendation_count: 2,
-          user_has_recommended: true, // Already recommended
-          user_state: 'accepted'
-        },
-        {
-          id: '4',
-          requester_id: 'other-user-id',
-          food_type: 'Thai',
-          location_city: 'Charlotte',
-          location_state: 'NC',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          profiles: { display_name: 'Mike Johnson' },
-          recommendation_count: 1,
-          user_has_recommended: false,
-          user_state: 'accepted' // Accepted but not recommended yet
-        },
-        {
-          id: '5',
-          requester_id: 'other-user-id',
-          food_type: 'Mexican',
-          location_city: 'Charlotte',
-          location_state: 'NC',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          profiles: { display_name: 'Sarah Wilson' },
-          recommendation_count: 10, // Full
-          user_has_recommended: false,
-          user_state: null
-        },
-        {
-          id: '6',
-          requester_id: 'other-user-id',
-          food_type: 'Chinese',
-          location_city: 'Charlotte',
-          location_state: 'NC',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          profiles: { display_name: 'Tom Brown' },
-          recommendation_count: 1,
-          user_has_recommended: false,
-          user_state: 'ignored' // Ignored
-        }
-      ];
-      setRequests(mockRequests);
+      fetchRequests();
     }
   }, [user]);
+
+  const fetchRequests = async () => {
+    try {
+      setLoading(true);
+      
+      // Query for OTHER people's active requests (not your own)
+      // This is for recommenders to give suggestions
+      const { data, error } = await supabase
+        .from('food_requests')
+        .select(`
+          id,
+          requester_id,
+          food_type,
+          location_city,
+          location_state,
+          status,
+          created_at,
+          expires_at,
+          profiles!inner(display_name)
+        `)
+        .eq('status', 'active')
+        .neq('requester_id', user.id) // Exclude your own requests
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // For each request, get recommendation count and user state
+      const enrichedRequests = await Promise.all(
+        (data || []).map(async (request) => {
+          // Get recommendation count
+          const { count } = await supabase
+            .from('recommendations')
+            .select('*', { count: 'exact', head: true })
+            .eq('request_id', request.id);
+
+          // Check if user has already recommended
+          const { data: userRec } = await supabase
+            .from('recommendations')
+            .select('id')
+            .eq('request_id', request.id)
+            .eq('recommender_id', user.id)
+            .single();
+
+          // Get user's state for this request (accepted/ignored)
+          const { data: userState } = await supabase
+            .from('request_user_state')
+            .select('state')
+            .eq('request_id', request.id)
+            .eq('user_id', user.id)
+            .single();
+
+          return {
+            ...request,
+            recommendation_count: count || 0,
+            user_has_recommended: !!userRec,
+            user_state: (userState?.state as "accepted" | "ignored") || null
+          };
+        })
+      );
+
+      setRequests(enrichedRequests);
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRequestAction = (id: string, action: string) => {
     console.log(`Action: ${action} on request ${id}`);
@@ -250,54 +231,77 @@ const BrowseRequestsWorking = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Home
           </Button>
-          <h1 className="text-2xl font-bold">Action Row Spec Test</h1>
+          <h1 className="text-2xl font-bold">Give Recommendations</h1>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-4">
-          {requests.map((request) => (
-            <Card key={request.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{request.food_type}</CardTitle>
-                  <Badge variant="outline">
-                    {request.requester_id === user.id ? 'YOUR REQUEST' : 'RECOMMEND'}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Requested by {request.profiles?.display_name || 'Anonymous'}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    {request.location_city}, {request.location_state}
-                  </div>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Created {new Date(request.created_at).toLocaleString()}
-                  </div>
-                  <div className="flex justify-between items-center pt-4">
-                    <div className="text-sm text-muted-foreground">
-                      {request.recommendation_count}/10 recommendations
-                    </div>
-                    <ActionRow 
-                      request={request} 
-                      user={user} 
-                      onOpenSuggestion={onOpenSuggestion}
-                      handleRequestAction={handleRequestAction}
-                    />
-                  </div>
-                </div>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-2">Help Fellow Food Lovers!</h2>
+            <p className="text-muted-foreground">
+              Share your favorite restaurants with people in your area
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p>Loading nearby requests...</p>
+            </div>
+          ) : requests.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No food requests from other users found nearby.</p>
+                <p className="text-sm text-muted-foreground">Check back later or create your own request!</p>
+                <Button onClick={() => navigate('/request-food')} className="mt-4">
+                  Create Food Request
+                </Button>
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            <div className="space-y-4">
+              {requests.map((request) => (
+                <Card key={request.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{request.food_type}</CardTitle>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Requested by {request.profiles?.display_name || 'Anonymous'}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        {request.location_city}, {request.location_state}
+                      </div>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4 mr-2" />
+                        Created {new Date(request.created_at).toLocaleString()}
+                      </div>
+                      <div className="flex justify-between items-center pt-4">
+                        <div className="text-sm text-muted-foreground">
+                          {request.recommendation_count}/10 recommendations
+                        </div>
+                        <ActionRow 
+                          request={request} 
+                          user={user} 
+                          onOpenSuggestion={onOpenSuggestion}
+                          handleRequestAction={handleRequestAction}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
   );
 };
 
-export default BrowseRequestsWorking;
+export default BrowseRequests;
