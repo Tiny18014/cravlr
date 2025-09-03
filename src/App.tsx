@@ -25,9 +25,9 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <GlobalLiveRequestPopup />
           <OneSignalInit />
           <BrowserRouter>
+            <GlobalLiveRequestPopup />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
