@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, MapPin, Clock, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import CountdownTimer from '@/components/CountdownTimer';
 
 interface FoodRequest {
   id: string;
@@ -295,14 +296,13 @@ const BrowseRequests = () => {
                         <MapPin className="h-4 w-4 mr-2" />
                         {request.location_city}, {request.location_state}
                       </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Created {new Date(request.created_at).toLocaleString()}
-                      </div>
-                      <div className="flex justify-between items-center pt-4">
+                      <div className="flex items-center gap-2">
+                        <CountdownTimer expiresAt={request.expires_at} />
                         <div className="text-sm text-muted-foreground">
                           {request.recommendation_count}/10 recommendations
                         </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-4">
                         <ActionRow 
                           request={request} 
                           user={user} 
