@@ -19,6 +19,7 @@ import { RequestToast } from '@/components/RequestToast';
 import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import LiveRequestPopup from '@/components/LiveRequestPopup';
 
 interface PlaceResult {
   placeId: string;
@@ -63,6 +64,7 @@ interface FoodRequest {
   urgency?: "quick" | "soon" | "extended";
   user_state?: "accepted" | "ignored" | null;
   distance_km?: number;
+  __hiddenByUser?: boolean;
 }
 
 type LiveEvent = 
@@ -88,6 +90,8 @@ const BrowseRequests = () => {
   const [clockSkew, setClockSkew] = useState(0);
   const [profile, setProfile] = useState<{notify_recommender: boolean} | null>(null);
   const [recentRequests, setRecentRequests] = useState<string[]>([]);
+  const [dnd, setDnd] = useState(false);
+  const [incomingPing, setIncomingPing] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     restaurantName: '',
     note: '',
@@ -585,6 +589,48 @@ const BrowseRequests = () => {
     }));
     setRestaurantOpen(false);
   };
+
+  async function acceptRequest(id: string) {
+    if (!user) return;
+    // pin at top, open Suggest modal
+    try {
+      await supabase.from('request_user_state')
+        .upsert({ 
+          request_id: id, 
+          user_id: user.id, 
+          state: 'accepted'
+        });
+      
+      // Find and set the selected request
+      const request = requests[id];
+      if (request) {
+        setSelectedRequest(request);
+      }
+    } catch (error) {
+      console.error('Error accepting request:', error);
+    }
+  }
+
+  async function ignoreRequest(id: string) {
+    if (!user) return;
+    try {
+      await supabase.from('request_user_state')
+        .upsert({ 
+          request_id: id, 
+          user_id: user.id, 
+          state: 'ignored'
+        });
+      
+      // Hide the card locally
+      setRequests(prev => {
+        const next = { ...prev };
+        if (next[id]) next[id].__hiddenByUser = true;
+        return next;
+      });
+    } catch (error) {
+      console.error('Error ignoring request:', error);
+    }
+  }
 
   const handleSubmitRecommendation = async () => {
     if (!selectedRequest || !user || !formData.restaurantName.trim()) return;
@@ -1136,6 +1182,14 @@ const BrowseRequests = () => {
           );
         })}
       </div>
+
+      {/* live popup */}
+      <LiveRequestPopup
+        nextPing={incomingPing}
+        dnd={dnd}
+        onAccept={acceptRequest}
+        onIgnore={ignoreRequest}
+      />
 
       <PushNotificationSetup />
       <PWAInstallBanner />
