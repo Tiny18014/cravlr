@@ -97,29 +97,23 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch user's requests with recommendation counts
+      // Fetch user's requests with recommendation counts using joins
       const { data: requests, error: requestsError } = await supabase
         .from('food_requests')
-        .select('*')
+        .select(`
+          *,
+          recommendations (count)
+        `)
         .eq('requester_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (requestsError) throw requestsError;
 
-      // Add recommendation count to each request
-      const requestsWithCounts = await Promise.all(
-        (requests || []).map(async (request) => {
-          const { count } = await supabase
-            .from('recommendations')
-            .select('*', { count: 'exact', head: true })
-            .eq('request_id', request.id);
-          
-          return {
-            ...request,
-            recommendation_count: count || 0
-          };
-        })
-      );
+      // Transform the data to include recommendation counts
+      const requestsWithCounts = (requests || []).map(request => ({
+        ...request,
+        recommendation_count: request.recommendations?.length || 0
+      }));
 
       setMyRequests(requestsWithCounts);
 
