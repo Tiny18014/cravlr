@@ -22,6 +22,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import LiveRequestPopup from '@/components/LiveRequestPopup';
 import DebugRealtime from '@/components/DebugRealtime';
 import DebugDBRealtime from '@/components/DebugDBRealtime';
+import MobileDebugConsole from '@/components/MobileDebugConsole';
 
 interface PlaceResult {
   placeId: string;
@@ -1381,9 +1382,10 @@ const BrowseRequests = () => {
       {/* Debug components */}
       <DebugRealtime user={user} />
       <DebugDBRealtime user={user} />
-
-      <PushNotificationSetup />
-      <PWAInstallBanner />
+      <MobileDebugConsole />
+    </div>
+  );
+};
 
       {/* Step 2: Realtime indicator strip */}
       {rtIndicator && (
@@ -1504,7 +1506,4 @@ const LiveCountdownBadge = ({ urgency, expiresAt, clockSkew }: {
     >
       {getUrgencyDisplayText()} — {timeLeft}
     </Badge>
-  );
-};
-
 export default BrowseRequests;
