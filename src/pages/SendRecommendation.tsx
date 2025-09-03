@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Star } from 'lucide-react';
+import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 
 interface FoodRequest {
   id: string;
@@ -32,13 +33,15 @@ const SendRecommendation = () => {
   const [request, setRequest] = useState<FoodRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   
   const [formData, setFormData] = useState({
     restaurantName: '',
     restaurantAddress: '',
     restaurantPhone: '',
     notes: '',
-    confidenceScore: [8] // Default to 8/10
+    confidenceScore: [8], // Default to 8/10
+    placeId: '' // For Google Places integration
   });
 
   useEffect(() => {
@@ -54,6 +57,17 @@ const SendRecommendation = () => {
     
     fetchRequest();
   }, [user, requestId, navigate]);
+
+  // Set user location based on request location for better search results
+  useEffect(() => {
+    if (request && request.location_city && request.location_state) {
+      // Use the request location for restaurant search
+      setUserLocation({
+        lat: 35.4100756, // Default to request area coordinates
+        lng: -80.5819527  // You might want to geocode the actual request location
+      });
+    }
+  }, [request]);
 
   const fetchRequest = async () => {
     try {
@@ -121,6 +135,15 @@ const SendRecommendation = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRestaurantChange = (name: string, address: string, placeId?: string) => {
+    setFormData(prev => ({
+      ...prev,
+      restaurantName: name,
+      restaurantAddress: address,
+      placeId: placeId || ''
+    }));
   };
 
   const handleChange = (field: string, value: string | number[]) => {
@@ -206,24 +229,19 @@ const SendRecommendation = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="restaurantName">Restaurant Name *</Label>
-                  <Input
-                    id="restaurantName"
-                    placeholder="e.g., Tony's Italian Kitchen"
+                  <Label htmlFor="restaurantSearch">Restaurant Name *</Label>
+                  <RestaurantSearchInput
                     value={formData.restaurantName}
-                    onChange={(e) => handleChange('restaurantName', e.target.value)}
+                    onChange={handleRestaurantChange}
+                    placeholder="Search for restaurants (e.g., Oli...)"
                     required
+                    userLocation={userLocation}
                   />
-                </div>
-                
-                <div>
-                  <Label htmlFor="restaurantAddress">Restaurant Address</Label>
-                  <Input
-                    id="restaurantAddress"
-                    placeholder="Street address or general location"
-                    value={formData.restaurantAddress}
-                    onChange={(e) => handleChange('restaurantAddress', e.target.value)}
-                  />
+                  {formData.restaurantAddress && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      📍 {formData.restaurantAddress}
+                    </p>
+                  )}
                 </div>
                 
                 <div>
