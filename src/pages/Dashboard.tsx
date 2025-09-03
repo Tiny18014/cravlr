@@ -264,7 +264,7 @@ const Dashboard = () => {
         <Tabs defaultValue={defaultTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="requests">Recent Requests</TabsTrigger>
-            <TabsTrigger value="received">Recent Recommendations</TabsTrigger>
+            <TabsTrigger value="made">My Recommendations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
@@ -340,25 +340,25 @@ const Dashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="received" className="space-y-4">
-            {receivedRecommendations.length === 0 ? (
+          <TabsContent value="made" className="space-y-4">
+            {myRecommendations.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">You haven't received any recommendations yet.</p>
-                  <Button onClick={() => navigate('/request-food')}>
-                    Create a Request
+                  <p className="text-muted-foreground mb-4">You haven't made any recommendations yet.</p>
+                  <Button onClick={() => navigate('/browse-requests')}>
+                    Browse Requests
                   </Button>
                 </CardContent>
               </Card>
             ) : (
-              receivedRecommendations.slice(0, 5).filter(rec => rec && rec.food_requests).map((rec) => (
+              myRecommendations.slice(0, 5).filter(rec => rec && rec.food_requests).map((rec) => (
                 <Card key={rec.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{rec.restaurant_name}</CardTitle>
                       <div className="flex items-center">
-                        {rec.awarded_points > 0 ? (
-                          <Badge variant="secondary">{rec.awarded_points} pts</Badge>
+                        {rec.awarded_points && rec.awarded_points > 0 ? (
+                          <Badge variant="secondary">+{rec.awarded_points} pts</Badge>
                         ) : (
                           <Badge variant="outline">Pending</Badge>
                         )}
@@ -367,17 +367,17 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <User className="h-4 w-4 mr-2" />
-                        Recommended by {rec.profiles?.display_name || 'Anonymous'}
-                      </div>
                       <p className="text-sm text-muted-foreground">
-                        For your: {rec.food_requests?.food_type} request
+                        Recommended for: {rec.food_requests?.food_type} request
                       </p>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        {rec.food_requests?.location_city}, {rec.food_requests?.location_state}
+                      </div>
                       {rec.restaurant_address && (
                         <div className="flex items-center text-sm text-muted-foreground">
                           <MapPin className="h-4 w-4 mr-2" />
-                          {rec.restaurant_address}
+                          Restaurant: {rec.restaurant_address}
                         </div>
                       )}
                       {rec.restaurant_phone && (
@@ -385,7 +385,7 @@ const Dashboard = () => {
                       )}
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Clock className="h-4 w-4 mr-2" />
-                        {formatDate(rec.created_at)}
+                        Recommended {formatDate(rec.created_at)}
                       </div>
                       {rec.notes && (
                         <p className="text-sm mt-2">{rec.notes}</p>
