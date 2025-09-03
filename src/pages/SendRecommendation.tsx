@@ -40,7 +40,8 @@ const SendRecommendation = () => {
     restaurantAddress: '',
     notes: '',
     confidenceScore: [4], // Default to 4/5 (matching database constraint)
-    placeId: '' // For Google Places integration
+    placeId: '', // For Google Places integration
+    mapsUrl: '' // For storing the Google Maps URL
   });
 
   useEffect(() => {
@@ -113,7 +114,8 @@ const SendRecommendation = () => {
             restaurant_address: formData.restaurantAddress || null,
             notes: formData.notes || null,
             confidence_score: formData.confidenceScore[0],
-            ...(formData.placeId && { place_id: formData.placeId })
+            ...(formData.placeId && { place_id: formData.placeId }),
+            ...(formData.mapsUrl && { maps_url: formData.mapsUrl })
           });
 
       if (error) throw error;
@@ -137,11 +139,21 @@ const SendRecommendation = () => {
   };
 
   const handleRestaurantChange = (name: string, address: string, placeId?: string) => {
+    // Generate Google Maps URL for the selected place
+    let mapsUrl = null;
+    if (placeId) {
+      mapsUrl = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+    } else if (name && address) {
+      const query = encodeURIComponent(`${name} ${address}`);
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+    }
+
     setFormData(prev => ({
       ...prev,
       restaurantName: name,
       restaurantAddress: address,
-      placeId: placeId || ''
+      placeId: placeId || '',
+      mapsUrl: mapsUrl || ''
     }));
   };
 
