@@ -18,12 +18,20 @@ export default function GlobalLiveRequestPopup() {
   const queueRef = useRef<LivePing[]>([]);
   const [active, setActive] = useState<LivePing | null>(null);
 
-  // Harden popup queue - remove overzealous dedupe
+  // Handle nextPing changes from context
   useEffect(() => {
     console.log("🎯 Global popup effect triggered:", { nextPing, dnd, active });
     
-    if (!nextPing || dnd) {
-      console.log("🎯 Skipping ping:", { hasNextPing: !!nextPing, dnd });
+    // If nextPing is null (cleared by context), clear local state immediately
+    if (!nextPing) {
+      console.log("🎯 nextPing cleared by context, clearing local state");
+      setActive(null);
+      queueRef.current = [];
+      return;
+    }
+    
+    if (dnd) {
+      console.log("🎯 Skipping ping due to DND:", { hasNextPing: !!nextPing, dnd });
       return;
     }
     
