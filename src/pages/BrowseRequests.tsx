@@ -785,6 +785,17 @@ const BrowseRequests = () => {
 
   // Accept/Ignore handlers for live popup
   const acceptRequest = async (id: string) => {
+    // Handle test popup differently
+    if (id === 'debug-1') {
+      console.log("🧪 Test Accept clicked - popup working!");
+      setIncomingPing(null); // Close test popup
+      toast({
+        title: "Test successful!",
+        description: "Popup system is working correctly",
+      });
+      return;
+    }
+
     try {
       // Update user state to accepted
       await supabase.from('request_user_state')
@@ -822,6 +833,17 @@ const BrowseRequests = () => {
   };
 
   const ignoreRequest = async (id: string) => {
+    // Handle test popup differently
+    if (id === 'debug-1') {
+      console.log("🧪 Test Ignore clicked - popup working!");
+      setIncomingPing(null); // Close test popup
+      toast({
+        title: "Test successful!",
+        description: "Popup system is working correctly",
+      });
+      return;
+    }
+
     try {
       // Update user state to ignored
       await supabase.from('request_user_state')
