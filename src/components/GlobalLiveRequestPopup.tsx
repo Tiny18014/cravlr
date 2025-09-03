@@ -76,29 +76,31 @@ export default function GlobalLiveRequestPopup() {
     // Handle differently based on notification type
     if (active?.type === "recommendation") {
       console.log("🎯 Handling recommendation notification");
-      // Close popup immediately
-      close();
       
-      // Check if we're already on dashboard
-      if (location.pathname === '/dashboard') {
-        console.log("🎯 Already on dashboard, forcing tab switch and refresh");
-        // Force a page refresh to switch to the received tab and refresh data
-        window.location.href = '/dashboard?tab=received';
-      } else {
-        console.log("🎯 Not on dashboard, navigating");
-        // Navigate to dashboard and switch to received recommendations tab
-        navigate('/dashboard?tab=received');
-      }
+      // Close popup first
+      setActive(null);
+      
+      // Use a timeout to ensure popup is closed before navigation
+      setTimeout(() => {
+        if (location.pathname === '/dashboard') {
+          console.log("🎯 Already on dashboard, reloading page");
+          // Force a full page reload to refresh everything
+          window.location.reload();
+        } else {
+          console.log("🎯 Not on dashboard, navigating");
+          navigate('/dashboard?tab=received');
+        }
+      }, 100);
+      
     } else {
       console.log("🎯 Handling request notification - accepting request");
       // For requests, use the existing accept flow
       try {
+        setActive(null); // Close popup immediately
         await acceptRequest(id);
-        close();
         navigate(`/recommend/${id}`);
       } catch (error) {
         console.error("❌ Error accepting request:", error);
-        close(); // Close popup even if there's an error
       }
     }
   };
@@ -106,8 +108,8 @@ export default function GlobalLiveRequestPopup() {
   const handleIgnore = async (id: string) => {
     console.log("🎯 handleIgnore called with:", { id, activeType: active?.type });
     
-    // Close popup immediately for all cases
-    close();
+    // Close popup immediately
+    setActive(null);
     
     // Handle differently based on notification type  
     if (active?.type === "recommendation") {
@@ -147,14 +149,22 @@ export default function GlobalLiveRequestPopup() {
         <div className="mt-3 flex gap-2">
           <button
             className="flex-1 py-2 rounded-xl bg-black text-white"
-            onClick={() => handleAccept(active.id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAccept(active.id);
+            }}
             aria-label={active.type === "request" ? "Accept request" : "View recommendation"}
           >
             {active.type === "request" ? "Accept" : "View"}
           </button>
           <button
             className="flex-1 py-2 rounded-xl border"
-            onClick={() => handleIgnore(active.id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleIgnore(active.id);
+            }}
             aria-label="Dismiss"
           >
             {active.type === "request" ? "Ignore" : "Dismiss"}
