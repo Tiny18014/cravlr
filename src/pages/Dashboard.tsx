@@ -39,7 +39,6 @@ interface Recommendation {
   };
   profiles: {
     display_name: string;
-    email: string;
   };
 }
 
@@ -54,7 +53,6 @@ interface ReceivedRecommendation {
   created_at: string;
   profiles: {
     display_name: string;
-    email: string;
   };
   food_requests: {
     food_type: string;
@@ -114,7 +112,7 @@ const Dashboard = () => {
         .select(`
           *,
           food_requests (food_type, location_city, location_state),
-          profiles (display_name, email)
+          profiles (display_name)
         `)
         .eq('recommender_id', user?.id)
         .order('created_at', { ascending: false });
@@ -127,7 +125,7 @@ const Dashboard = () => {
         .from('recommendations')
         .select(`
           *,
-          profiles (display_name, email),
+          profiles (display_name),
           food_requests!inner (food_type, requester_id)
         `)
         .eq('food_requests.requester_id', user?.id)
@@ -362,7 +360,7 @@ const Dashboard = () => {
                     <div className="space-y-2">
                       <div className="flex items-center text-sm text-muted-foreground">
                         <User className="h-4 w-4 mr-2" />
-                        Recommended by {rec.profiles.display_name || rec.profiles.email}
+                        Recommended by {rec.profiles.display_name || 'Anonymous'}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         For your: {rec.food_requests.food_type} request

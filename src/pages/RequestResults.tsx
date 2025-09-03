@@ -79,7 +79,7 @@ const RequestResults = () => {
         .from('recommendations')
         .select(`
           *,
-          profiles!inner(email, display_name)
+          profiles!inner(display_name)
         `)
         .eq('request_id', requestId)
         .order('created_at', { ascending: true });
@@ -118,7 +118,7 @@ const RequestResults = () => {
         
         // Add note if it exists
         if (rec.notes && rec.notes.trim()) {
-          const displayName = rec.profiles?.display_name || '@' + rec.profiles?.email?.split('@')[0] || 'Anonymous';
+          const displayName = rec.profiles?.display_name || 'Anonymous';
           group.notes.push({
             by: displayName,
             text: rec.notes.slice(0, 140)

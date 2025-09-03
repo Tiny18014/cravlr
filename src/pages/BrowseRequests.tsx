@@ -52,7 +52,6 @@ interface FoodRequest {
   location_lng?: number;
   profiles: {
     display_name: string;
-    email: string;
   };
   recommendation_count?: number;
   user_has_recommended?: boolean;
@@ -128,7 +127,7 @@ const BrowseRequests = () => {
         .from('food_requests')
         .select(`
           *,
-          profiles (display_name, email)
+          profiles (display_name)
         `)
         .eq('status', 'active')
         .gt('expires_at', 'now()')
@@ -225,7 +224,7 @@ const BrowseRequests = () => {
         .from('food_requests')
         .select(`
           *,
-          profiles (display_name, email)
+          profiles (display_name)
         `)
         .eq('status', 'active')
         .gt('expires_at', 'now()')
@@ -369,7 +368,7 @@ const BrowseRequests = () => {
             user_state: null,
             urgency: getUrgencyFromResponseWindow(r.response_window),
             distance_km: distance,
-            profiles: { display_name: 'New User', email: '' }
+            profiles: { display_name: 'New User' }
           };
 
           console.log('✅ Adding new request to state:', requestWithProfile.id);
@@ -825,9 +824,9 @@ const BrowseRequests = () => {
                           )}
                         </div>
                       </div>
-                    <p className="text-sm text-muted-foreground">
-                      Requested by {request.profiles.display_name || request.profiles.email}
-                    </p>
+                     <p className="text-sm text-muted-foreground">
+                       Requested by {request.profiles.display_name || 'Anonymous'}
+                     </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
