@@ -74,6 +74,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
+          {
+            foreignKeyName: "food_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       profiles: {
@@ -206,6 +213,13 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
           {
+            foreignKeyName: "recommendations_recommender_id_fkey"
+            columns: ["recommender_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "recommendations_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
@@ -248,7 +262,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      safe_profiles: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          location_city: string | null
+          location_state: string | null
+          points_total: number | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          display_name?: string | null
+          location_city?: string | null
+          location_state?: string | null
+          points_total?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          display_name?: string | null
+          location_city?: string | null
+          location_state?: string | null
+          points_total?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       award_points_for_request: {
