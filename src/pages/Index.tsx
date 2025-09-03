@@ -36,6 +36,13 @@ const Index = () => {
           console.log("🏠 New request detected on Index page:", payload.new);
           
           const request = payload.new;
+          
+          // Don't show notification for your own requests
+          if (request.requester_id === user.id) {
+            console.log("🏠 Skipping notification for own request");
+            return;
+          }
+          
           setIncomingPing({
             id: request.id,
             type: "request",
