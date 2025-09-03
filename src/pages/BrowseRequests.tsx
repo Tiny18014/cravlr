@@ -684,10 +684,9 @@ const BrowseRequests = () => {
           request_id: selectedRequest.id,
           recommender_id: user.id,
           restaurant_name: formData.restaurantName.trim(),
-          note: formData.note.trim() || null,
-          link: formData.link.trim() || null,
+          notes: formData.note.trim() || null,
+          maps_url: formData.link.trim() || formData.mapsUrl || null,
           place_id: formData.placeId || null,
-          maps_url: formData.mapsUrl || null,
           photo_token: formData.photoToken || null,
           rating: formData.rating,
           price_level: formData.priceLevel
