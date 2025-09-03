@@ -38,12 +38,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Global realtime subscription - mounted once at app root
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       cleanup();
       return;
     }
 
-    console.log("🌍 Setting up global realtime subscription");
+    console.log("🌍 Setting up global realtime subscription for user:", user.id);
     
     const setupChannel = () => {
       const channel = supabase
@@ -84,12 +84,21 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             
             // Only show recommendation notifications to the requester
             // We'll need to fetch the request to get requester_id
-            supabase
-              .from('food_requests')
-              .select('requester_id, food_type')
-              .eq('id', rec.request_id)
-              .single()
-              .then(({ data: request }) => {
+            const fetchRequestAndNotify = async () => {
+              try {
+                const { data: request, error } = await supabase
+                  .from('food_requests')
+                  .select('requester_id, food_type')
+                  .eq('id', rec.request_id)
+                  .single();
+                
+                console.log("🌍 Fetched request for recommendation:", { request, userID: user.id, error });
+                
+                if (error) {
+                  console.error("🌍 Error fetching request for recommendation:", error);
+                  return;
+                }
+                
                 if (request && request.requester_id === user.id) {
                   const ping: LivePing = {
                     id: rec.id,
@@ -102,8 +111,15 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
                   console.log("🌍 Setting recommendation ping:", ping);
                   setNextPing(ping);
+                } else {
+                  console.log("🌍 Recommendation not for current user, skipping");
                 }
-              });
+              } catch (error) {
+                console.error("🌍 Error in fetchRequestAndNotify:", error);
+              }
+            };
+            
+            fetchRequestAndNotify();
           }
         )
         .subscribe((status) => {
@@ -124,7 +140,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     setupChannel();
 
     return cleanup;
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id, not the full user object
 
   const cleanup = () => {
     if (channelRef.current) {
