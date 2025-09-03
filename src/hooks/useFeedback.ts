@@ -38,6 +38,30 @@ export const useFeedback = () => {
         return false;
       }
 
+      // Award points for positive feedback
+      if (feedbackType === 'thumbs_up') {
+        console.log('🎯 Awarding points for positive feedback...');
+        
+        // Calculate base points (50 for thumbs up) and bonus for star rating
+        const basePoints = 50;
+        const feedbackBonus = starRating ? Math.max(0, (starRating - 3) * 10) : 0; // 0-20 bonus for 4-5 stars
+        const totalPoints = basePoints + feedbackBonus;
+        
+        const { error: awardError } = await supabase.functions.invoke('award-points', {
+          body: {
+            recommendationId: recommendationId,
+            points: totalPoints
+          }
+        });
+
+        if (awardError) {
+          console.error('❌ Error awarding points:', awardError);
+          // Don't fail the feedback submission if point awarding fails
+        } else {
+          console.log('✅ Points awarded successfully:', totalPoints);
+        }
+      }
+
       toast({
         title: "Feedback submitted",
         description: `Thank you for your ${feedbackType === 'thumbs_up' ? 'positive' : ''} feedback!`,
