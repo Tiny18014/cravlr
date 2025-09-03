@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 
 type LivePing = {
   id: string;
+  type: "request" | "recommendation";
   foodType: string;
   location: string; // "Concord, NC" or "0.8 mi away"
   urgency: "quick" | "soon" | "extended";
+  restaurantName?: string; // For recommendations
 };
 
 export default function LiveRequestPopup({
@@ -72,24 +74,29 @@ export default function LiveRequestPopup({
       }}
     >
       <div className="rounded-2xl shadow-xl border bg-white p-3 animate-[slide-up_180ms_ease] text-black">
-        <div className="text-sm text-gray-600 mb-1">New request nearby</div>
+        <div className="text-sm text-gray-600 mb-1">
+          {active.type === "request" ? "New request nearby" : "New recommendation received"}
+        </div>
         <div className="font-semibold text-base">
-          {active.foodType} • {active.location}
+          {active.type === "request" 
+            ? `${active.foodType} • ${active.location}`
+            : `${active.restaurantName} recommended for ${active.foodType}`
+          }
         </div>
         <div className="mt-3 flex gap-2">
           <button
             className="flex-1 py-2 rounded-xl bg-black text-white"
             onClick={() => { onAccept(active.id); close(); }}
-            aria-label="Accept request"
+            aria-label={active.type === "request" ? "Accept request" : "View recommendation"}
           >
-            Accept
+            {active.type === "request" ? "Accept" : "View"}
           </button>
           <button
             className="flex-1 py-2 rounded-xl border"
             onClick={() => { onIgnore(active.id); close(); }}
-            aria-label="Ignore request"
+            aria-label="Dismiss"
           >
-            Ignore
+            {active.type === "request" ? "Ignore" : "Dismiss"}
           </button>
         </div>
       </div>

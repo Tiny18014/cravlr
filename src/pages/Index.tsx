@@ -15,12 +15,14 @@ const Index = () => {
   const navigate = useNavigate();
   const [incomingPing, setIncomingPing] = useState<{
     id: string;
+    type: "request" | "recommendation";
     foodType: string;
     location: string;
     urgency: "quick" | "soon" | "extended";
+    restaurantName?: string;
   } | null>(null);
 
-  // Real-time listener for new requests on landing page
+   // Real-time listener for new requests and recommendations on landing page
   useEffect(() => {
     if (!user) return;
 
@@ -36,11 +38,40 @@ const Index = () => {
           const request = payload.new;
           setIncomingPing({
             id: request.id,
+            type: "request",
             foodType: request.food_type,
             location: `${request.location_city}, ${request.location_state}`,
             urgency: request.response_window <= 15 ? 'quick' : 
                     request.response_window <= 60 ? 'soon' : 'extended'
           });
+        }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'recommendations' },
+        async (payload) => {
+          console.log("🏠 New recommendation detected on Index page:", payload.new);
+          
+          const recommendation = payload.new;
+          
+          // Check if this recommendation is for the current user's request
+          const { data: request } = await supabase
+            .from('food_requests')
+            .select('*')
+            .eq('id', recommendation.request_id)
+            .eq('requester_id', user.id)
+            .single();
+            
+          if (request) {
+            console.log("🏠 Recommendation is for current user's request");
+            setIncomingPing({
+              id: recommendation.id,
+              type: "recommendation",
+              foodType: request.food_type,
+              location: `${request.location_city}, ${request.location_state}`,
+              urgency: "soon",
+              restaurantName: recommendation.restaurant_name
+            });
+          }
         }
       )
       .subscribe((status) => {
@@ -54,8 +85,15 @@ const Index = () => {
   }, [user]);
 
   const acceptRequest = async (requestId: string) => {
-    console.log("🏠 Accepting request from Index:", requestId);
-    navigate('/browse-requests');
+    console.log("🏠 Accepting notification from Index:", requestId);
+    
+    if (incomingPing?.type === "recommendation") {
+      // Navigate to dashboard to see the new recommendation
+      navigate('/dashboard');
+    } else {
+      // Navigate to browse requests for food request notifications
+      navigate('/browse-requests');
+    }
   };
 
   const ignoreRequest = async (requestId: string) => {
