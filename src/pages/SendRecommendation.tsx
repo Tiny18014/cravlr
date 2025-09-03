@@ -38,9 +38,8 @@ const SendRecommendation = () => {
   const [formData, setFormData] = useState({
     restaurantName: '',
     restaurantAddress: '',
-    restaurantPhone: '',
     notes: '',
-    confidenceScore: [8], // Default to 8/10
+    confidenceScore: [4], // Default to 4/5 (matching database constraint)
     placeId: '' // For Google Places integration
   });
 
@@ -105,17 +104,17 @@ const SendRecommendation = () => {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase
-        .from('recommendations')
-        .insert({
-          request_id: requestId,
-          recommender_id: user.id,
-          restaurant_name: formData.restaurantName,
-          restaurant_address: formData.restaurantAddress || null,
-          restaurant_phone: formData.restaurantPhone || null,
-          notes: formData.notes || null,
-          confidence_score: formData.confidenceScore[0]
-        });
+        const { error } = await supabase
+          .from('recommendations')
+          .insert({
+            request_id: requestId,
+            recommender_id: user.id,
+            restaurant_name: formData.restaurantName,
+            restaurant_address: formData.restaurantAddress || null,
+            notes: formData.notes || null,
+            confidence_score: formData.confidenceScore[0],
+            ...(formData.placeId && { place_id: formData.placeId })
+          });
 
       if (error) throw error;
 
@@ -238,32 +237,38 @@ const SendRecommendation = () => {
                     userLocation={userLocation}
                   />
                   {formData.restaurantAddress && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      📍 {formData.restaurantAddress}
-                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        📍 {formData.restaurantAddress}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
+                          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                          window.open(mapsUrl, '_blank');
+                        }}
+                        className="text-xs h-6"
+                      >
+                        <MapPin className="h-3 w-3 mr-1" />
+                        Open in Maps
+                      </Button>
+                    </div>
                   )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="restaurantPhone">Phone Number</Label>
-                  <Input
-                    id="restaurantPhone"
-                    placeholder="Restaurant phone number"
-                    value={formData.restaurantPhone}
-                    onChange={(e) => handleChange('restaurantPhone', e.target.value)}
-                  />
                 </div>
                 
                 <div>
                   <Label htmlFor="confidenceScore" className="flex items-center gap-2">
                     <Star className="h-4 w-4" />
-                    Confidence Level: {formData.confidenceScore[0]}/10
+                    Confidence Level: {formData.confidenceScore[0]}/5
                   </Label>
                   <div className="px-3 py-4">
                     <Slider
                       id="confidenceScore"
                       min={1}
-                      max={10}
+                      max={5}
                       step={1}
                       value={formData.confidenceScore}
                       onValueChange={(value) => handleChange('confidenceScore', value)}
@@ -271,7 +276,7 @@ const SendRecommendation = () => {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    How confident are you in this recommendation? (1 = worth trying, 10 = absolutely amazing)
+                    How confident are you in this recommendation? (1 = worth trying, 5 = absolutely amazing)
                   </p>
                 </div>
                 
