@@ -70,28 +70,47 @@ export default function GlobalLiveRequestPopup() {
   };
 
   const handleAccept = async (id: string) => {
+    console.log("🎯 handleAccept called with:", { id, activeType: active?.type });
+    
     // Handle differently based on notification type
     if (active?.type === "recommendation") {
+      console.log("🎯 Handling recommendation notification - navigating to dashboard");
       // For recommendations, just dismiss and navigate - no backend call needed
       close();
-      navigate('/dashboard');
+      // Navigate to dashboard and switch to received recommendations tab
+      navigate('/dashboard?tab=received');
     } else {
+      console.log("🎯 Handling request notification - accepting request");
       // For requests, use the existing accept flow
-      await acceptRequest(id);
-      close();
-      navigate(`/recommend/${id}`);
+      try {
+        await acceptRequest(id);
+        close();
+        navigate(`/recommend/${id}`);
+      } catch (error) {
+        console.error("❌ Error accepting request:", error);
+        close(); // Close popup even if there's an error
+      }
     }
   };
 
   const handleIgnore = async (id: string) => {
+    console.log("🎯 handleIgnore called with:", { id, activeType: active?.type });
+    
     // Handle differently based on notification type  
     if (active?.type === "recommendation") {
+      console.log("🎯 Dismissing recommendation notification");
       // For recommendations, just dismiss - no backend call needed
       close();
     } else {
+      console.log("🎯 Ignoring request notification");
       // For requests, use the existing ignore flow
-      await ignoreRequest(id);
-      close();
+      try {
+        await ignoreRequest(id);
+        close();
+      } catch (error) {
+        console.error("❌ Error ignoring request:", error);
+        close(); // Close popup even if there's an error
+      }
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -62,12 +62,16 @@ interface ReceivedRecommendation {
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
   const [myRecommendations, setMyRecommendations] = useState<Recommendation[]>([]);
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
   const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
   const [loading, setLoading] = useState(true);
+  
+  // Get the default tab from URL parameter
+  const defaultTab = searchParams.get('tab') || 'requests';
 
   useEffect(() => {
     if (!user) {
@@ -226,7 +230,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="requests" className="space-y-6">
+        <Tabs defaultValue={defaultTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="requests">My Requests ({myRequests.length})</TabsTrigger>
             <TabsTrigger value="given">Given Recommendations ({myRecommendations.length})</TabsTrigger>
