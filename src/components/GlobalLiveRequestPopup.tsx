@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
 type LivePing = {
@@ -14,6 +14,7 @@ type LivePing = {
 export default function GlobalLiveRequestPopup() {
   const { nextPing, dnd, acceptRequest, ignoreRequest } = useNotifications();
   const navigate = useNavigate();
+  const location = useLocation();
   const queueRef = useRef<LivePing[]>([]);
   const [active, setActive] = useState<LivePing | null>(null);
 
@@ -70,15 +71,24 @@ export default function GlobalLiveRequestPopup() {
   };
 
   const handleAccept = async (id: string) => {
-    console.log("🎯 handleAccept called with:", { id, activeType: active?.type });
+    console.log("🎯 handleAccept called with:", { id, activeType: active?.type, currentPath: location.pathname });
     
     // Handle differently based on notification type
     if (active?.type === "recommendation") {
-      console.log("🎯 Handling recommendation notification - navigating to dashboard");
-      // For recommendations, just dismiss and navigate - no backend call needed
+      console.log("🎯 Handling recommendation notification");
+      // Close popup immediately
       close();
-      // Navigate to dashboard and switch to received recommendations tab
-      navigate('/dashboard?tab=received');
+      
+      // Check if we're already on dashboard
+      if (location.pathname === '/dashboard') {
+        console.log("🎯 Already on dashboard, forcing tab switch and refresh");
+        // Force a page refresh to switch to the received tab and refresh data
+        window.location.href = '/dashboard?tab=received';
+      } else {
+        console.log("🎯 Not on dashboard, navigating");
+        // Navigate to dashboard and switch to received recommendations tab
+        navigate('/dashboard?tab=received');
+      }
     } else {
       console.log("🎯 Handling request notification - accepting request");
       // For requests, use the existing accept flow
@@ -96,20 +106,20 @@ export default function GlobalLiveRequestPopup() {
   const handleIgnore = async (id: string) => {
     console.log("🎯 handleIgnore called with:", { id, activeType: active?.type });
     
+    // Close popup immediately for all cases
+    close();
+    
     // Handle differently based on notification type  
     if (active?.type === "recommendation") {
       console.log("🎯 Dismissing recommendation notification");
       // For recommendations, just dismiss - no backend call needed
-      close();
     } else {
       console.log("🎯 Ignoring request notification");
       // For requests, use the existing ignore flow
       try {
         await ignoreRequest(id);
-        close();
       } catch (error) {
         console.error("❌ Error ignoring request:", error);
-        close(); // Close popup even if there's an error
       }
     }
   };
