@@ -123,16 +123,26 @@ const BrowseRequests = () => {
   }, []);
 
   useEffect(() => {
+    console.log("🔧 Auth check - user:", user?.email, "navigate function:", typeof navigate);
+    
     if (!user) {
+      console.log("🚨 No user found, redirecting to auth");
       navigate('/auth');
       return;
     }
     
+    console.log("🔧 Starting fetchInitialRequests...");
     // Always fetch initial requests, even without coords
-    fetchInitialRequests();
+    fetchInitialRequests().catch(error => {
+      console.error("🚨 fetchInitialRequests failed:", error);
+      setLoading(false);
+    });
     
+    console.log("🔧 Starting fetchProfile...");
     // Fetch user profile for DND toggle
-    fetchProfile();
+    fetchProfile().catch(error => {
+      console.error("🚨 fetchProfile failed:", error);
+    });
   }, [user, navigate]);
 
   const fetchProfile = async () => {
