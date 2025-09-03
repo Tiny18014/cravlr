@@ -244,6 +244,133 @@ export type Database = {
           },
         ]
       }
+      referral_clicks: {
+        Row: {
+          clicked_at: string
+          commission_amount: number | null
+          commission_paid: boolean | null
+          commission_paid_at: string | null
+          conversion_value: number | null
+          converted: boolean | null
+          converted_at: string | null
+          id: string
+          ip_address: unknown | null
+          recommendation_id: string
+          recommender_id: string
+          referral_link_id: string
+          request_id: string
+          requester_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          commission_amount?: number | null
+          commission_paid?: boolean | null
+          commission_paid_at?: string | null
+          conversion_value?: number | null
+          converted?: boolean | null
+          converted_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          recommendation_id: string
+          recommender_id: string
+          referral_link_id: string
+          request_id: string
+          requester_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          commission_amount?: number | null
+          commission_paid?: boolean | null
+          commission_paid_at?: string | null
+          conversion_value?: number | null
+          converted?: boolean | null
+          converted_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          recommendation_id?: string
+          recommender_id?: string
+          referral_link_id?: string
+          request_id?: string
+          requester_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_clicks_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_clicks_referral_link_id_fkey"
+            columns: ["referral_link_id"]
+            isOneToOne: false
+            referencedRelation: "referral_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_clicks_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_links: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          maps_url: string | null
+          place_id: string | null
+          recommendation_id: string
+          referral_code: string
+          request_id: string
+          restaurant_name: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          maps_url?: string | null
+          place_id?: string | null
+          recommendation_id: string
+          referral_code: string
+          request_id: string
+          restaurant_name: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          maps_url?: string | null
+          place_id?: string | null
+          recommendation_id?: string
+          referral_code?: string
+          request_id?: string
+          restaurant_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_links_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_links_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       request_user_state: {
         Row: {
           created_at: string
@@ -288,6 +415,10 @@ export type Database = {
       close_expired_requests: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      generate_referral_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: {

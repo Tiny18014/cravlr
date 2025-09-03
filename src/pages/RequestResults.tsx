@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp, ArrowLeft, MapPin, Star, DollarSign, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useReferralLinks } from "@/hooks/useReferralLinks";
 
 interface Note {
   by: string;
@@ -26,6 +27,8 @@ interface RecommendationGroup {
   firstSubmittedAt: string;
   lastSubmittedAt: string;
   notes: Note[];
+  recommendationId?: string; // Add for referral tracking
+  referralUrl?: string; // Add for referral tracking
 }
 
 interface RequestResultsData {
@@ -54,6 +57,7 @@ const RequestResults = () => {
   const [loading, setLoading] = useState(true);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const { generateReferralLink } = useReferralLinks();
 
   const fetchResults = async () => {
     if (!requestId) return;
@@ -112,7 +116,9 @@ const RequestResults = () => {
             rating: rec.rating,
             priceLevel: rec.price_level,
             photoToken: rec.photo_token,
-            distanceMeters: null
+            distanceMeters: null,
+            recommendationId: rec.id, // Store first recommendation ID for referral tracking
+            referralUrl: null // Will be populated later
           });
         }
 
@@ -140,6 +146,30 @@ const RequestResults = () => {
       sortedGroups.forEach(group => {
         group.notes = group.notes.reverse().slice(0, 3);
       });
+
+      // Generate referral links for each group
+      for (const group of sortedGroups) {
+        if (group.recommendationId && group.mapsUrl) {
+          try {
+            const referralData = await generateReferralLink({
+              recommendationId: group.recommendationId,
+              requestId,
+              restaurantName: group.name,
+              placeId: group.placeId,
+              mapsUrl: group.mapsUrl
+            });
+            
+            if (referralData) {
+              group.referralUrl = referralData.referralUrl;
+              console.log('✅ Generated referral URL for', group.name);
+            }
+          } catch (error) {
+            console.error('❌ Failed to generate referral for', group.name, error);
+            // Fall back to original maps URL
+            group.referralUrl = group.mapsUrl;
+          }
+        }
+      }
 
       setResults({
         requestId,
@@ -403,7 +433,7 @@ const RequestResults = () => {
 
                           {/* Maps Button */}
                           <div className="shrink-0">
-                            {group.mapsUrl && (
+                            {(group.referralUrl || group.mapsUrl) && (
                               <Button 
                                 variant="outline" 
                                 size="sm"
@@ -411,7 +441,7 @@ const RequestResults = () => {
                                 className="whitespace-nowrap"
                               >
                                 <a 
-                                  href={group.mapsUrl} 
+                                  href={group.referralUrl || group.mapsUrl} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   aria-label={`Open ${group.name} in Maps`}

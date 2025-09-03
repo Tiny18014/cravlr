@@ -61,6 +61,12 @@ verify_jwt = false
 [functions.notify-area-users]
 verify_jwt = false
 
+[functions.generate-referral-link]
+verify_jwt = false
+
+[functions.track-referral-click]
+verify_jwt = false
+
 [realtime]
 enabled = true
 port = 54323
