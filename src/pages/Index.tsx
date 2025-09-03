@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,10 +7,61 @@ import { Plus, Search, User } from 'lucide-react';
 import DebugRealtime from '@/components/DebugRealtime';
 import DebugDBRealtime from '@/components/DebugDBRealtime';
 import MobileDebugConsole from '@/components/MobileDebugConsole';
+import LiveRequestPopup from '@/components/LiveRequestPopup';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const [incomingPing, setIncomingPing] = useState<{
+    id: string;
+    foodType: string;
+    location: string;
+    urgency: "quick" | "soon" | "extended";
+  } | null>(null);
+
+  // Real-time listener for new requests on landing page
+  useEffect(() => {
+    if (!user) return;
+
+    console.log("🏠 Setting up Index page realtime listener");
+    
+    const channel = supabase
+      .channel('index-realtime')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'food_requests' },
+        (payload) => {
+          console.log("🏠 New request detected on Index page:", payload.new);
+          
+          const request = payload.new;
+          setIncomingPing({
+            id: request.id,
+            foodType: request.food_type,
+            location: `${request.location_city}, ${request.location_state}`,
+            urgency: request.response_window <= 15 ? 'quick' : 
+                    request.response_window <= 60 ? 'soon' : 'extended'
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log("🏠 Index realtime status:", status);
+      });
+
+    return () => {
+      console.log("🏠 Cleaning up Index realtime listener");
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const acceptRequest = async (requestId: string) => {
+    console.log("🏠 Accepting request from Index:", requestId);
+    navigate('/browse-requests');
+  };
+
+  const ignoreRequest = async (requestId: string) => {
+    console.log("🏠 Ignoring request from Index:", requestId);
+    setIncomingPing(null);
+  };
 
   if (loading) {
     return (
@@ -143,6 +194,14 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      {/* Live Request Popup */}
+      <LiveRequestPopup
+        nextPing={incomingPing}
+        dnd={false}
+        onAccept={acceptRequest}
+        onIgnore={ignoreRequest}
+      />
 
       {/* Debug components for all pages */}
       <DebugRealtime user={user} />
