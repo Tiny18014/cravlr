@@ -50,7 +50,7 @@ export default function LiveRequestPopup({
     <div 
       className="fixed left-3 right-3 bottom-4"
       style={{ 
-        zIndex: 10000, 
+        zIndex: 100000,  // Ultra-high z-index
         paddingBottom: 'env(safe-area-inset-bottom)',
         position: 'fixed'
       }}

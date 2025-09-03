@@ -20,6 +20,8 @@ import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import LiveRequestPopup from '@/components/LiveRequestPopup';
+import DebugRealtime from '@/components/DebugRealtime';
+import DebugDBRealtime from '@/components/DebugDBRealtime';
 
 interface PlaceResult {
   placeId: string;
@@ -349,14 +351,14 @@ const BrowseRequests = () => {
           table: 'food_requests' 
         },
         (payload) => {
-          // Step 2: Prove the handler fires
-          setRtIndicator(`INSERT ${new Date().toLocaleTimeString()}`);
-          
           // Nuclear debug - visible HTML injection
           document.body.insertAdjacentHTML(
             'beforeend',
-            '<div style="position:fixed;bottom:60px;left:10px;z-index:99999;background:#111;color:#fff;padding:6px 8px;border-radius:8px">INSERT fired</div>'
+            '<div style="position:fixed;bottom:70px;left:10px;z-index:99999;background:#111;color:#fff;padding:6px 8px;border-radius:8px">INSERT fired</div>'
           );
+
+          // Step 2: Prove the handler fires
+          setRtIndicator(`INSERT ${new Date().toLocaleTimeString()}`);
           
           console.log('🆕 === INSERT EVENT RECEIVED ===');
           console.log('Full payload:', JSON.stringify(payload, null, 2));
@@ -424,15 +426,12 @@ const BrowseRequests = () => {
             console.log('📳 Vibration triggered for urgent request');
           }
 
-          // Step 3: Always trigger popup (no distance filtering for debug)
-          const location = Number.isFinite(lat) && Number.isFinite(lng)
-            ? `${distance?.toFixed(1)}km away`
-            : `${r.location_city}, ${r.location_state}`;
-            
+          // Stage C: Always trigger popup (unconditional for debug)
+          console.log('🚀 Setting incoming ping unconditionally');
           setIncomingPing({
             id: r.id,
             foodType: r.food_type,
-            location,
+            location: `${r.location_city}, ${r.location_state}`,
             urgency: r.response_window <= 5 ? 'quick' : r.response_window <= 30 ? 'soon' : 'extended'
           });
 
@@ -883,6 +882,14 @@ const BrowseRequests = () => {
     return {}; // Extended - Gray (secondary variant)
   };
 
+  // Debug: Log environment variables
+  useEffect(() => {
+    console.log("🔧 ENV DEBUG:", {
+      SUPABASE_URL: "https://edazolwepxbdeniluamf.supabase.co",
+      ANON_KEY_PREVIEW: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9".slice(0, 8)
+    });
+  }, []);
+
   if (!user) return null;
 
   if (loading) {
@@ -1251,13 +1258,17 @@ const BrowseRequests = () => {
         })}
       </div>
 
-      {/* live popup */}
+      {/* live popup with ultra-high z-index */}
       <LiveRequestPopup
         nextPing={incomingPing}
-        dnd={dnd}
+        dnd={false}
         onAccept={acceptRequest}
         onIgnore={ignoreRequest}
       />
+
+      {/* Debug components */}
+      <DebugRealtime user={user} />
+      <DebugDBRealtime user={user} />
 
       <PushNotificationSetup />
       <PWAInstallBanner />
