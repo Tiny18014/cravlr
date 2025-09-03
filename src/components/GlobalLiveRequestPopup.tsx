@@ -89,14 +89,9 @@ export default function GlobalLiveRequestPopup() {
       setActive(null);
       queueRef.current = []; // Clear queue to prevent popup from reappearing
       
-      if (location.pathname === '/dashboard') {
-        console.log("🎯 Already on dashboard, reloading page");
-        // Force a full page reload to refresh everything
-        window.location.reload();
-      } else {
-        console.log("🎯 Not on dashboard, navigating");
-        navigate('/dashboard?tab=received');
-      }
+      // Always navigate to dashboard with received tab, don't use reload
+      console.log("🎯 Navigating to dashboard with received tab");
+      navigate('/dashboard?tab=received', { replace: true });
       
     } else {
       console.log("🎯 Handling request notification - accepting request");
