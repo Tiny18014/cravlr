@@ -158,6 +158,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const acceptRequest = async (requestId: string) => {
     console.log("🌍 Global accept:", requestId);
     
+    // Always clear the ping first, regardless of backend call success
+    setNextPing(null);
+    
     try {
       // Record the acceptance in the backend
       const { data, error } = await supabase.functions.invoke('request-accept-ignore', {
@@ -167,12 +170,10 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error) throw error;
       console.log("✅ Request accepted globally:", data);
 
-      // Clear the ping
-      setNextPing(null);
-
       // Navigation will be handled by the page that calls this
     } catch (error) {
       console.error("❌ Error accepting request globally:", error);
+      // Don't re-show the ping even if backend call fails
     }
   };
 
