@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { DoNotDisturbToggle } from '@/components/DoNotDisturbToggle';
 import { RequestToast } from '@/components/RequestToast';
 import { PWAInstallBanner } from '@/components/PWAInstallBanner';
+import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface PlaceResult {
@@ -1136,6 +1137,7 @@ const BrowseRequests = () => {
         })}
       </div>
 
+      <PushNotificationSetup />
       <PWAInstallBanner />
     </div>
   );

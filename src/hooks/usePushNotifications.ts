@@ -34,7 +34,7 @@ export function usePushNotifications() {
           // Initialize OneSignal
           if (window.OneSignal) {
             await window.OneSignal.init({
-              appId: '8b8b8b8b-8b8b-8b8b-8b8b-8b8b8b8b8b8b', // Replace with actual OneSignal App ID
+              appId: 'YOUR_ONESIGNAL_APP_ID', // User needs to replace with their OneSignal App ID
               serviceWorkerParam: { scope: '/' },
               serviceWorkerPath: '/sw.js',
               allowLocalhostAsSecureOrigin: true,
