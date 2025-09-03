@@ -20,17 +20,27 @@ export const ReputationBadge: React.FC<ReputationBadgeProps> = ({
 }) => {
   const getReputationLevel = (score: number) => {
     if (score >= 95) return { label: 'Elite Foodie', color: 'bg-purple-600', icon: Award };
-    if (score >= 85) return { label: 'Top Recommender', color: 'bg-yellow-600', icon: TrendingUp };
-    if (score >= 70) return { label: 'Trusted', color: 'bg-green-600', icon: Star };
-    if (score >= 50) return { label: 'Active', color: 'bg-blue-600', icon: Star };
-    return { label: 'New', color: 'bg-gray-600', icon: Star };
+    if (score >= 80) return { label: 'Top Recommender', color: 'bg-yellow-500', icon: TrendingUp };
+    if (score >= 0) return { label: 'Trusted', color: 'bg-green-600', icon: Star };
+    return { label: 'Newbie', color: 'bg-gray-500', icon: Star };
   };
 
   const reputation = getReputationLevel(reputationScore);
   const Icon = reputation.icon;
 
-  if (totalFeedbacks < 3 && !showDetails) {
-    return null; // Don't show reputation until they have some feedback
+  // Show Newbie badge when no reputation score exists or is null/undefined
+  if ((reputationScore === null || reputationScore === undefined || reputationScore === 0) && totalFeedbacks < 3 && !showDetails) {
+    return (
+      <div className={cn("flex items-center gap-2", className)}>
+        <Badge 
+          variant="secondary" 
+          className="text-white border-0 flex items-center gap-1 bg-gray-500"
+        >
+          <Star className="h-3 w-3" />
+          Newbie
+        </Badge>
+      </div>
+    );
   }
 
   return (
