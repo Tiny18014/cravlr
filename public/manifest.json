@@ -1,6 +1,6 @@
 {
-  "name": "Nibblr - Find My Plate",
-  "short_name": "Nibblr",
+  "name": "Cravlr - Find My Plate",
+  "short_name": "Cravlr",
   "description": "Real-time food discovery platform connecting hungry people with local food enthusiasts",
   "start_url": "/",
   "display": "standalone",

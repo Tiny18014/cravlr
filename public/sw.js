@@ -1,5 +1,5 @@
-// Service Worker for Nibblr
-const CACHE_NAME = 'nibblr-v1';
+// Service Worker for Cravlr
+const CACHE_NAME = 'cravlr-v1';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',

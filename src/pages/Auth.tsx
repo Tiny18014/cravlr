@@ -74,7 +74,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? 'Welcome to Nibblr' : 'Join Nibblr'}
+            {isLogin ? 'Welcome to Cravlr' : 'Join Cravlr'}
           </CardTitle>
           <p className="text-muted-foreground">
             {isLogin 

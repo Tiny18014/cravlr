@@ -33,7 +33,7 @@ export function PWAInstallBanner() {
             <Download className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Install Nibblr</h3>
+            <h3 className="font-semibold text-sm">Install Cravlr</h3>
             <p className="text-xs text-muted-foreground">
               {isIOSSafari 
                 ? 'Tap Share → Add to Home Screen for notifications'

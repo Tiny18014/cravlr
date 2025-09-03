@@ -79,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification email
     const emailResponse = await resend.emails.send({
-      from: "Nibblr <noreply@resend.dev>",
+      from: "Cravlr <noreply@resend.dev>",
       to: [emailTo],
       subject: `New restaurant recommendation for your ${request.food_type} request!`,
       html: `
@@ -103,7 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <p style="margin-top: 30px;">
             Happy eating! 🎉<br>
-            <strong>The Nibblr Team</strong>
+            <strong>The Cravlr Team</strong>
           </p>
         </div>
       `,

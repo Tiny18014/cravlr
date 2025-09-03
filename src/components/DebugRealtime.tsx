@@ -9,7 +9,7 @@ export default function DebugRealtime({ user }: { user: any }) {
     console.log("DebugRealtime mounting with user:", user?.email);
     if (!user) return;
     
-    const ch = supabase.channel("nibblr-debug");
+    const ch = supabase.channel("cravlr-debug");
     ch.on("broadcast", { event: "ping" }, (p) => {
       console.log("📡 Broadcast received:", p);
       setLastMsg(`recv:${p.payload.from}`);
@@ -28,7 +28,7 @@ export default function DebugRealtime({ user }: { user: any }) {
 
   async function sendPing() {
     console.log("📡 Sending broadcast ping from:", user?.email);
-    const result = await supabase.channel("nibblr-debug").send({
+    const result = await supabase.channel("cravlr-debug").send({
       type: "broadcast",
       event: "ping",
       payload: { from: user?.email || "unknown" }

@@ -9,7 +9,7 @@ export default function DebugDBRealtime({ user }: { user: any }) {
     if (!user) return;
     
     const ch = supabase
-      .channel("nibblr-db")
+      .channel("cravlr-db")
       .on("postgres_changes",
         { event: "INSERT", schema: "public", table: "food_requests" },
         (payload) => {

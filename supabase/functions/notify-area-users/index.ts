@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const emailResponse = await resend.emails.send({
-          from: "Nibblr <noreply@resend.dev>",
+          from: "Cravlr <noreply@resend.dev>",
           to: [emailTo],
           subject: `🍽️ New ${request.food_type} request in ${request.location_city}!`,
           html: `
@@ -133,7 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p><strong>Response Window:</strong> ${request.response_window} minutes</p>
               </div>
               
-              <p>Know a great spot? Head over to Nibblr to share your recommendation and earn points!</p>
+              <p>Know a great spot? Head over to Cravlr to share your recommendation and earn points!</p>
               
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${Deno.env.get('SITE_URL') || 'https://nibblr.app'}/browse-requests" 
@@ -150,7 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
               
               <p style="margin-top: 20px;">
                 Happy recommending! 🎉<br>
-                <strong>The Nibblr Team</strong>
+                <strong>The Cravlr Team</strong>
               </p>
             </div>
           `,
