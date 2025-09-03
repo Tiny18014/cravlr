@@ -44,7 +44,7 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('food_requests')
         .insert({
           requester_id: user.id,
@@ -54,9 +54,22 @@ const RequestFood = () => {
           location_address: formData.locationAddress || null,
           additional_notes: formData.additionalNotes || null,
           response_window: formData.responseWindow
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Notify users in the area about the new request
+      try {
+        console.log('📧 Notifying area users about new request:', data.id);
+        await supabase.functions.invoke('notify-area-users', {
+          body: { requestId: data.id }
+        });
+      } catch (notificationError) {
+        console.error('Error notifying area users:', notificationError);
+        // Don't fail the request creation if notifications fail
+      }
 
       toast({
         title: "Request created!",
