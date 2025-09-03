@@ -1092,9 +1092,9 @@ const BrowseRequests = () => {
                           )}
                         </div>
                       </div>
-                     <p className="text-sm text-muted-foreground">
-                       Requested by {request.profiles.display_name || 'Anonymous'}
-                     </p>
+                      <p className="text-sm text-muted-foreground">
+                        Requested by {request.profiles?.display_name || 'Anonymous'}
+                      </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
