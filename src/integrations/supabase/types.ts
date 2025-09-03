@@ -113,6 +113,7 @@ export type Database = {
           email: string
           id: string
           is_active: boolean
+          is_admin: boolean
           location_city: string | null
           location_lat: number | null
           location_lng: number | null
@@ -140,6 +141,7 @@ export type Database = {
           email: string
           id?: string
           is_active?: boolean
+          is_admin?: boolean
           location_city?: string | null
           location_lat?: number | null
           location_lng?: number | null
@@ -167,6 +169,7 @@ export type Database = {
           email?: string
           id?: string
           is_active?: boolean
+          is_admin?: boolean
           location_city?: string | null
           location_lat?: number | null
           location_lng?: number | null
@@ -329,54 +332,78 @@ export type Database = {
       }
       referral_clicks: {
         Row: {
+          click_source: string
           clicked_at: string
           commission_amount: number | null
           commission_paid: boolean | null
           commission_paid_at: string | null
+          commission_rate: number
+          conversion_at: string | null
+          conversion_method: string | null
           conversion_value: number | null
           converted: boolean | null
           converted_at: string | null
           id: string
           ip_address: unknown | null
+          notes: string | null
+          place_id: string | null
           recommendation_id: string
           recommender_id: string
           referral_link_id: string
+          reported_by: string | null
           request_id: string
           requester_id: string
+          restaurant_name: string
           user_agent: string | null
         }
         Insert: {
+          click_source?: string
           clicked_at?: string
           commission_amount?: number | null
           commission_paid?: boolean | null
           commission_paid_at?: string | null
+          commission_rate?: number
+          conversion_at?: string | null
+          conversion_method?: string | null
           conversion_value?: number | null
           converted?: boolean | null
           converted_at?: string | null
           id?: string
           ip_address?: unknown | null
+          notes?: string | null
+          place_id?: string | null
           recommendation_id: string
           recommender_id: string
           referral_link_id: string
+          reported_by?: string | null
           request_id: string
           requester_id: string
+          restaurant_name?: string
           user_agent?: string | null
         }
         Update: {
+          click_source?: string
           clicked_at?: string
           commission_amount?: number | null
           commission_paid?: boolean | null
           commission_paid_at?: string | null
+          commission_rate?: number
+          conversion_at?: string | null
+          conversion_method?: string | null
           conversion_value?: number | null
           converted?: boolean | null
           converted_at?: string | null
           id?: string
           ip_address?: unknown | null
+          notes?: string | null
+          place_id?: string | null
           recommendation_id?: string
           recommender_id?: string
           referral_link_id?: string
+          reported_by?: string | null
           request_id?: string
           requester_id?: string
+          restaurant_name?: string
           user_agent?: string | null
         }
         Relationships: [
