@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Zap, Calendar } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
@@ -27,6 +27,7 @@ const RequestFood = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeolocating, setIsGeolocating] = useState(false);
   
   const [formData, setFormData] = useState({
     foodType: '',
@@ -34,8 +35,65 @@ const RequestFood = () => {
     locationState: '',
     locationAddress: '',
     additionalNotes: '',
-    responseWindow: 120 // Default: Extended (2 hours)
+    responseWindow: 120, // Default: Extended (2 hours)
+    lat: null as number | null,
+    lng: null as number | null
   });
+
+  // Get user's current location
+  const getCurrentLocation = async () => {
+    setIsGeolocating(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      console.log('📍 GPS location captured:', { lat: latitude, lng: longitude });
+      
+      setFormData(prev => ({
+        ...prev,
+        lat: latitude,
+        lng: longitude
+      }));
+
+      toast({
+        title: "Location captured",
+        description: "Using your current location for precise matching",
+      });
+    } catch (error) {
+      console.error('GPS error:', error);
+      toast({
+        title: "Location access denied",
+        description: "We'll use city-level matching instead",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeolocating(false);
+    }
+  };
+
+  // Geocode the address to get coordinates
+  const geocodeAddress = async (city: string, state: string, address?: string) => {
+    try {
+      console.log('🗺️ Geocoding address:', { city, state, address });
+      const { data, error } = await supabase.functions.invoke('geocode', {
+        body: { city, state, address }
+      });
+
+      if (error) throw error;
+
+      console.log('✅ Geocoding successful:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Geocoding failed:', error);
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +102,27 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
+      let lat = formData.lat;
+      let lng = formData.lng;
+
+      // If we don't have GPS coordinates, try to geocode the address
+      if (!lat || !lng) {
+        console.log('🗺️ No GPS coordinates, attempting geocoding...');
+        const geocodeResult = await geocodeAddress(
+          formData.locationCity,
+          formData.locationState,
+          formData.locationAddress
+        );
+
+        if (geocodeResult) {
+          lat = geocodeResult.lat;
+          lng = geocodeResult.lng;
+          console.log('✅ Using geocoded coordinates:', { lat, lng });
+        } else {
+          console.log('⚠️ Geocoding failed, proceeding without coordinates');
+        }
+      }
+
       const { data, error } = await supabase
         .from('food_requests')
         .insert({
@@ -53,12 +132,20 @@ const RequestFood = () => {
           location_state: formData.locationState,
           location_address: formData.locationAddress || null,
           additional_notes: formData.additionalNotes || null,
-          response_window: formData.responseWindow
+          response_window: formData.responseWindow,
+          location_lat: lat,
+          location_lng: lng
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      console.log('✅ Request created with coordinates:', {
+        id: data.id,
+        lat: data.location_lat,
+        lng: data.location_lng
+      });
 
       // Notify users in the area about the new request
       try {
@@ -73,7 +160,9 @@ const RequestFood = () => {
 
       toast({
         title: "Request created!",
-        description: "Your food request has been posted. Locals will start sending recommendations soon.",
+        description: lat && lng 
+          ? "Your food request has been posted with precise location matching."
+          : "Your food request has been posted with city-level matching.",
       });
       
       navigate('/');
@@ -156,14 +245,42 @@ const RequestFood = () => {
                 </div>
               </div>
               
-              <div>
-                <Label htmlFor="locationAddress">Specific area (optional)</Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="locationAddress">Specific area (optional)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={getCurrentLocation}
+                    disabled={isGeolocating}
+                    className="text-sm"
+                  >
+                    {isGeolocating ? (
+                      <>
+                        <MapPin className="h-4 w-4 mr-2 animate-pulse" />
+                        Getting location...
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="h-4 w-4 mr-2" />
+                        Use my location
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Input
                   id="locationAddress"
                   placeholder="Neighborhood, street, or specific area"
                   value={formData.locationAddress}
                   onChange={(e) => handleChange('locationAddress', e.target.value)}
                 />
+                {formData.lat && formData.lng && (
+                  <div className="text-sm text-green-600 flex items-center">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    GPS location captured for precise matching
+                  </div>
+                )}
               </div>
               
               <div>

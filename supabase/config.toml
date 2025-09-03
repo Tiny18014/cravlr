@@ -52,6 +52,9 @@ verify_jwt = false
 [functions.request-accept-ignore]
 verify_jwt = false
 
+[functions.geocode]
+verify_jwt = false
+
 [realtime]
 enabled = true
 port = 54323

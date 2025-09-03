@@ -1,7 +1,32 @@
--- Test SQL to manually insert a food request and verify real-time notifications
--- Run this in the SQL Editor to test if the second account sees the card instantly
+-- Test SQL to manually insert food requests and verify real-time notifications
+-- Run these in the SQL Editor to test if the second account sees the cards instantly
 
--- Test 1: Quick request (5 minutes) near Concord, NC
+-- Test 1: City-only request (no coordinates) - should now appear with hotfix
+INSERT INTO public.food_requests (
+  id,
+  requester_id, 
+  food_type,
+  location_city,
+  location_state,
+  additional_notes,
+  response_window,
+  status,
+  created_at,
+  expires_at
+) VALUES (
+  gen_random_uuid(),
+  (SELECT id FROM auth.users LIMIT 1), -- Use any existing user ID
+  'Indian Curry',
+  'Concord',
+  'North Carolina', 
+  'City-level test - should appear with hotfix!',
+  5, -- 5 minute quick request
+  'active',
+  now(),
+  now() + interval '5 minutes'
+);
+
+-- Test 2: Quick request WITH GPS coordinates
 INSERT INTO public.food_requests (
   id,
   requester_id, 
@@ -18,21 +43,21 @@ INSERT INTO public.food_requests (
   expires_at
 ) VALUES (
   gen_random_uuid(),
-  (SELECT id FROM auth.users LIMIT 1), -- Use any existing user ID
-  'Sushi',
+  (SELECT id FROM auth.users LIMIT 1),
+  'Fresh Sushi',
   35.4087,   -- Concord, NC coordinates
   -80.5792,
   'Concord',
   'North Carolina', 
   'Downtown area',
-  'Looking for fresh sushi for lunch!',
-  5, -- 5 minute quick request
+  'GPS-level test with vibration!',
+  5, -- 5 minute quick request (should vibrate)
   'active',
   now(),
   now() + interval '5 minutes'
 );
 
--- Test 2: Soon request (30 minutes) 
+-- Test 3: Soon request (30 minutes) with coordinates
 INSERT INTO public.food_requests (
   id,
   requester_id,
@@ -49,19 +74,19 @@ INSERT INTO public.food_requests (
 ) VALUES (
   gen_random_uuid(),
   (SELECT id FROM auth.users LIMIT 1),
-  'Italian',
+  'Italian Pasta',
   35.4000,   -- Slightly different coordinates within 15km
   -80.5500,
   'Concord',
   'North Carolina',
-  'Celebrating anniversary tonight!',
+  'Anniversary dinner tonight!',
   30, -- 30 minute soon request
   'active',
   now(),
   now() + interval '30 minutes'
 );
 
--- Test 3: Extended request (2 hours)
+-- Test 4: Extended request (2 hours) with coordinates
 INSERT INTO public.food_requests (
   id, 
   requester_id,
@@ -77,7 +102,7 @@ INSERT INTO public.food_requests (
 ) VALUES (
   gen_random_uuid(),
   (SELECT id FROM auth.users LIMIT 1),
-  'BBQ',
+  'BBQ Ribs',
   35.4200,
   -80.5600,
   'Concord',
@@ -88,17 +113,19 @@ INSERT INTO public.food_requests (
   now() + interval '2 hours'
 );
 
--- Verify the insertions worked
+-- Verify the insertions worked and show the exact data being sent via realtime
 SELECT 
   id,
   food_type,
   location_lat,
   location_lng,
   location_city,
+  location_state,
+  additional_notes,
   response_window,
   status,
   created_at,
   expires_at
 FROM public.food_requests 
-WHERE created_at > now() - interval '1 minute'
+WHERE created_at > now() - interval '2 minutes'
 ORDER BY created_at DESC;

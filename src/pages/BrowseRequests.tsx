@@ -320,65 +320,79 @@ const BrowseRequests = () => {
         (payload) => {
           console.log('🆕 === INSERT EVENT RECEIVED ===');
           console.log('Full payload:', JSON.stringify(payload, null, 2));
-          console.log('payload.new:', JSON.stringify(payload.new, null, 2));
           
-          const newRequest = payload.new as any;
-          console.log('newRequest object:', newRequest);
-          console.log('newRequest.id:', newRequest.id);
-          console.log('newRequest.location_lat:', newRequest.location_lat, typeof newRequest.location_lat);
-          console.log('newRequest.location_lng:', newRequest.location_lng, typeof newRequest.location_lng);
-          console.log('newRequest.status:', newRequest.status);
-          console.log('Current user coordinates:', coords);
+          const r = payload.new as any;
+          console.log('Request ID:', r.id);
+          console.log('Food type:', r.food_type);
+          console.log('Status:', r.status);
+          console.log('City/State:', r.location_city, r.location_state);
+          console.log('Raw coordinates:', r.location_lat, r.location_lng);
           
-          // Check distance if coordinates exist
-          if (newRequest.location_lat && newRequest.location_lng) {
-            const lat = Number(newRequest.location_lat);
-            const lng = Number(newRequest.location_lng);
-            
-            console.log('Parsed coordinates - lat:', lat, 'lng:', lng);
-            console.log('Are coordinates finite?', Number.isFinite(lat), Number.isFinite(lng));
-            
-            if (Number.isFinite(lat) && Number.isFinite(lng)) {
-              const distance = kmBetween(coords, { lat, lng });
-              console.log(`📍 Distance: ${distance.toFixed(2)}km`);
-              if (distance > 15) {
-                console.log('❌ Outside radius, ignoring');
-                return;
-              }
-            }
+          // Robust coordinate handling
+          const lat = r.location_lat != null ? Number(r.location_lat) : NaN;
+          const lng = r.location_lng != null ? Number(r.location_lng) : NaN;
+          console.log('Parsed coordinates:', { lat, lng });
+          console.log('Are coordinates finite?', Number.isFinite(lat), Number.isFinite(lng));
+          
+          // Normalize helper for city/state matching
+          const norm = (s?: string) => (s ?? "").toLowerCase().replace(/\s+/g, "");
+          
+          let inRange = false;
+          let precision = "city";
+          let distance = null;
+          
+          if (Number.isFinite(lat) && Number.isFinite(lng) && coords) {
+            // GPS-based filtering
+            distance = kmBetween(coords, { lat, lng });
+            console.log(`📍 GPS Distance: ${distance.toFixed(2)}km`);
+            inRange = distance <= 15;
+            precision = "gps";
           } else {
-            console.log('⚠️ No coordinates found, showing anyway');
-            console.log('Lat check:', newRequest.location_lat, 'is truthy?', !!newRequest.location_lat);
-            console.log('Lng check:', newRequest.location_lng, 'is truthy?', !!newRequest.location_lng);
+            // Fallback to city/state matching or show all for now
+            console.log('⚠️ No GPS coordinates - using city fallback');
+            // For now, show all city-level requests to test real-time
+            inRange = true; // TODO: implement city/state matching with user profile
+            precision = "city";
+          }
+          
+          console.log('In range?', inRange, 'Precision:', precision);
+          
+          if (!inRange) {
+            console.log('❌ Outside range, ignoring');
+            return;
           }
 
           const requestWithProfile: FoodRequest = {
-            ...newRequest,
-            recommendation_count: 0,
+            ...r,
+            recommendation_count: r.recommendation_count ?? 0,
             user_has_recommended: false,
             user_state: null,
-            urgency: getUrgencyFromResponseWindow(newRequest.response_window),
+            urgency: getUrgencyFromResponseWindow(r.response_window),
+            distance_km: distance,
             profiles: { display_name: 'New User', email: '' }
           };
 
           console.log('✅ Adding new request to state:', requestWithProfile.id);
-          console.log('Request object being added:', requestWithProfile);
           setRequests(prev => {
-            console.log('Previous requests count:', Object.keys(prev).length);
-            const updated = { ...prev, [newRequest.id]: requestWithProfile };
+            const updated = { ...prev, [r.id]: requestWithProfile };
             console.log('Updated requests count:', Object.keys(updated).length);
             return updated;
           });
 
           // Vibrate for urgent requests
-          if (newRequest.response_window <= 5 && 'vibrate' in navigator) {
+          if (r.response_window <= 5 && 'vibrate' in navigator) {
             navigator.vibrate([100, 50, 100]);
             console.log('📳 Vibration triggered for urgent request');
           }
 
+          // Enhanced toast with precision info
+          const locationInfo = precision === "gps" 
+            ? `${distance?.toFixed(1)}km away`
+            : `${r.location_city}, ${r.location_state}`;
+
           toast({
             title: "🍽️ New food request nearby!",
-            description: `Someone wants ${newRequest.food_type} recommendations`,
+            description: `${r.food_type} • ${locationInfo}`,
           });
           
           console.log('🆕 === INSERT EVENT PROCESSING COMPLETE ===');
