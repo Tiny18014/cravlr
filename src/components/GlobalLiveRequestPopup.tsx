@@ -73,30 +73,27 @@ export default function GlobalLiveRequestPopup() {
   const handleAccept = async (id: string) => {
     console.log("🎯 handleAccept called with:", { id, activeType: active?.type, currentPath: location.pathname });
     
+    // Close popup immediately and prevent any queued pings
+    setActive(null);
+    queueRef.current = []; // Clear queue to prevent popup from reappearing
+    
     // Handle differently based on notification type
     if (active?.type === "recommendation") {
       console.log("🎯 Handling recommendation notification");
       
-      // Close popup first
-      setActive(null);
-      
-      // Use a timeout to ensure popup is closed before navigation
-      setTimeout(() => {
-        if (location.pathname === '/dashboard') {
-          console.log("🎯 Already on dashboard, reloading page");
-          // Force a full page reload to refresh everything
-          window.location.reload();
-        } else {
-          console.log("🎯 Not on dashboard, navigating");
-          navigate('/dashboard?tab=received');
-        }
-      }, 100);
+      if (location.pathname === '/dashboard') {
+        console.log("🎯 Already on dashboard, reloading page");
+        // Force a full page reload to refresh everything
+        window.location.reload();
+      } else {
+        console.log("🎯 Not on dashboard, navigating");
+        navigate('/dashboard?tab=received');
+      }
       
     } else {
       console.log("🎯 Handling request notification - accepting request");
       // For requests, use the existing accept flow
       try {
-        setActive(null); // Close popup immediately
         await acceptRequest(id);
         navigate(`/recommend/${id}`);
       } catch (error) {
