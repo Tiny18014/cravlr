@@ -11,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useEventSource } from '@/hooks/useEventSource';
+
 import { ArrowLeft, MapPin, Clock, Send, Check, ChevronsUpDown, Star, ExternalLink, Phone, Wifi, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -256,122 +256,158 @@ const BrowseRequests = () => {
     }
   }, [coords, user, requests]);
 
-  // Real-time SSE stream URL
-  const streamUrl = useMemo(() => {
-    if (!coords || !user) return "";
+  // Distance calculation helper
+  const kmBetween = (a: {lat: number, lng: number}, b: {lat: number, lng: number}) => {
+    const R = 6371; // Earth's radius in km
+    const toRad = (deg: number) => deg * Math.PI / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const a_calc = Math.sin(dLat/2) * Math.sin(dLat/2) + 
+                   Math.sin(dLng/2) * Math.sin(dLng/2) * Math.cos(lat1) * Math.cos(lat2);
+    const c = 2 * Math.atan2(Math.sqrt(a_calc), Math.sqrt(1-a_calc));
+    return R * c;
+  };
 
-    const params = new URLSearchParams({
-      userId: user.id,
-      lat: String(coords.lat),
-      lng: String(coords.lng),
-      radiusKm: "15"
-    });
-    
-    return `https://edazolwepxbdeniluamf.supabase.co/functions/v1/realtime-requests?${params}`;
-  }, [coords, user]);
+  // Set up Supabase Realtime subscription
+  useEffect(() => {
+    if (!coords || !user) return;
 
-  // Handle real-time events
-  const handleRealtimeEvent = useCallback((event: LiveEvent) => {
-    console.log('Received real-time event:', event);
-    
-    switch (event.type) {
-      case "hello":
-        console.log('Connected to real-time stream');
-        break;
-        
-      case "heartbeat":
-        // Sync clock for accurate countdowns
-        const serverTime = new Date(event.serverTime).getTime();
-        const clientTime = Date.now();
-        setClockSkew(serverTime - clientTime);
-        break;
-        
-      case "request.created": {
-        const payload = event.payload;
-        const newRequest: FoodRequest = {
-          id: event.requestId,
-          food_type: payload.cuisine,
-          location_city: payload.area.split(',')[0]?.trim() || '',
-          location_state: payload.area.split(',')[1]?.trim() || '',
-          created_at: payload.createdAt,
-          expires_at: payload.expiresAt,
-          response_window: payload.responseWindow,
-          status: 'active',
-          recommendation_count: payload.count,
-          user_has_recommended: false,
-          urgency: payload.urgency,
-          lat: payload.lat,
-          lng: payload.lng,
-          profiles: {
-            display_name: 'Anonymous',
-            email: ''
+    console.log('🔴 Setting up Supabase Realtime subscription...');
+
+    const channel = supabase
+      .channel('food-requests-live')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'food_requests' 
+        },
+        async (payload) => {
+          console.log('🆕 New request detected:', payload);
+          const newRequest = payload.new as any;
+          
+          // Check if request is within radius
+          if (newRequest.location_lat && newRequest.location_lng) {
+            const distance = kmBetween(coords, {
+              lat: parseFloat(newRequest.location_lat),
+              lng: parseFloat(newRequest.location_lng)
+            });
+            if (distance > 15) return; // Outside radius
           }
-        };
-        
-        setRequests(prev => ({ ...prev, [event.requestId]: newRequest }));
-        
-        // Play sound/vibration for urgent requests
-        if (payload.urgency === 'quick') {
-          // Optional: play notification sound
-          if ('vibrate' in navigator) {
+
+          // Fetch profile data for the new request
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('display_name, email')
+            .eq('user_id', newRequest.requester_id)
+            .single();
+
+          const requestWithProfile: FoodRequest = {
+            ...newRequest,
+            recommendation_count: 0,
+            user_has_recommended: false,
+            urgency: getUrgencyFromResponseWindow(newRequest.response_window),
+            profiles: profileData || { display_name: 'Anonymous', email: '' }
+          };
+
+          setRequests(prev => ({ ...prev, [newRequest.id]: requestWithProfile }));
+
+          // Vibrate for urgent requests
+          if (newRequest.response_window <= 5 && 'vibrate' in navigator) {
             navigator.vibrate([100, 50, 100]);
           }
-        }
-        break;
-      }
-      
-      case "request.updated": {
-        const payload = event.payload;
-        setRequests(prev => {
-          const existing = prev[event.requestId];
-          if (!existing) return prev;
-          
-          return {
-            ...prev,
-            [event.requestId]: { ...existing, ...payload }
-          };
-        });
-        break;
-      }
-      
-      case "recommendation.created": {
-        setRequests(prev => {
-          const existing = prev[event.requestId];
-          if (!existing) return prev;
-          
-          return {
-            ...prev,
-            [event.requestId]: { 
-              ...existing, 
-              recommendation_count: event.payload.count 
-            }
-          };
-        });
-        break;
-      }
-      
-      case "request.closed": {
-        setRequests(prev => {
-          const next = { ...prev };
-          delete next[event.requestId];
-          return next;
-        });
-        break;
-      }
-    }
-  }, []);
 
-  // Set up real-time connection with improved polling
-  const { connected, usingFallback } = useEventSource(
-    "", // Disable SSE for now, use polling only
-    {
-      onEvent: handleRealtimeEvent,
-      onError: (error) => {
-        console.error('Connection error:', error);
-      },
-      fallbackPoll: pollForUpdates
-    }
-  );
+          toast({
+            title: "🍽️ New food request nearby!",
+            description: `Someone wants ${newRequest.food_type} recommendations`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'food_requests' 
+        },
+        (payload) => {
+          console.log('📝 Request updated:', payload);
+          const updated = payload.new as any;
+          
+          setRequests(prev => {
+            const existing = prev[updated.id];
+            if (!existing) return prev;
+
+            // If status changed to closed, remove from list
+            if (updated.status === 'closed') {
+              const next = { ...prev };
+              delete next[updated.id];
+              return next;
+            }
+
+            return {
+              ...prev,
+              [updated.id]: { ...existing, ...updated }
+            };
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'recommendations' 
+        },
+        async (payload) => {
+          console.log('🎯 New recommendation:', payload);
+          const newRec = payload.new as any;
+          
+          // Update the recommendation count for the request
+          const { count } = await supabase
+            .from('recommendations')
+            .select('*', { count: 'exact', head: true })
+            .eq('request_id', newRec.request_id);
+
+          setRequests(prev => {
+            const existing = prev[newRec.request_id];
+            if (!existing) return prev;
+
+            return {
+              ...prev,
+              [newRec.request_id]: { 
+                ...existing, 
+                recommendation_count: count || 0,
+                user_has_recommended: newRec.recommender_id === user.id ? true : existing.user_has_recommended
+              }
+            };
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔴 Realtime subscription status:', status);
+      });
+
+    return () => {
+      console.log('🔴 Cleaning up Realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [coords, user]);
+
+  // Fallback polling (reduced frequency since we have realtime)
+  useEffect(() => {
+    if (!coords || !user) return;
+    
+    const interval = setInterval(() => {
+      console.log('🔄 Fallback polling for missed updates...');
+      pollForUpdates();
+    }, 30000); // Poll every 30 seconds as fallback
+
+    return () => clearInterval(interval);
+  }, [coords, user, pollForUpdates]);
 
   // Auto-remove expired requests every second
   useEffect(() => {
@@ -612,17 +648,8 @@ const BrowseRequests = () => {
           </Button>
           <h1 className="text-2xl font-bold">Nearby Requests</h1>
           <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
-            {connected ? (
-              <>
-                <Wifi className="h-4 w-4 text-green-500" />
-                {usingFallback ? "Live polling (5s)" : "Live updates"}
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-4 w-4 text-orange-500" />
-                Connecting...
-              </>
-            )}
+            <Wifi className="h-4 w-4 text-green-500" />
+            Live updates
           </div>
         </div>
       </header>
@@ -649,9 +676,9 @@ const BrowseRequests = () => {
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground">No active food requests found nearby.</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {connected ? "Checking for new requests every 5 seconds..." : "Connection issues - trying to reconnect"}
-                  </p>
+                   <p className="text-xs text-muted-foreground mt-2">
+                     Live updates enabled - new requests will appear instantly
+                   </p>
                 </CardContent>
               </Card>
             )}
