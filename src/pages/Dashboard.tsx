@@ -202,6 +202,11 @@ const Dashboard = () => {
     );
   }
 
+  const activeRequests = myRequests.filter(req => req.status === 'active');
+  const expiredRequests = myRequests.filter(req => req.status === 'expired' || req.status === 'closed');
+  const recentRequests = myRequests.slice(0, 3); // Show only last 3 requests
+  const totalRecommendationsReceived = receivedRecommendations.length;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -214,31 +219,56 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Points Header */}
-        <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border">
-          <h2 className="text-2xl font-bold mb-2">Your Points</h2>
-          <div className="flex gap-6">
-            <div>
-              <p className="text-3xl font-bold text-primary">{userPoints.total}</p>
-              <p className="text-sm text-muted-foreground">Total Points</p>
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">{userPoints.thisMonth}</p>
-              <p className="text-sm text-muted-foreground">This Month</p>
-            </div>
-          </div>
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Points & Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
+            <CardContent className="p-6 text-center">
+              <div className="text-3xl font-bold text-primary mb-1">{userPoints.total}</div>
+              <div className="text-sm text-muted-foreground">Total Points</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="text-2xl font-bold text-green-600 mb-1">{activeRequests.length}</div>
+              <div className="text-sm text-muted-foreground">Active Requests</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="text-2xl font-bold text-gray-500 mb-1">{expiredRequests.length}</div>
+              <div className="text-sm text-muted-foreground">Expired Requests</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="text-2xl font-bold text-blue-600 mb-1">{totalRecommendationsReceived}</div>
+              <div className="text-sm text-muted-foreground">Recommendations Received</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex gap-4">
+          <Button onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
+            Request Food
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/browse-requests')} className="flex-1 md:flex-none">
+            Browse Requests
+          </Button>
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="requests">My Requests ({myRequests.length})</TabsTrigger>
-            <TabsTrigger value="given">Given Recommendations ({myRecommendations.length})</TabsTrigger>
-            <TabsTrigger value="received">Received Recommendations ({receivedRecommendations.length})</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="requests">Recent Requests</TabsTrigger>
+            <TabsTrigger value="received">Recent Recommendations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
-            {myRequests.length === 0 ? (
+            {recentRequests.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground mb-4">You haven't made any food requests yet.</p>
@@ -248,103 +278,65 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              myRequests.map((request) => (
-                <Card key={request.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{request.food_type}</CardTitle>
-                      <Badge className={getStatusColor(request.status)}>
-                        {request.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
+              <>
+                {recentRequests.map((request) => (
+                  <Card key={request.id}>
+                    <CardHeader>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          {request.location_city}, {request.location_state}
-                          {request.location_address && ` - ${request.location_address}`}
-                        </div>
-                        <Badge variant="outline">
-                          {request.recommendation_count || 0} recommendations
+                        <CardTitle className="text-lg">{request.food_type}</CardTitle>
+                        <Badge className={getStatusColor(request.status)}>
+                          {request.status}
                         </Badge>
                       </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Created {formatDate(request.created_at)} • Expires {formatDate(request.expires_at)}
-                      </div>
-                      {request.additional_notes && (
-                        <p className="text-sm mt-2">{request.additional_notes}</p>
-                      )}
-                      {(request.recommendation_count || 0) > 0 && (
-                        <div className="mt-3 pt-3 border-t">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => navigate(`/request/${request.id}/results`)}
-                          >
-                            View {request.recommendation_count} recommendation{request.recommendation_count !== 1 ? 's' : ''}
-                          </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            {request.location_city}, {request.location_state}
+                            {request.location_address && ` - ${request.location_address}`}
+                          </div>
+                          <Badge variant="outline">
+                            {request.recommendation_count || 0} recommendations
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="given" className="space-y-4">
-            {myRecommendations.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">You haven't given any recommendations yet.</p>
-                  <Button onClick={() => navigate('/browse-requests')}>
-                    Browse Requests
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              myRecommendations.filter(rec => rec && rec.food_requests).map((rec) => (
-                <Card key={rec.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{rec.restaurant_name}</CardTitle>
-                      <div className="flex items-center">
-                        {rec.awarded_points > 0 ? (
-                          <Badge variant="secondary">{rec.awarded_points} pts</Badge>
-                        ) : (
-                          <Badge variant="outline">Pending</Badge>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Created {formatDate(request.created_at)} • Expires {formatDate(request.expires_at)}
+                        </div>
+                        {request.additional_notes && (
+                          <p className="text-sm mt-2">{request.additional_notes}</p>
+                        )}
+                        {(request.recommendation_count || 0) > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/request/${request.id}/results`)}
+                            >
+                              View {request.recommendation_count} recommendation{request.recommendation_count !== 1 ? 's' : ''}
+                            </Button>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        For: {rec.food_requests?.food_type} in {rec.food_requests?.location_city}, {rec.food_requests?.location_state}
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {myRequests.length > 3 && (
+                  <Card>
+                    <CardContent className="text-center py-4">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Showing 3 of {myRequests.length} requests
                       </p>
-                      {rec.restaurant_address && (
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          {rec.restaurant_address}
-                        </div>
-                      )}
-                      {rec.restaurant_phone && (
-                        <p className="text-sm text-muted-foreground">📞 {rec.restaurant_phone}</p>
-                      )}
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4 mr-2" />
-                        {formatDate(rec.created_at)}
-                      </div>
-                      {rec.notes && (
-                        <p className="text-sm mt-2">{rec.notes}</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                      <Button variant="outline" size="sm">
+                        View All Requests
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
           </TabsContent>
 
@@ -359,7 +351,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              receivedRecommendations.filter(rec => rec && rec.food_requests).map((rec) => (
+              receivedRecommendations.slice(0, 5).filter(rec => rec && rec.food_requests).map((rec) => (
                 <Card key={rec.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
