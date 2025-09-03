@@ -360,7 +360,7 @@ const Dashboard = () => {
                     <div className="space-y-2">
                       <div className="flex items-center text-sm text-muted-foreground">
                         <User className="h-4 w-4 mr-2" />
-                        Recommended by {rec.profiles.display_name || 'Anonymous'}
+                        Recommended by {rec.profiles?.display_name || 'Anonymous'}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         For your: {rec.food_requests.food_type} request
