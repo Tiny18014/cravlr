@@ -306,7 +306,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              myRecommendations.map((rec) => (
+              myRecommendations.filter(rec => rec && rec.food_requests).map((rec) => (
                 <Card key={rec.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -359,7 +359,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              receivedRecommendations.map((rec) => (
+              receivedRecommendations.filter(rec => rec && rec.food_requests).map((rec) => (
                 <Card key={rec.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
