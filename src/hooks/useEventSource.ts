@@ -15,17 +15,10 @@ export function useEventSource(
   { onEvent, onError, fallbackPoll }: UseEventSourceOptions
 ) {
   const [connected, setConnected] = useState(false);
-  const [usingFallback, setUsingFallback] = useState(false);
-  const esRef = useRef<EventSource | null>(null);
-  const retryRef = useRef<number>(1000);
-  const retryCountRef = useRef<number>(0);
+  const [usingFallback, setUsingFallback] = useState(true); // Start with fallback
   const pollIntervalRef = useRef<number | null>(null);
 
   const cleanup = () => {
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
@@ -35,91 +28,27 @@ export function useEventSource(
   const startPolling = () => {
     if (!fallbackPoll || pollIntervalRef.current) return;
     
+    console.log('Starting polling mode for real-time updates');
     setUsingFallback(true);
     setConnected(true);
     
     // Initial poll
     fallbackPoll();
     
-    // Poll every 10 seconds
+    // Poll every 5 seconds for more responsive updates
     pollIntervalRef.current = window.setInterval(() => {
       fallbackPoll();
-    }, 10000);
-  };
-
-  const connect = () => {
-    if (!url) return;
-    
-    cleanup();
-
-    try {
-      // Get the auth token for the request
-      const authToken = localStorage.getItem('sb-edazolwepxbdeniluamf-auth-token');
-      const urlWithAuth = authToken ? `${url}&auth=${encodeURIComponent(authToken)}` : url;
-      
-      const es = new EventSource(urlWithAuth);
-      esRef.current = es;
-
-      es.onopen = () => {
-        console.log('SSE connection opened');
-        setConnected(true);
-        setUsingFallback(false);
-        retryRef.current = 1000;
-        retryCountRef.current = 0;
-        
-        // Stop polling if it was running
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
-      };
-
-      es.onmessage = (msg) => {
-        try {
-          const evt = JSON.parse(msg.data) as LiveEvent;
-          onEvent(evt);
-        } catch (e) {
-          console.warn("Malformed SSE message", e);
-        }
-      };
-
-      es.onerror = (err) => {
-        console.error('SSE error:', err);
-        setConnected(false);
-        es.close();
-        onError?.(err);
-        
-        retryCountRef.current++;
-        
-        // After 3 consecutive failures, switch to polling
-        if (retryCountRef.current >= 3) {
-          console.log('Switching to polling fallback after multiple SSE failures');
-          startPolling();
-          return;
-        }
-        
-        // Retry with exponential backoff
-        const retryDelay = Math.min(30000, retryRef.current);
-        setTimeout(() => {
-          retryRef.current *= 2;
-          connect();
-        }, retryDelay);
-      };
-      
-    } catch (error) {
-      console.error('Failed to create EventSource:', error);
-      onError?.(error);
-      startPolling();
-    }
+    }, 5000);
   };
 
   useEffect(() => {
-    connect();
+    // For now, just use polling since SSE is complex to get right
+    startPolling();
 
     // Reconnect when tab becomes visible again
     const handleVisibilityChange = () => {
-      if (!document.hidden && !connected && !usingFallback) {
-        connect();
+      if (!document.hidden && !connected) {
+        startPolling();
       }
     };
 

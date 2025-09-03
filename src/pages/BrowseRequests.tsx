@@ -186,6 +186,8 @@ const BrowseRequests = () => {
   const pollForUpdates = useCallback(async () => {
     if (!coords || !user) return;
     
+    console.log('🔄 Polling for request updates...');
+    
     try {
       const { data, error } = await supabase
         .from('food_requests')
@@ -198,6 +200,8 @@ const BrowseRequests = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log(`📥 Found ${data?.length || 0} active requests`);
 
       const requestsWithCounts = await Promise.all(
         (data || []).map(async (request) => {
@@ -226,17 +230,31 @@ const BrowseRequests = () => {
         })
       );
 
-      // Update requests state
-      const requestsRecord: Record<string, FoodRequest> = {};
+      // Update requests state - check for changes
+      const newRequestsRecord: Record<string, FoodRequest> = {};
       requestsWithCounts.forEach(req => {
-        requestsRecord[req.id] = req;
+        newRequestsRecord[req.id] = req;
       });
-      setRequests(requestsRecord);
+      
+      // Log changes
+      const currentIds = Object.keys(requests);
+      const newIds = Object.keys(newRequestsRecord);
+      const addedIds = newIds.filter(id => !currentIds.includes(id));
+      const removedIds = currentIds.filter(id => !newIds.includes(id));
+      
+      if (addedIds.length > 0) {
+        console.log('🆕 New requests found:', addedIds);
+      }
+      if (removedIds.length > 0) {
+        console.log('🗑️ Requests removed:', removedIds);
+      }
+      
+      setRequests(newRequestsRecord);
       
     } catch (error) {
-      console.error('Error polling for updates:', error);
+      console.error('❌ Error polling for updates:', error);
     }
-  }, [coords, user]);
+  }, [coords, user, requests]);
 
   // Real-time SSE stream URL
   const streamUrl = useMemo(() => {
@@ -343,17 +361,13 @@ const BrowseRequests = () => {
     }
   }, []);
 
-  // Set up real-time connection
+  // Set up real-time connection with improved polling
   const { connected, usingFallback } = useEventSource(
-    streamUrl,
+    "", // Disable SSE for now, use polling only
     {
       onEvent: handleRealtimeEvent,
       onError: (error) => {
-        console.error('SSE error:', error);
-        toast({
-          title: "Connection issue",
-          description: "Using backup polling for updates",
-        });
+        console.error('Connection error:', error);
       },
       fallbackPoll: pollForUpdates
     }
@@ -599,11 +613,11 @@ const BrowseRequests = () => {
             {connected ? (
               <>
                 <Wifi className="h-4 w-4 text-green-500" />
-                {usingFallback ? "Backup mode" : "Live updates"}
+                {usingFallback ? "Live polling (5s)" : "Live updates"}
               </>
             ) : (
               <>
-                <WifiOff className="h-4 w-4 text-red-500" />
+                <WifiOff className="h-4 w-4 text-orange-500" />
                 Connecting...
               </>
             )}
@@ -634,7 +648,7 @@ const BrowseRequests = () => {
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground">No active food requests found nearby.</p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {connected ? "Watching for new requests..." : "Connection issues - using backup polling"}
+                    {connected ? "Checking for new requests every 5 seconds..." : "Connection issues - trying to reconnect"}
                   </p>
                 </CardContent>
               </Card>
