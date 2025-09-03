@@ -125,8 +125,10 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         .subscribe((status) => {
           console.log("🌍 Global channel status:", status);
           
-          if (status === 'CHANNEL_ERROR') {
-            console.log("🌍 Channel error, reconnecting in 2s...");
+          if (status === 'SUBSCRIBED') {
+            console.log("🌍 ✅ Notification subscription is now ACTIVE and listening for recommendations");
+          } else if (status === 'CHANNEL_ERROR') {
+            console.log("🌍 ❌ Channel error, reconnecting in 2s...");
             reconnectTimeoutRef.current = setTimeout(() => {
               cleanup();
               setupChannel();

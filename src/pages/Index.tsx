@@ -146,12 +146,14 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Debug components for all pages */}
+      {/* Debug components temporarily disabled to fix notification conflicts */}
+      {/* 
       <div className="fixed bottom-4 right-4 space-y-2">
         <DebugRealtime user={user} />
         <DebugDBRealtime user={user} />
         <MobileDebugConsole />
       </div>
+      */}
     </div>
   );
 };
