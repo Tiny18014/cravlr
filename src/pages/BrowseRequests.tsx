@@ -318,13 +318,25 @@ const BrowseRequests = () => {
           table: 'food_requests' 
         },
         (payload) => {
-          console.log('🆕 New request detected:', payload);
+          console.log('🆕 === INSERT EVENT RECEIVED ===');
+          console.log('Full payload:', JSON.stringify(payload, null, 2));
+          console.log('payload.new:', JSON.stringify(payload.new, null, 2));
+          
           const newRequest = payload.new as any;
+          console.log('newRequest object:', newRequest);
+          console.log('newRequest.id:', newRequest.id);
+          console.log('newRequest.location_lat:', newRequest.location_lat, typeof newRequest.location_lat);
+          console.log('newRequest.location_lng:', newRequest.location_lng, typeof newRequest.location_lng);
+          console.log('newRequest.status:', newRequest.status);
+          console.log('Current user coordinates:', coords);
           
           // Check distance if coordinates exist
           if (newRequest.location_lat && newRequest.location_lng) {
             const lat = Number(newRequest.location_lat);
             const lng = Number(newRequest.location_lng);
+            
+            console.log('Parsed coordinates - lat:', lat, 'lng:', lng);
+            console.log('Are coordinates finite?', Number.isFinite(lat), Number.isFinite(lng));
             
             if (Number.isFinite(lat) && Number.isFinite(lng)) {
               const distance = kmBetween(coords, { lat, lng });
@@ -335,29 +347,41 @@ const BrowseRequests = () => {
               }
             }
           } else {
-            console.log('⚠️ No coordinates, showing anyway');
+            console.log('⚠️ No coordinates found, showing anyway');
+            console.log('Lat check:', newRequest.location_lat, 'is truthy?', !!newRequest.location_lat);
+            console.log('Lng check:', newRequest.location_lng, 'is truthy?', !!newRequest.location_lng);
           }
 
           const requestWithProfile: FoodRequest = {
             ...newRequest,
             recommendation_count: 0,
             user_has_recommended: false,
+            user_state: null,
             urgency: getUrgencyFromResponseWindow(newRequest.response_window),
             profiles: { display_name: 'New User', email: '' }
           };
 
           console.log('✅ Adding new request to state:', requestWithProfile.id);
-          setRequests(prev => ({ ...prev, [newRequest.id]: requestWithProfile }));
+          console.log('Request object being added:', requestWithProfile);
+          setRequests(prev => {
+            console.log('Previous requests count:', Object.keys(prev).length);
+            const updated = { ...prev, [newRequest.id]: requestWithProfile };
+            console.log('Updated requests count:', Object.keys(updated).length);
+            return updated;
+          });
 
           // Vibrate for urgent requests
           if (newRequest.response_window <= 5 && 'vibrate' in navigator) {
             navigator.vibrate([100, 50, 100]);
+            console.log('📳 Vibration triggered for urgent request');
           }
 
           toast({
             title: "🍽️ New food request nearby!",
             description: `Someone wants ${newRequest.food_type} recommendations`,
           });
+          
+          console.log('🆕 === INSERT EVENT PROCESSING COMPLETE ===');
         }
       )
       .on(
