@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import GlobalLiveRequestPopup from "@/components/GlobalLiveRequestPopup";
+import TestNotificationButton from "@/components/TestNotificationButton";
 import { OneSignalInit } from "@/components/OneSignalInit";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -29,6 +30,7 @@ const App = () => (
           <OneSignalInit />
           <BrowserRouter>
             <GlobalLiveRequestPopup />
+            <TestNotificationButton />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />

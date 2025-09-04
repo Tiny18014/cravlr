@@ -127,13 +127,17 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log("🌍 Global channel status:", status);
           
           if (status === 'SUBSCRIBED') {
-            console.log("🌍 ✅ Notification subscription is now ACTIVE and listening for recommendations");
+            console.log("🌍 ✅ Notification subscription is now ACTIVE and listening for food requests");
+            console.log("🌍 Current user ID:", user.id);
+            console.log("🌍 Listening for INSERT/UPDATE events on food_requests table");
           } else if (status === 'CHANNEL_ERROR') {
             console.log("🌍 ❌ Channel error, reconnecting in 2s...");
             reconnectTimeoutRef.current = setTimeout(() => {
               cleanup();
               setupChannel();
             }, 2000);
+          } else {
+            console.log("🌍 Channel status changed to:", status);
           }
         });
 
