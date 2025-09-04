@@ -2,7 +2,7 @@ import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus, Search, Bell, ChevronRight, Home, ClipboardList, User } from "lucide-react";
+import { Plus, Search, Bell, Home, ClipboardList, User } from "lucide-react";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -51,7 +51,6 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       <Header onSignOut={onSignOut} />
       <main className="px-4 pb-28 max-w-md mx-auto">
         <HeroCard />
-        <QuickActions />
       </main>
       <BottomNav />
     </div>
@@ -107,45 +106,6 @@ function HeroCard() {
         </div>
       </div>
     </section>
-  );
-}
-
-function QuickActions() {
-  return (
-    <section className="mt-6 grid grid-cols-2 gap-3">
-      <ActionCard
-        title="Request"
-        subtitle="Let locals help"
-        href="/request-food"
-        icon={<Plus className="h-5 w-5" />}
-      />
-      <ActionCard
-        title="Recommend"
-        subtitle="Share a favorite"
-        href="/browse-requests"
-        icon={<Search className="h-5 w-5" />}
-      />
-    </section>
-  );
-}
-
-function ActionCard({ title, subtitle, icon, href }: { title: string; subtitle: string; icon: React.ReactNode; href: string }) {
-  return (
-    <Link
-      to={href}
-      className="group rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border hover:shadow-md transition flex flex-col gap-4"
-    >
-      <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
-        {icon}
-      </div>
-      <div>
-        <h3 className="font-semibold leading-tight">{title}</h3>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-      <div className="mt-auto flex items-center gap-1 text-sm text-muted-foreground">
-        Open <ChevronRight className="h-4 w-4" />
-      </div>
-    </Link>
   );
 }
 
