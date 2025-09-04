@@ -77,6 +77,46 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         )
         .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'recommendations' },
+          (payload) => {
+            console.log("🌍 Global recommendation INSERT:", payload.new);
+            
+            const recommendation = payload.new;
+            
+            // Get the request details to check if this user is the requester
+            supabase
+              .from('food_requests')
+              .select('requester_id, food_type, location_city, location_state')
+              .eq('id', recommendation.request_id)
+              .single()
+              .then(({ data: request, error }) => {
+                if (error || !request) {
+                  console.log("🌍 Error fetching request for recommendation:", error);
+                  return;
+                }
+                
+                // Only show notification if this user is the requester
+                if (request.requester_id === user.id) {
+                  console.log("🌍 New recommendation for user's request, showing notification");
+                  
+                  const ping: LivePing = {
+                    id: recommendation.request_id, // Use request ID for navigation
+                    type: "recommendation",
+                    foodType: request.food_type,
+                    location: `${request.location_city}, ${request.location_state}`,
+                    urgency: "soon",
+                    restaurantName: recommendation.restaurant_name
+                  };
+
+                  console.log("🌍 Setting recommendation ping:", ping);
+                  setNextPing(ping);
+                } else {
+                  console.log("🌍 Recommendation not for this user, skipping notification");
+                }
+              });
+          }
+        )
+        .on('postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'food_requests' },
           (payload) => {
             console.log("🌍 Global request UPDATE:", payload.new);
