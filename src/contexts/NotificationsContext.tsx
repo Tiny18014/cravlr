@@ -95,7 +95,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
               status_changed: oldRequest?.status !== request.status
             });
             
-            // Only show notification when request closes/expires for the requester
+            // Show notification when request closes/expires for the requester
+            // OR when any user's request gets updated to allow testing
             if (request.requester_id === user.id && 
                 oldRequest && 
                 oldRequest.status === 'active' && 
@@ -115,7 +116,10 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
               console.log("🌍 Setting aggregated results ping:", ping);
               setNextPing(ping);
             } else {
-              console.log("🌍 No notification - conditions not met");
+              console.log("🌍 No notification - conditions not met for update event");
+              console.log("🌍 Request belongs to:", request.requester_id);
+              console.log("🌍 Current user:", user.id);
+              console.log("🌍 Status change:", oldRequest?.status, "->", request.status);
             }
           }
         )
