@@ -135,17 +135,13 @@ serve(async (req) => {
     }
 
     if (!recommendations || recommendations.length === 0) {
-      const emptyResponse = endpoint === 'summary' 
-        ? { requestId, totalRecommendations: 0, top: [] }
-        : { 
-            requestId, 
-            status: request.status,
-            expiresAt: request.expires_at,
-            totalRecommendations: 0, 
-            groups: [] 
-          };
-
-      return new Response(JSON.stringify(emptyResponse), {
+      return new Response(JSON.stringify({ 
+        requestId, 
+        status: request.status,
+        expiresAt: request.expires_at,
+        totalRecommendations: 0, 
+        groups: [] 
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -166,11 +162,13 @@ serve(async (req) => {
           firstSubmittedAt: rec.created_at,
           lastSubmittedAt: rec.created_at,
           notes: [],
+          recommenderNames: [], // Track unique recommenders
           // These will be filled from place details if available
           rating: rec.rating,
           priceLevel: rec.price_level,
           photoToken: rec.photo_token,
-          distanceMeters: null
+          distanceMeters: null,
+          reviews: null
         });
       }
 
@@ -178,9 +176,14 @@ serve(async (req) => {
       group.count++;
       group.lastSubmittedAt = rec.created_at;
       
+      // Track unique recommenders
+      const displayName = rec.profiles?.display_name || getDisplayName(rec.profiles?.email || '');
+      if (!group.recommenderNames.includes(displayName)) {
+        group.recommenderNames.push(displayName);
+      }
+      
       // Add note if it exists
       if (rec.notes && rec.notes.trim()) {
-        const displayName = rec.profiles?.display_name || getDisplayName(rec.profiles?.email || '');
         group.notes.push({
           by: displayName,
           text: rec.notes.slice(0, 140) // Trim to 140 chars
@@ -218,40 +221,68 @@ serve(async (req) => {
       }
     }
 
-    // Convert to array and sort
-    const sortedGroups = Array.from(groups.values()).sort((a, b) => {
-      // Sort by count (desc)
-      if (b.count !== a.count) return b.count - a.count;
+    // Enhanced scoring algorithm for better aggregation during time interval
+    console.log('📊 Applying intelligent ranking algorithm...');
+    
+    const scoredGroups = Array.from(groups.values()).map(group => {
+      let score = 0;
       
-      // Then by rating (desc, nulls last)
-      if (a.rating !== b.rating) {
-        if (a.rating === null || a.rating === undefined) return 1;
-        if (b.rating === null || b.rating === undefined) return -1;
-        return b.rating - a.rating;
+      // Base score from recommendation count (heavily weighted)
+      score += group.count * 100;
+      console.log(`🏪 ${group.name}: Base score from ${group.count} recommendations: +${group.count * 100}`);
+      
+      // Boost for high ratings (Google Places data)
+      if (group.rating && group.rating > 3) {
+        const ratingBonus = (group.rating - 3) * 30;
+        score += ratingBonus;
+        console.log(`⭐ ${group.name}: Rating bonus (${group.rating}/5): +${ratingBonus}`);
       }
       
-      // Then by reviews (desc, nulls last)
-      if (a.reviews !== b.reviews) {
-        if (a.reviews === null || a.reviews === undefined) return 1;
-        if (b.reviews === null || b.reviews === undefined) return -1;
-        return b.reviews - a.reviews;
+      // Boost for restaurants with many reviews (indicates popularity)
+      if (group.reviews && group.reviews > 50) {
+        const reviewBonus = Math.min(group.reviews / 100, 20);
+        score += reviewBonus;
+        console.log(`📝 ${group.name}: Review count bonus (${group.reviews} reviews): +${reviewBonus}`);
       }
       
-      // Then by distance (asc, nulls last)
-      if (a.distanceMeters !== b.distanceMeters) {
-        if (a.distanceMeters === null) return 1;
-        if (b.distanceMeters === null) return -1;
-        return a.distanceMeters - b.distanceMeters;
+      // Distance penalty (closer is better)
+      if (group.distanceMeters) {
+        const distanceKm = group.distanceMeters / 1000;
+        const distancePenalty = Math.min(distanceKm * 5, 25);
+        score -= distancePenalty;
+        console.log(`📍 ${group.name}: Distance penalty (${distanceKm.toFixed(1)}km): -${distancePenalty}`);
       }
       
-      // Then by first submitted (asc)
-      if (a.firstSubmittedAt !== b.firstSubmittedAt) {
-        return new Date(a.firstSubmittedAt).getTime() - new Date(b.firstSubmittedAt).getTime();
+      // Diversity bonus (multiple different recommenders)
+      const uniqueRecommenders = group.recommenderNames.length;
+      if (uniqueRecommenders > 1) {
+        const diversityBonus = (uniqueRecommenders - 1) * 15;
+        score += diversityBonus;
+        console.log(`👥 ${group.name}: Diversity bonus (${uniqueRecommenders} unique users): +${diversityBonus}`);
       }
       
-      // Finally alphabetic by name
+      // Notes engagement bonus
+      if (group.notes.length > 0) {
+        const notesBonus = Math.min(group.notes.length * 8, 25);
+        score += notesBonus;
+        console.log(`💬 ${group.name}: Notes engagement bonus (${group.notes.length} notes): +${notesBonus}`);
+      }
+      
+      const finalScore = Math.round(score);
+      console.log(`🎯 ${group.name}: Final aggregated score: ${finalScore}`);
+      
+      return { ...group, aggregatedScore: finalScore };
+    });
+    
+    // Sort by aggregated score (desc), then by name for consistency
+    const sortedGroups = scoredGroups.sort((a, b) => {
+      if (b.aggregatedScore !== a.aggregatedScore) {
+        return b.aggregatedScore - a.aggregatedScore;
+      }
       return a.name.localeCompare(b.name);
     });
+    
+    console.log('🏆 Final ranking order:', sortedGroups.map(g => `${g.name} (${g.aggregatedScore}pts)`));
 
     // Reverse notes to show latest first, limit to 3
     sortedGroups.forEach(group => {
