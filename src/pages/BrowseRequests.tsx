@@ -320,6 +320,12 @@ const BrowseRequests = () => {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          {/* Quick summary */}
+          <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              {loading ? "Loading..." : `${requests.length} active request${requests.length !== 1 ? 's' : ''} available to help with`}
+            </p>
+          </div>
 
           {loading ? (
             <div className="text-center py-8">
