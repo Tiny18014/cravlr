@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
@@ -35,7 +36,7 @@ const RequestFood = () => {
     locationState: '',
     locationAddress: '',
     additionalNotes: '',
-    responseWindow: 120, // Default: Extended (2 hours)
+    responseWindow: 2, // Default: Instant (2 minutes) - most popular
     lat: null as number | null,
     lng: null as number | null
   });
@@ -294,13 +295,23 @@ const RequestFood = () => {
                 />
               </div>
               
-              <div>
+               <div>
                 <Label>How fast do you need recommendations?</Label>
                 <RadioGroup
                   value={formData.responseWindow.toString()}
                   onValueChange={(value) => handleChange('responseWindow', parseInt(value))}
                   className="mt-3"
                 >
+                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-red-500/30 bg-red-500/10">
+                    <RadioGroupItem value="2" id="instant" />
+                    <div className="flex items-center space-x-2">
+                      <Zap className="h-4 w-4 text-red-500" />
+                      <Label htmlFor="instant" className="cursor-pointer">
+                        <span className="font-medium text-red-500">⚡ Instant</span> - 2 minutes
+                      </Label>
+                    </div>
+                    <Badge variant="secondary" className="ml-auto text-xs">Most Popular</Badge>
+                  </div>
                   <div className="flex items-center space-x-3 p-3 rounded-lg border border-destructive/20 bg-destructive/5">
                     <RadioGroupItem value="5" id="quick" />
                     <div className="flex items-center space-x-2">
@@ -324,11 +335,14 @@ const RequestFood = () => {
                     <div className="flex items-center space-x-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <Label htmlFor="extended" className="cursor-pointer">
-                        <span className="font-medium">Extended</span> - 2 hours (default)
+                        <span className="font-medium">Extended</span> - 2 hours
                       </Label>
                     </div>
                   </div>
                 </RadioGroup>
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                  💡 <strong>Tip:</strong> Shorter windows get more urgent responses from nearby locals!
+                </div>
               </div>
               
               <div className="flex gap-4">

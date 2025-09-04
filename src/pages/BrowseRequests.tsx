@@ -359,10 +359,17 @@ const BrowseRequests = () => {
                         </div>
                       </div>
 
-                      {/* Recommendation count and actions */}
+                       {/* Recommendation count and actions */}
                       <div className="flex justify-between items-center pt-2">
-                        <div className="text-sm text-muted-foreground">
-                          {request.recommendation_count}/10 recommendations
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {request.recommendation_count}/10 locals suggested
+                          </Badge>
+                          {request.recommendation_count > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              🔥 {request.recommendation_count} vote{request.recommendation_count !== 1 ? 's' : ''}
+                            </Badge>
+                          )}
                         </div>
                         <ActionRow 
                           request={request} 
