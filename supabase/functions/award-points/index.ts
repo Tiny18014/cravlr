@@ -49,12 +49,24 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to update recommendation');
     }
 
+    // Get current points first
+    const { data: currentProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('points_total, points_this_month')
+      .eq('user_id', recommendation.recommender_id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching current profile:', profileError);
+      throw new Error('Failed to fetch user profile');
+    }
+
     // Update recommender's points
     const { error: pointsError } = await supabase
       .from('profiles')
       .update({
-        points_total: supabase.sql`points_total + ${points}`,
-        points_this_month: supabase.sql`points_this_month + ${points}`
+        points_total: (currentProfile.points_total || 0) + points,
+        points_this_month: (currentProfile.points_this_month || 0) + points
       })
       .eq('user_id', recommendation.recommender_id);
 
