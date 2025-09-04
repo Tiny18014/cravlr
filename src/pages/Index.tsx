@@ -2,7 +2,7 @@ import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus, Search, Bell, Home, ClipboardList, User } from "lucide-react";
+import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -46,63 +46,167 @@ function UnauthenticatedView() {
 }
 
 function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
+  // Mock user data - you can replace with actual data from your store/profile query
+  const userFirstName = "foodie";
+  const pointsThisMonth = 0;
+  const goalThisMonth = 500;
+  const progress = Math.min(100, Math.round((pointsThisMonth / goalThisMonth) * 100));
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/10">
+    <main className="mx-auto max-w-md pb-28">
       <Header onSignOut={onSignOut} />
-      <main className="px-4 pb-28 max-w-md mx-auto">
-        <HeroCard />
-      </main>
+      <HeroCard />
+      <HowItWorks />
+      <RewardsSection pointsThisMonth={pointsThisMonth} goalThisMonth={goalThisMonth} progress={progress} />
       <BottomNav />
-    </div>
+    </main>
   );
 }
 
 function Header({ onSignOut }: { onSignOut: () => void }) {
   return (
-    <header className="sticky top-0 z-20 bg-background/75 backdrop-blur border-b border-border">
-      <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold tracking-wide">C</div>
-          <div className="leading-tight">
-            <p className="text-xs text-muted-foreground">Welcome</p>
-            <p className="text-sm font-medium">Back, foodie! 🍽️</p>
-          </div>
+    <header className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div aria-hidden className="h-9 w-9 rounded-2xl bg-primary text-primary-foreground grid place-items-center font-semibold">
+          C
         </div>
-        <button 
-          onClick={onSignOut}
-          className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl bg-muted hover:bg-muted/80 transition"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-primary text-primary-foreground text-[10px] leading-5 text-center">3</span>
-        </button>
+        <div className="leading-tight">
+          <p className="text-xs text-muted-foreground">Welcome</p>
+          <p className="text-sm font-medium">Back, foodie! 🍽️</p>
+        </div>
       </div>
+      <button 
+        onClick={onSignOut}
+        aria-label="Notifications" 
+        className="relative rounded-full p-2 hover:bg-muted"
+      >
+        <Bell className="h-5 w-5" />
+        <span className="absolute -right-0.5 -top-0.5 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] leading-4 text-destructive-foreground text-center">
+          3
+        </span>
+      </button>
     </header>
   );
 }
 
 function HeroCard() {
   return (
-    <section className="mt-5">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-5">
-        <div className="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-background/10 blur-2xl" />
-        <div className="absolute -top-8 -left-10 h-32 w-32 rounded-full bg-background/10 blur-xl" />
-        <div className="relative">
-          <h1 className="text-2xl font-bold">Ready to find great food?</h1>
-          <p className="mt-1 text-primary-foreground/90">Create a request or help locals discover amazing restaurants.</p>
-          <div className="mt-4 flex gap-2">
-            <Link 
-              to="/request-food" 
-              className="inline-flex items-center gap-2 rounded-2xl bg-background text-foreground px-4 py-3 font-medium shadow-sm active:scale-[.98] transition-transform"
-            >
-              <Plus className="h-5 w-5" /> Request Food
-            </Link>
-            <Link 
-              to="/browse-requests" 
-              className="inline-flex items-center gap-2 rounded-2xl bg-background/20 backdrop-blur px-4 py-3 font-medium text-primary-foreground ring-1 ring-inset ring-background/40 active:scale-[.98] transition-transform"
-            >
-              <Search className="h-5 w-5" /> Give Recommendations
-            </Link>
+    <section className="px-4">
+      <div className="rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-5 shadow-lg">
+        <h1 className="text-2xl font-extrabold leading-snug">Ready to find great food?</h1>
+        <p className="mt-1 text-primary-foreground/80">Create a request or help locals discover amazing restaurants.</p>
+
+        <div className="mt-4 flex gap-3">
+          <Link
+            to="/request-food"
+            className="flex-1 rounded-2xl bg-background p-4 text-left text-foreground shadow-sm hover:shadow transition"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
+                <Plus className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold">Request Food</p>
+                <p className="text-xs text-muted-foreground">Get tailored recs fast</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/browse-requests"
+            className="flex-1 rounded-2xl bg-background/10 p-4 text-left backdrop-blur hover:bg-background/15 transition"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-background/15">
+                <Search className="h-5 w-5 text-primary-foreground" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-primary-foreground">Give Recommendations</p>
+                <p className="text-xs text-primary-foreground/70">Help people nearby</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  return (
+    <section className="mt-5 px-4">
+      <h2 className="mb-3 text-base font-semibold">How it works</h2>
+
+      <ol className="grid gap-3">
+        <li className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Request</p>
+            <p className="text-xs text-muted-foreground">Tell locals what you're craving (e.g., "best sushi tonight").</p>
           </div>
+          <ArrowRight className="h-5 w-5 text-muted-foreground" />
+        </li>
+        <li className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Recommend</p>
+            <p className="text-xs text-muted-foreground">Locals suggest places with notes, links, and vibes.</p>
+          </div>
+          <CheckCircle2 className="h-5 w-5 text-green-500" />
+        </li>
+        <li className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Earn</p>
+            <p className="text-xs text-muted-foreground">Great recs earn points. Redeem for perks and gift cards.</p>
+          </div>
+          <Trophy className="h-5 w-5 text-yellow-500" />
+        </li>
+      </ol>
+    </section>
+  );
+}
+
+function RewardsSection({ pointsThisMonth, goalThisMonth, progress }: { pointsThisMonth: number; goalThisMonth: number; progress: number }) {
+  return (
+    <section className="mt-5 px-4">
+      <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-100">
+            <Star className="h-5 w-5 text-yellow-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold">Your rewards</p>
+            <p className="text-xs text-muted-foreground">Points reset monthly. Hit your goal for bonus perks.</p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{pointsThisMonth} pts</span>
+            <span>Goal {goalThisMonth} pts</span>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 transition-[width] duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Link
+            to="/browse-requests"
+            className="rounded-xl bg-primary px-4 py-3 text-center text-sm font-medium text-primary-foreground shadow hover:opacity-95"
+          >
+            Earn points now
+          </Link>
+          <Link
+            to="/rewards"
+            className="rounded-xl border bg-background px-4 py-3 text-center text-sm font-medium hover:bg-muted"
+          >
+            View rewards
+          </Link>
         </div>
       </div>
     </section>
@@ -112,30 +216,13 @@ function HeroCard() {
 
 function BottomNav() {
   return (
-    <nav className="fixed bottom-4 inset-x-0 z-20">
-      <div className="mx-auto max-w-md px-4">
-        <div className="grid grid-cols-3 gap-4 rounded-2xl bg-background/90 backdrop-blur ring-1 ring-border shadow-lg p-3">
-          <NavItem href="/" label="Home" icon={<Home className="h-5 w-5" />} active />
-          <NavItem href="/browse-requests" label="Requests" icon={<ClipboardList className="h-5 w-5" />} />
-          <NavItem href="/dashboard" label="My Dashboard" icon={<User className="h-5 w-5" />} />
-        </div>
+    <nav className="fixed inset-x-0 bottom-3 mx-auto max-w-md px-4">
+      <div className="flex items-center justify-between rounded-3xl border bg-background/95 p-2 shadow-lg backdrop-blur">
+        <Link to="/" className="flex-1 rounded-2xl bg-primary py-3 text-center text-sm font-semibold text-primary-foreground">Home</Link>
+        <Link to="/browse-requests" className="flex-1 py-3 text-center text-sm text-muted-foreground">Requests</Link>
+        <Link to="/dashboard" className="flex-1 py-3 text-center text-sm text-muted-foreground">My Dashboard</Link>
       </div>
     </nav>
-  );
-}
-
-function NavItem({ href, label, icon, active = false }: { href: string; label: string; icon: React.ReactNode; active?: boolean }) {
-  return (
-    <Link
-      to={href}
-      className={[
-        "flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium transition-colors",
-        active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-      ].join(" ")}
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
   );
 }
 
