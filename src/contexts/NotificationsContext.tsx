@@ -80,12 +80,24 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           { event: 'UPDATE', schema: 'public', table: 'food_requests' },
           (payload) => {
             console.log("🌍 Global request UPDATE:", payload.new);
+            console.log("🌍 Global request OLD:", payload.old);
             
             const request = payload.new;
             const oldRequest = payload.old;
             
+            // Debug logging
+            console.log("🌍 Checking notification conditions:", {
+              requester_id: request.requester_id,
+              current_user: user.id,
+              old_status: oldRequest?.status,
+              new_status: request.status,
+              is_requester: request.requester_id === user.id,
+              status_changed: oldRequest?.status !== request.status
+            });
+            
             // Only show notification when request closes/expires for the requester
             if (request.requester_id === user.id && 
+                oldRequest && 
                 oldRequest.status === 'active' && 
                 (request.status === 'closed' || request.status === 'expired')) {
               
@@ -102,6 +114,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
               console.log("🌍 Setting aggregated results ping:", ping);
               setNextPing(ping);
+            } else {
+              console.log("🌍 No notification - conditions not met");
             }
           }
         )
