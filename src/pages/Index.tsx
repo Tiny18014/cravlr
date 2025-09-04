@@ -2,7 +2,7 @@ import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus, Search, Bell, Gift, Send, Sparkles, ChevronRight, Home, ClipboardList, MessageCircle, User } from "lucide-react";
+import { Plus, Search, Bell, ChevronRight, Home, ClipboardList, User } from "lucide-react";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -52,8 +52,6 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       <main className="px-4 pb-28 max-w-md mx-auto">
         <HeroCard />
         <QuickActions />
-        <HowItWorks />
-        <InviteFriends />
       </main>
       <BottomNav />
     </div>
@@ -151,72 +149,15 @@ function ActionCard({ title, subtitle, icon, href }: { title: string; subtitle: 
   );
 }
 
-function HowItWorks() {
-  return (
-    <section className="mt-8">
-      <h2 className="text-sm font-semibold text-muted-foreground mb-3">How it works</h2>
-      <ol className="grid grid-cols-3 gap-3">
-        <Step index={1} title="Ask" desc="Say what you crave" />
-        <Step index={2} title="Get" desc="Local recs roll in" />
-        <Step index={3} title="Enjoy" desc="Pick & go eat" />
-      </ol>
-    </section>
-  );
-}
-
-function Step({ index, title, desc }: { index: number; title: string; desc: string }) {
-  return (
-    <li className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
-      <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
-        {index}
-      </div>
-      <p className="mt-2 font-medium">{title}</p>
-      <p className="text-sm text-muted-foreground">{desc}</p>
-    </li>
-  );
-}
-
-function InviteFriends() {
-  return (
-    <section className="mt-10">
-      <div className="rounded-3xl bg-card p-5 shadow-sm ring-1 ring-border">
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-xl bg-accent/20 text-accent-foreground flex items-center justify-center">
-            <Gift className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold">Invite friends, earn perks</p>
-            <p className="text-sm text-muted-foreground">Share Cravlr with your foodie crew. Get bonus points when they join and make a request.</p>
-            <div className="mt-3 flex gap-2">
-              <Link 
-                to="/dashboard" 
-                className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
-              >
-                <Send className="h-4 w-4" /> Invite now
-              </Link>
-              <Link 
-                to="/dashboard" 
-                className="inline-flex items-center gap-2 rounded-xl bg-muted px-4 py-2 text-sm font-medium"
-              >
-                <Sparkles className="h-4 w-4" /> See perks
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function BottomNav() {
   return (
     <nav className="fixed bottom-4 inset-x-0 z-20">
       <div className="mx-auto max-w-md px-4">
-        <div className="grid grid-cols-4 gap-3 rounded-2xl bg-background/90 backdrop-blur ring-1 ring-border shadow-lg p-2">
+        <div className="grid grid-cols-3 gap-4 rounded-2xl bg-background/90 backdrop-blur ring-1 ring-border shadow-lg p-3">
           <NavItem href="/" label="Home" icon={<Home className="h-5 w-5" />} active />
           <NavItem href="/browse-requests" label="Requests" icon={<ClipboardList className="h-5 w-5" />} />
-          <NavItem href="/request-food" label="Request" icon={<MessageCircle className="h-5 w-5" />} />
-          <NavItem href="/dashboard" label="Profile" icon={<User className="h-5 w-5" />} />
+          <NavItem href="/dashboard" label="My Dashboard" icon={<User className="h-5 w-5" />} />
         </div>
       </div>
     </nav>
