@@ -83,7 +83,7 @@ export default function GlobalLiveRequestPopup() {
     
     // Handle differently based on notification type
     if (active?.type === "recommendation") {
-      console.log("🎯 Handling recommendation notification");
+      console.log("🎯 Handling aggregated results notification");
       
       // Close popup immediately and prevent any queued pings
       setActive(null);
@@ -92,9 +92,9 @@ export default function GlobalLiveRequestPopup() {
       // Clear the ping from context to prevent re-triggering
       clearPing();
       
-      // Always navigate to dashboard with received tab, don't use reload
-      console.log("🎯 Navigating to dashboard with received tab");
-      navigate('/dashboard?tab=received', { replace: true });
+      // Navigate to the request results page to show aggregated recommendations
+      console.log("🎯 Navigating to request results page");
+      navigate(`/request-results/${id}`, { replace: true });
       
     } else {
       console.log("🎯 Handling request notification - accepting request");
@@ -123,7 +123,7 @@ export default function GlobalLiveRequestPopup() {
     
     // Handle differently based on notification type  
     if (active?.type === "recommendation") {
-      console.log("🎯 Dismissing recommendation notification");
+      console.log("🎯 Dismissing aggregated results notification");
       // For recommendations, clear the ping from context
       clearPing();
     } else {
@@ -149,12 +149,12 @@ export default function GlobalLiveRequestPopup() {
     >
       <div className="rounded-2xl shadow-xl border bg-white p-3 animate-[slide-up_180ms_ease] text-black">
         <div className="text-sm text-gray-600 mb-1">
-          {active.type === "request" ? "New request nearby" : "New recommendation received"}
+          {active.type === "request" ? "New request nearby" : "Your request has ended"}
         </div>
         <div className="font-semibold text-base">
           {active.type === "request" 
             ? `${active.foodType} • ${active.location}`
-            : `${active.restaurantName} recommended for ${active.foodType}`
+            : `Recommendations received for ${active.foodType}`
           }
         </div>
         <div className="mt-3 flex gap-2">
@@ -165,9 +165,9 @@ export default function GlobalLiveRequestPopup() {
               e.stopPropagation();
               handleAccept(active.id);
             }}
-            aria-label={active.type === "request" ? "Accept request" : "View recommendation"}
+            aria-label={active.type === "request" ? "Accept request" : "View results"}
           >
-            {active.type === "request" ? "Accept" : "View"}
+            {active.type === "request" ? "Accept" : "View Results"}
           </button>
           <button
             className="flex-1 py-2 rounded-xl border"

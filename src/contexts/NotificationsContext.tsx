@@ -77,50 +77,32 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         )
         .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'recommendations' },
+          { event: 'UPDATE', schema: 'public', table: 'food_requests' },
           (payload) => {
-            console.log("🌍 Global recommendation INSERT:", payload.new);
+            console.log("🌍 Global request UPDATE:", payload.new);
             
-            const rec = payload.new;
+            const request = payload.new;
+            const oldRequest = payload.old;
             
-            // Only show recommendation notifications to the requester
-            // We'll need to fetch the request to get requester_id
-            const fetchRequestAndNotify = async () => {
-              try {
-                const { data: request, error } = await supabase
-                  .from('food_requests')
-                  .select('requester_id, food_type')
-                  .eq('id', rec.request_id)
-                  .single();
-                
-                console.log("🌍 Fetched request for recommendation:", { request, userID: user.id, error });
-                
-                if (error) {
-                  console.error("🌍 Error fetching request for recommendation:", error);
-                  return;
-                }
-                
-                if (request && request.requester_id === user.id) {
-                  const ping: LivePing = {
-                    id: rec.id,
-                    type: "recommendation",
-                    foodType: request.food_type,
-                    location: "0.5 mi away", // placeholder
-                    urgency: "soon",
-                    restaurantName: rec.restaurant_name
-                  };
+            // Only show notification when request closes/expires for the requester
+            if (request.requester_id === user.id && 
+                oldRequest.status === 'active' && 
+                (request.status === 'closed' || request.status === 'expired')) {
+              
+              console.log("🌍 Request closed/expired for user, showing aggregated results");
+              
+              const ping: LivePing = {
+                id: request.id,
+                type: "recommendation",
+                foodType: request.food_type,
+                location: `${request.location_city}, ${request.location_state}`,
+                urgency: "soon",
+                restaurantName: "Multiple restaurants" // Will show aggregated results
+              };
 
-                  console.log("🌍 Setting recommendation ping:", ping);
-                  setNextPing(ping);
-                } else {
-                  console.log("🌍 Recommendation not for current user, skipping");
-                }
-              } catch (error) {
-                console.error("🌍 Error in fetchRequestAndNotify:", error);
-              }
-            };
-            
-            fetchRequestAndNotify();
+              console.log("🌍 Setting aggregated results ping:", ping);
+              setNextPing(ping);
+            }
           }
         )
         .subscribe((status) => {
