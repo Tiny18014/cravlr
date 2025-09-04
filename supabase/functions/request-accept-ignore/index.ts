@@ -52,10 +52,10 @@ serve(async (req) => {
       );
     }
 
-    // Check if the request exists and is active
+    // Check if the request exists and get requester info
     const { data: request, error: requestError } = await supabase
       .from('food_requests')
-      .select('id, status, expires_at')
+      .select('id, status, expires_at, requester_id')
       .eq('id', requestId)
       .single();
 
@@ -67,6 +67,34 @@ serve(async (req) => {
       );
     }
 
+    // For "accept" actions on expired/closed requests, this means the user is viewing results
+    // For their own expired requests, we allow this (it's just tracking the "view results" action)
+    if (action === 'accept' && (request.status === 'expired' || request.status === 'closed')) {
+      // Only allow viewing results for own requests
+      if (request.requester_id !== user.id) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot view results for others\' requests' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // For viewing results, we just record that they viewed it and return success
+      console.log(`✅ User ${user.id} viewed results for their expired/closed request ${requestId}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action: 'view_results',
+          requestId,
+          message: 'Results viewed' 
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // For all other cases, request must be active
     if (request.status !== 'active') {
       return new Response(
         JSON.stringify({ error: 'Request is no longer active' }),
@@ -74,7 +102,7 @@ serve(async (req) => {
       );
     }
 
-    // Check if request has expired
+    // Check if request has expired (for active requests)
     if (new Date(request.expires_at) <= new Date()) {
       return new Response(
         JSON.stringify({ error: 'Request has expired' }),

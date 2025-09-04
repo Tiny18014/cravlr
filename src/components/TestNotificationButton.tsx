@@ -35,7 +35,7 @@ export default function TestNotificationButton() {
 
       console.log("✅ Created test request:", request);
 
-      // Wait a moment, then update it to expired
+      // Wait a moment, then update it to expired (simulating auto-expiry)
       setTimeout(async () => {
         const { data: updated, error: updateError } = await supabase
           .from('food_requests')
@@ -48,11 +48,11 @@ export default function TestNotificationButton() {
           .single();
 
         if (updateError) {
-          console.error("❌ Error updating test request:", updateError);
+          console.error("❌ Error updating test request to expired:", updateError);
           return;
         }
 
-        console.log("✅ Updated test request to expired:", updated);
+        console.log("✅ Updated test request to expired (this should trigger 'View Results' notification):", updated);
       }, 2000);
 
     } catch (error) {
