@@ -22,37 +22,39 @@ export default function GlobalLiveRequestPopup() {
   useEffect(() => {
     console.log("🎯 Global popup effect triggered:", { nextPing, dnd, active });
     
-    // If nextPing is null (cleared by context), clear local state immediately
-    if (!nextPing) {
-      console.log("🎯 nextPing cleared by context, clearing local state");
-      setActive(null);
-      queueRef.current = [];
-      return;
-    }
-    
     if (dnd) {
       console.log("🎯 Skipping ping due to DND:", { hasNextPing: !!nextPing, dnd });
       return;
     }
     
-    // Base dedupe on id AND type, not just id
-    const existsInQueue = queueRef.current.find(q => q.id === nextPing.id && q.type === nextPing.type);
-    const isCurrentlyActive = active?.id === nextPing.id && active?.type === nextPing.type;
-    
-    if (!existsInQueue && !isCurrentlyActive) {
-      console.log("🎯 Adding ping to global queue:", nextPing);
-      queueRef.current.push(nextPing);
+    // Only add new pings when they arrive, don't clear on null
+    if (nextPing) {
+      // Base dedupe on id AND type, not just id
+      const existsInQueue = queueRef.current.find(q => q.id === nextPing.id && q.type === nextPing.type);
+      const isCurrentlyActive = active?.id === nextPing.id && active?.type === nextPing.type;
       
-      // Always setActive when no active ping
-      if (!active) {
-        console.log("🎯 Setting active immediately:", nextPing);
-        const nextActive = queueRef.current.shift();
-        if (nextActive) {
-          setActive(nextActive);
+      if (!existsInQueue && !isCurrentlyActive) {
+        console.log("🎯 Adding ping to global queue:", nextPing);
+        queueRef.current.push(nextPing);
+        
+        // Always setActive when no active ping
+        if (!active) {
+          console.log("🎯 Setting active immediately:", nextPing);
+          const nextActive = queueRef.current.shift();
+          if (nextActive) {
+            setActive(nextActive);
+          }
         }
+      } else {
+        console.log("🎯 Ping already exists, skipping:", nextPing.id, nextPing.type);
       }
-    } else {
-      console.log("🎯 Ping already exists, skipping:", nextPing.id, nextPing.type);
+    }
+    
+    // Only clear active state if nextPing is explicitly null AND we have an active ping
+    // This prevents navigation from accidentally clearing important notifications
+    if (nextPing === null && active) {
+      console.log("🎯 nextPing explicitly cleared by context, checking if we should clear active");
+      // Only clear if this was an explicit dismissal, not just navigation
     }
   }, [nextPing, dnd, active]);
 
