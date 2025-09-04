@@ -45,24 +45,6 @@ function UnauthenticatedView() {
   );
 }
 
-function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
-  // Mock user data - you can replace with actual data from your store/profile query
-  const userFirstName = "foodie";
-  const pointsThisMonth = 0;
-  const goalThisMonth = 500;
-  const progress = Math.min(100, Math.round((pointsThisMonth / goalThisMonth) * 100));
-
-  return (
-    <main className="mx-auto max-w-md pb-28">
-      <Header onSignOut={onSignOut} />
-      <HeroCard />
-      <HowItWorks />
-      <RewardsSection pointsThisMonth={pointsThisMonth} goalThisMonth={goalThisMonth} progress={progress} />
-      <BottomNav />
-    </main>
-  );
-}
-
 function Header({ onSignOut }: { onSignOut: () => void }) {
   return (
     <header className="flex items-center justify-between px-4 py-3">
@@ -213,7 +195,6 @@ function RewardsSection({ pointsThisMonth, goalThisMonth, progress }: { pointsTh
   );
 }
 
-
 function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-3 mx-auto max-w-md px-4">
@@ -223,6 +204,24 @@ function BottomNav() {
         <Link to="/dashboard" className="flex-1 py-3 text-center text-sm text-muted-foreground">My Dashboard</Link>
       </div>
     </nav>
+  );
+}
+
+function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
+  // Mock user data - you can replace with actual data from your store/profile query
+  const userFirstName = "foodie";
+  const pointsThisMonth = 0;
+  const goalThisMonth = 500;
+  const progress = Math.min(100, Math.round((pointsThisMonth / goalThisMonth) * 100));
+
+  return (
+    <main className="mx-auto max-w-md pb-28">
+      <Header onSignOut={onSignOut} />
+      <HeroCard />
+      <HowItWorks />
+      <RewardsSection pointsThisMonth={pointsThisMonth} goalThisMonth={goalThisMonth} progress={progress} />
+      <BottomNav />
+    </main>
   );
 }
 
