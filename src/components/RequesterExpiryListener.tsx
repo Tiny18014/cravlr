@@ -16,43 +16,64 @@ export function RequesterExpiryListener() {
     console.log("🎯 Setting up RequesterExpiryListener for user:", user.id);
     console.log("🎯 Current timestamp:", new Date().toISOString());
     
-    // Test the popup system immediately
-    console.log("🎯 Testing popup system...");
-    setTimeout(() => {
-      console.log("🎯 Sending test popup in 3 seconds...");
-      pushPopup({
-        type: "request_results",
-        title: "Test Popup",
-        message: "This is a test to verify the popup system works.",
-        data: { requestId: "test" }
+    // Primary: Listen for notifications (more reliable than direct table updates)
+    const notifChannel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `requester_id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          console.log("🎯 Notification received:", payload);
+          const notification = payload.new;
+          
+          if (notification.type === 'request_results') {
+            console.log("🎯 Request results notification, showing popup for:", notification.request_id);
+            pushPopup({
+              type: "request_results",
+              title: notification.payload?.title || "Your results are ready! 🎉",
+              message: notification.payload?.message || "Tap to view the best picks.",
+              cta: {
+                label: "View Results",
+                to: `/requests/${notification.request_id}/results`,
+              },
+              data: { requestId: notification.request_id }
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("🎯 NotificationListener status:", status);
       });
-    }, 3000);
 
-    const channel = supabase
-      .channel(`requester-expiry-listener-${user.id}`)
+    // Fallback: Also listen for request status changes with corrected filter syntax
+    const requestChannel = supabase
+      .channel(`requester-expiry-fallback-${user.id}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "food_requests",
-          filter: `requester_id=eq.${user.id}`, // server-side filter
+          filter: `requester_id=eq.${user.id}`, // string filter format
         },
         (payload: any) => {
           const timestamp = new Date().toISOString();
-          console.log(`🎯 RequesterExpiryListener received UPDATE at ${timestamp}:`, payload);
+          console.log(`🎯 Request updated (fallback) at ${timestamp}:`, payload);
           
           const oldStatus = payload.old?.status;
           const newStatus = payload.new?.status;
           
           console.log(`🎯 Status change: ${oldStatus} -> ${newStatus}`);
-          console.log(`🎯 Request expires_at: ${payload.new?.expires_at}, updated_at: ${payload.new?.updated_at}`);
           
           if (oldStatus !== "expired" && newStatus === "expired") {
             const popupTime = new Date().toISOString();
-            console.log(`🎯 Request expired! Showing results popup at ${popupTime}`);
+            console.log(`🎯 Request expired (fallback)! Showing results popup at ${popupTime}`);
             
-            // Fire "View Results" popup instantly, on ANY page
             pushPopup({
               type: "request_results",
               title: "Time's up! 🎉",
@@ -67,12 +88,25 @@ export function RequesterExpiryListener() {
         }
       )
       .subscribe((status) => {
-        console.log("🎯 RequesterExpiryListener status:", status);
+        console.log("🎯 RequesterExpiryListener (fallback) status:", status);
       });
+
+    // Test the popup system after 3 seconds
+    console.log("🎯 Testing popup system...");
+    setTimeout(() => {
+      console.log("🎯 Sending test popup in 3 seconds...");
+      pushPopup({
+        type: "request_results",
+        title: "Test Popup",
+        message: "This is a test to verify the popup system works.",
+        data: { requestId: "test" }
+      });
+    }, 3000);
 
     return () => {
       console.log("🎯 Cleaning up RequesterExpiryListener");
-      supabase.removeChannel(channel);
+      supabase.removeChannel(notifChannel);
+      supabase.removeChannel(requestChannel);
     };
   }, [user?.id, pushPopup]);
 
