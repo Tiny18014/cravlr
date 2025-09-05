@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { usePopupBus } from "@/hooks/usePopupBus";
 import { useClockSkew } from "@/hooks/useClockSkew";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FoodRequest {
   id: string;
@@ -21,20 +22,37 @@ export const useRequestExpiryTimer = (
   const intervalIdRef = useRef<number | null>(null);
 
   // De-duped fire
-  const fire = () => {
+  const fire = async () => {
     if (firedRef.current || !request) return;
     firedRef.current = true;
     const at = new Date().toISOString();
     console.log(
       `⏰ Expiry fired for ${request.id} at ${at} (expected: ${request.expires_at})`
     );
-    pushPopup({
-      type: "request_results",
-      title: "Time's up! 🎉",
-      message: `Your ${request.food_type} results are ready.`,
-      cta: { label: "View Results", to: `/requests/${request.id}/results` },
-      data: { requestId: request.id },
-    });
+
+    // Check if there are any recommendations before showing popup
+    const { data: recommendations, error } = await supabase
+      .from('recommendations')
+      .select('id')
+      .eq('request_id', request.id);
+
+    if (error) {
+      console.error('Error checking recommendations:', error);
+      return;
+    }
+
+    // Only show popup if there are recommendations
+    if (recommendations && recommendations.length > 0) {
+      pushPopup({
+        type: "request_results",
+        title: "Time's up! 🎉",
+        message: `Your ${request.food_type} results are ready.`,
+        cta: { label: "View Results", to: `/requests/${request.id}/results` },
+        data: { requestId: request.id },
+      });
+    } else {
+      console.log(`⏰ No popup sent for ${request.id} - no recommendations found`);
+    }
   };
 
   useEffect(() => {
