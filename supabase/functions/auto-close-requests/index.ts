@@ -42,7 +42,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Update expired requests to closed status
+    console.log(`Found ${expiredRequests.length} expired requests to update:`, expiredRequests.map(r => r.id));
+
+    // Update expired requests to expired status (this will trigger the notification)
     const { error: updateError } = await supabase
       .from('food_requests')
       .update({
@@ -53,8 +55,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (updateError) {
       console.error('Error closing expired requests:', updateError);
+      console.error('Full error details:', JSON.stringify(updateError, null, 2));
       throw updateError;
     }
+
+    console.log('Successfully updated request statuses to expired');
 
     // Award points for recommendations in closed requests
     let totalPointsAwarded = 0;
