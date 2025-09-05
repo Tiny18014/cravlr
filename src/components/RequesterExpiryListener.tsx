@@ -8,7 +8,10 @@ export function RequesterExpiryListener() {
   const { pushPopup } = usePopupBus();
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log("🎯 RequesterExpiryListener: No user ID, skipping setup");
+      return;
+    }
 
     console.log("🎯 Setting up RequesterExpiryListener for user:", user.id);
 
