@@ -46,7 +46,7 @@ const App = () => (
               <Route path="/browse-requests" element={<BrowseRequests />} />
               <Route path="/recommend/:requestId" element={<SendRecommendation />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/request/:requestId/results" element={<RequestResults />} />
+              <Route path="/requests/:requestId/results" element={<RequestResults />} />
               <Route path="/admin/conversions" element={<AdminConversions />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
