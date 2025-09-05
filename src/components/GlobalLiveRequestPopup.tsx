@@ -17,6 +17,7 @@ export default function GlobalLiveRequestPopup() {
   const location = useLocation();
   const queueRef = useRef<LivePing[]>([]);
   const [active, setActive] = useState<LivePing | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Handle nextPing changes from context
   useEffect(() => {
@@ -118,7 +119,15 @@ export default function GlobalLiveRequestPopup() {
   };
 
   const handleIgnore = async (id: string) => {
-    console.log("🎯 handleIgnore called with:", { id, activeType: active?.type });
+    console.log("🎯 handleIgnore called with:", { id, activeType: active?.type, isProcessing });
+    
+    // Prevent multiple rapid clicks
+    if (isProcessing) {
+      console.log("🎯 Already processing, ignoring duplicate click");
+      return;
+    }
+    
+    setIsProcessing(true);
     
     // Close popup immediately
     setActive(null);
@@ -137,6 +146,8 @@ export default function GlobalLiveRequestPopup() {
         console.error("❌ Error ignoring request:", error);
       }
     }
+    
+    setIsProcessing(false);
   };
 
   if (!active || dnd) return null;
@@ -178,6 +189,7 @@ export default function GlobalLiveRequestPopup() {
               e.stopPropagation();
               handleIgnore(active.id);
             }}
+            disabled={isProcessing}
             aria-label="Dismiss"
           >
             {active.type === "request" ? "Ignore" : "Dismiss"}

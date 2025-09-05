@@ -110,6 +110,32 @@ serve(async (req) => {
       );
     }
 
+    // Check if user already has a state for this request
+    const { data: existingState } = await supabase
+      .from('request_user_state')
+      .select('id, state')
+      .eq('user_id', user.id)
+      .eq('request_id', requestId)
+      .single();
+
+    // If already has the same state, just return success (idempotent)
+    if (existingState && existingState.state === (action === 'accept' ? 'accepted' : 'ignored')) {
+      console.log(`✅ User ${user.id} already has state ${existingState.state} for request ${requestId}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action,
+          requestId,
+          data: existingState,
+          message: 'State already set'
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     // Upsert the user's state for this request
     const { data, error } = await supabase
       .from('request_user_state')
@@ -122,6 +148,23 @@ serve(async (req) => {
       .single();
 
     if (error) {
+      // Handle duplicate key errors gracefully
+      if (error.code === '23505') {
+        console.log(`✅ User ${user.id} already processed request ${requestId} (duplicate key)`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action,
+            requestId,
+            message: 'Already processed'
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
       console.error('❌ Error updating request state:', error);
       return new Response(
         JSON.stringify({ error: 'Failed to update request state' }),
