@@ -15,9 +15,21 @@ export function RequesterExpiryListener() {
 
     console.log("🎯 Setting up RequesterExpiryListener for user:", user.id);
     console.log("🎯 Current timestamp:", new Date().toISOString());
+    
+    // Test the popup system immediately
+    console.log("🎯 Testing popup system...");
+    setTimeout(() => {
+      console.log("🎯 Sending test popup in 3 seconds...");
+      pushPopup({
+        type: "request_results",
+        title: "Test Popup",
+        message: "This is a test to verify the popup system works.",
+        data: { requestId: "test" }
+      });
+    }, 3000);
 
     const channel = supabase
-      .channel(`req-expiry-${user.id}`)
+      .channel(`requester-expiry-listener-${user.id}`)
       .on(
         "postgres_changes",
         {
