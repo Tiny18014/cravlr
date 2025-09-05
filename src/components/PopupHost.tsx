@@ -6,8 +6,18 @@ import { X } from 'lucide-react';
 import { usePopupBus } from '@/hooks/usePopupBus';
 
 export const PopupHost: React.FC = () => {
-  const { currentPopup, dismissPopup } = usePopupBus();
+  const { currentPopup, dismissPopup, subscribe } = usePopupBus();
   const navigate = useNavigate();
+
+  // Subscribe to popup bus to receive new popups
+  useEffect(() => {
+    const unsubscribe = subscribe((popup) => {
+      console.log('🎯 PopupHost received popup:', popup);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [subscribe]);
 
   const handleAction = () => {
     if (currentPopup?.cta?.to) {
