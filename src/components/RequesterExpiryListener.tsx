@@ -91,17 +91,6 @@ export function RequesterExpiryListener() {
         console.log("🎯 RequesterExpiryListener (fallback) status:", status);
       });
 
-    // Test the popup system after 3 seconds
-    console.log("🎯 Testing popup system...");
-    setTimeout(() => {
-      console.log("🎯 Sending test popup in 3 seconds...");
-      pushPopup({
-        type: "request_results",
-        title: "Test Popup",
-        message: "This is a test to verify the popup system works.",
-        data: { requestId: "test" }
-      });
-    }, 3000);
 
     return () => {
       console.log("🎯 Cleaning up RequesterExpiryListener");
