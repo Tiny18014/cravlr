@@ -84,9 +84,7 @@ const Dashboard = () => {
   // Get the default tab from URL parameter
   const defaultTab = searchParams.get('tab') || 'requests';
 
-  // Set up local expiry timers for all active requests
-  const activeRequest = myRequests.find(req => req.status === 'active');
-  useRequestExpiryTimer(activeRequest || null, user?.id);
+  // Timer is now handled globally in App.tsx via GlobalRequestExpiryTimer
 
   useEffect(() => {
     if (!user) {

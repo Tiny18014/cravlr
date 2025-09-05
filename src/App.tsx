@@ -9,6 +9,7 @@ import GlobalLiveRequestPopup from "@/components/GlobalLiveRequestPopup";
 import TestNotificationButton from "@/components/TestNotificationButton";
 import { OneSignalInit } from "@/components/OneSignalInit";
 import { RequesterExpiryListener } from "@/components/RequesterExpiryListener";
+import { GlobalRequestExpiryTimer } from "@/components/GlobalRequestExpiryTimer";
 import { PopupHost } from "@/components/PopupHost";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -32,6 +33,7 @@ const App = () => (
           <OneSignalInit />
           <BrowserRouter>
             <RequesterExpiryListener />
+            <GlobalRequestExpiryTimer />
             <PopupHost />
             <GlobalLiveRequestPopup />
             <TestNotificationButton />
