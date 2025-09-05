@@ -24,13 +24,16 @@ export const useRequestExpiryTimer = (request: FoodRequest | null, userId: strin
     // Don't set timer if already expired
     if (timeUntilExpiry <= 0) return;
 
-    console.log(`⏰ Setting local expiry timer for request ${request.id}: ${timeUntilExpiry}ms`);
+    console.log(`⏰ Setting local expiry timer for request ${request.id}: ${timeUntilExpiry}ms (${Math.round(timeUntilExpiry/1000)}s)`);
+    console.log(`⏰ Request expires at: ${request.expires_at}, current time: ${new Date().toISOString()}`);
 
-    // Cap at 10 minutes to prevent excessive timeouts
-    const timeoutDuration = Math.min(timeUntilExpiry + 500, 60_000 * 10); // small buffer, cap at 10m
+    // Use exact expiry time without artificial buffer - let the timer be precise
+    const timeoutDuration = Math.min(timeUntilExpiry, 60_000 * 10); // cap at 10m but no artificial buffer
 
     const timeoutId = window.setTimeout(() => {
-      console.log(`⏰ Local timer fired for request ${request.id}`);
+      const actualTime = new Date().toISOString();
+      console.log(`⏰ Local timer fired for request ${request.id} at ${actualTime} (expected: ${request.expires_at})`);
+      
       
       pushPopup({
         type: "request_results",

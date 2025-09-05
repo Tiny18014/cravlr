@@ -26,15 +26,18 @@ export function RequesterExpiryListener() {
           filter: `requester_id=eq.${user.id}`, // server-side filter
         },
         (payload: any) => {
-          console.log("🎯 RequesterExpiryListener received UPDATE:", payload);
+          const timestamp = new Date().toISOString();
+          console.log(`🎯 RequesterExpiryListener received UPDATE at ${timestamp}:`, payload);
           
           const oldStatus = payload.old?.status;
           const newStatus = payload.new?.status;
           
-          console.log("🎯 Status change:", oldStatus, "->", newStatus);
+          console.log(`🎯 Status change: ${oldStatus} -> ${newStatus}`);
+          console.log(`🎯 Request expires_at: ${payload.new?.expires_at}, updated_at: ${payload.new?.updated_at}`);
           
           if (oldStatus !== "expired" && newStatus === "expired") {
-            console.log("🎯 Request expired! Showing results popup");
+            const popupTime = new Date().toISOString();
+            console.log(`🎯 Request expired! Showing results popup at ${popupTime}`);
             
             // Fire "View Results" popup instantly, on ANY page
             pushPopup({
