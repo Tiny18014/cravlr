@@ -129,25 +129,24 @@ export default function GlobalLiveRequestPopup() {
     
     setIsProcessing(true);
     
-    // Close popup immediately
-    setActive(null);
-    
-    // Handle differently based on notification type  
-    if (active?.type === "recommendation") {
-      console.log("🎯 Dismissing aggregated results notification");
-      // For recommendations, clear the ping from context
-      clearPing();
-    } else {
-      console.log("🎯 Ignoring request notification");
-      // For requests, use the existing ignore flow
-      try {
+    try {
+      // Handle differently based on notification type  
+      if (active?.type === "recommendation") {
+        console.log("🎯 Dismissing aggregated results notification");
+        // For recommendations, clear the ping from context
+        clearPing();
+      } else {
+        console.log("🎯 Ignoring request notification");
+        // For requests, use the existing ignore flow
         await ignoreRequest(id);
-      } catch (error) {
-        console.error("❌ Error ignoring request:", error);
       }
+    } catch (error) {
+      console.error("❌ Error ignoring request:", error);
+    } finally {
+      // Always close the popup and handle queue properly
+      close();
+      setIsProcessing(false);
     }
-    
-    setIsProcessing(false);
   };
 
   if (!active || dnd) return null;
