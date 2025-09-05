@@ -14,16 +14,16 @@ export default function TestNotificationButton() {
     try {
       console.log("🔍 Testing manual update to trigger notification...");
       
-      // First, let's create a test request
+      // First, let's create a test request for the current user
       const { data: request, error: insertError } = await supabase
         .from('food_requests')
         .insert({
-          requester_id: user.id,
-          food_type: 'Test Food',
+          requester_id: user.id, // This is correct - using current logged-in user
+          food_type: 'Test Food for Results',
           location_city: 'Test City', 
           location_state: 'Test State',
           response_window: 1,
-          expires_at: new Date(Date.now() + 60000).toISOString() // 1 minute from now
+          expires_at: new Date(Date.now() + 10000).toISOString() // 10 seconds from now
         })
         .select()
         .single();
