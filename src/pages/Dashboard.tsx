@@ -84,7 +84,7 @@ const Dashboard = () => {
   // Get the default tab from URL parameter
   const defaultTab = searchParams.get('tab') || 'requests';
 
-  // Timer is now handled globally in App.tsx via GlobalRequestExpiryTimer
+  // Timer is now handled globally in App.tsx via GlobalRequestExpiryManager
 
   useEffect(() => {
     if (!user) {
