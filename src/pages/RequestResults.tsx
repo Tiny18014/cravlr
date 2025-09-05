@@ -64,24 +64,36 @@ const RequestResults = () => {
   const { generateReferralLink } = useReferralLinks();
 
   const fetchResults = async () => {
-    if (!requestId) return;
+    if (!requestId) {
+      console.error("❌ RequestResults: No requestId provided");
+      setLoading(false);
+      return;
+    }
 
     try {
       console.log("🔍 RequestResults: Fetching results for request:", requestId);
+      console.log("🔍 RequestResults: Current user:", user?.id);
       
       // Fetch request details first
       const { data: requestData, error: requestError } = await supabase
         .from('food_requests')
         .select('*')
         .eq('id', requestId)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid 404 errors
 
       if (requestError) {
-        console.error('Error fetching request:', requestError);
+        console.error('❌ Error fetching request:', requestError);
+        setLoading(false);
         return;
       }
 
-      console.log("🔍 RequestResults: Found request:", requestData);
+      if (!requestData) {
+        console.error('❌ RequestResults: Request not found for ID:', requestId);
+        setLoading(false);
+        return;
+      }
+
+      console.log("✅ RequestResults: Found request:", requestData);
       setRequest(requestData);
 
       // Fetch recommendations with LEFT JOIN to profiles (not requiring profiles to exist)
