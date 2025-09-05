@@ -11,6 +11,7 @@ import { OneSignalInit } from "@/components/OneSignalInit";
 import { RequesterExpiryListener } from "@/components/RequesterExpiryListener";
 import { GlobalRequestExpiryManager } from "@/providers/GlobalRequestExpiryManager";
 import { PopupHost } from "@/components/PopupHost";
+import { PopupDebugBinder } from "@/components/PopupDebugBinder";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import RequestFood from "./pages/RequestFood";
@@ -35,6 +36,7 @@ const App = () => (
             <RequesterExpiryListener />
             <GlobalRequestExpiryManager />
             <PopupHost />
+            <PopupDebugBinder />
             <GlobalLiveRequestPopup />
             <TestNotificationButton />
             <Routes>
