@@ -30,8 +30,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <OneSignalInit />
-          <RequesterExpiryListener />
           <BrowserRouter>
+            <RequesterExpiryListener />
             <PopupHost />
             <GlobalLiveRequestPopup />
             <TestNotificationButton />
