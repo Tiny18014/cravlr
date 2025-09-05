@@ -311,6 +311,16 @@ const RequestFood = () => {
                   onValueChange={(value) => handleChange('responseWindow', parseInt(value))}
                   className="mt-3"
                 >
+                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-purple-500/30 bg-purple-500/10">
+                    <RadioGroupItem value="1" id="lightning" />
+                    <div className="flex items-center space-x-2">
+                      <Zap className="h-4 w-4 text-purple-500" />
+                      <Label htmlFor="lightning" className="cursor-pointer">
+                        <span className="font-medium text-purple-500">🚀 Lightning</span> - 1 minute
+                      </Label>
+                    </div>
+                    <Badge variant="secondary" className="ml-auto text-xs">Testing</Badge>
+                  </div>
                   <div className="flex items-center space-x-3 p-3 rounded-lg border border-red-500/30 bg-red-500/10">
                     <RadioGroupItem value="2" id="instant" />
                     <div className="flex items-center space-x-2">
