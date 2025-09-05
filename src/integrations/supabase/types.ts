@@ -76,6 +76,36 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json | null
+          read_at: string | null
+          request_id: string
+          requester_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          read_at?: string | null
+          request_id: string
+          requester_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          read_at?: string | null
+          request_id?: string
+          requester_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
       points_events: {
         Row: {
           created_at: string
@@ -585,6 +615,18 @@ export type Database = {
       generate_referral_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_request_results: {
+        Args: { p_request_id: string }
+        Returns: {
+          food_type: string
+          mention_count: number
+          place_id: string
+          rec_ids: string[]
+          request_id: string
+          restaurant_name: string
+          status: string
+        }[]
       }
       update_recommender_reputation: {
         Args: { rec_id: string }
