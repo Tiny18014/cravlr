@@ -70,6 +70,7 @@ export const usePopupBus = () => {
     currentPopup,
     pushPopup,
     subscribe,
-    dismissPopup
+    dismissPopup,
+    showNextPopup
   };
 };

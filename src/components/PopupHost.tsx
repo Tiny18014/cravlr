@@ -6,18 +6,30 @@ import { X } from 'lucide-react';
 import { usePopupBus } from '@/hooks/usePopupBus';
 
 export const PopupHost: React.FC = () => {
-  const { currentPopup, dismissPopup, subscribe } = usePopupBus();
+  const { currentPopup, dismissPopup, subscribe, showNextPopup } = usePopupBus();
   const navigate = useNavigate();
 
-  // Subscribe to popup bus to receive new popups
+  // Subscribe to popup bus to receive new popups and trigger display
   useEffect(() => {
+    console.log('🎯 PopupHost: Setting up popup subscription');
     const unsubscribe = subscribe((popup) => {
       console.log('🎯 PopupHost received popup:', popup);
+      console.log('🎯 Current popup state:', currentPopup);
+      // Trigger showing the next popup when we receive a notification
+      setTimeout(() => {
+        console.log('🎯 Triggering showNextPopup after delay');
+        showNextPopup();
+      }, 100);
     });
     return () => {
       unsubscribe();
     };
-  }, [subscribe]);
+  }, [subscribe, currentPopup, showNextPopup]);
+
+  // Also log when currentPopup changes
+  useEffect(() => {
+    console.log('🎯 PopupHost: currentPopup changed to:', currentPopup);
+  }, [currentPopup]);
 
   const handleAction = () => {
     if (currentPopup?.cta?.to) {

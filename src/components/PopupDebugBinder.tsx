@@ -110,6 +110,14 @@ export function PopupDebugBinder() {
     console.log("  __testRLSRecommendations('request-id') - Test RLS for recommendations");
     console.log("  __testSaferRPC('request-id') - Test safer RPC function");
     console.log("  __manualTriggerNotification('request-id') - Manually trigger notification for expired request");
+    
+    // Auto-test with the latest request
+    if (user?.id) {
+      console.log("🧪 Auto-testing notification for latest request: a1a6c762-594a-44ed-bd18-f8d87f9f4f15");
+      setTimeout(() => {
+        (window as any).__manualTriggerNotification('a1a6c762-594a-44ed-bd18-f8d87f9f4f15');
+      }, 2000);
+    }
   }, [pushPopup, user]);
   
   return null;
