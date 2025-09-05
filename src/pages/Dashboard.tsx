@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Clock, Star, User } from 'lucide-react';
 import { ReputationBadge } from '@/components/ReputationBadge';
+import { useRequestExpiryTimer } from '@/hooks/useRequestExpiryTimer';
 
 interface FoodRequest {
   id: string;
@@ -20,6 +21,7 @@ interface FoodRequest {
   status: string;
   created_at: string;
   expires_at: string;
+  requester_id: string;
   recommendation_count?: number;
 }
 
@@ -81,6 +83,10 @@ const Dashboard = () => {
   
   // Get the default tab from URL parameter
   const defaultTab = searchParams.get('tab') || 'requests';
+
+  // Set up local expiry timers for all active requests
+  const activeRequest = myRequests.find(req => req.status === 'active');
+  useRequestExpiryTimer(activeRequest || null, user?.id);
 
   useEffect(() => {
     if (!user) {

@@ -8,6 +8,8 @@ import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import GlobalLiveRequestPopup from "@/components/GlobalLiveRequestPopup";
 import TestNotificationButton from "@/components/TestNotificationButton";
 import { OneSignalInit } from "@/components/OneSignalInit";
+import { RequesterExpiryListener } from "@/components/RequesterExpiryListener";
+import { PopupHost } from "@/components/PopupHost";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import RequestFood from "./pages/RequestFood";
@@ -28,6 +30,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <OneSignalInit />
+          <RequesterExpiryListener />
+          <PopupHost />
           <BrowserRouter>
             <GlobalLiveRequestPopup />
             <TestNotificationButton />

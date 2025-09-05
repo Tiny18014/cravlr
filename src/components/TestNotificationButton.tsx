@@ -23,7 +23,7 @@ export default function TestNotificationButton() {
           location_city: 'Test City', 
           location_state: 'Test State',
           response_window: 1,
-          expires_at: new Date(Date.now() + 10000).toISOString() // 10 seconds from now
+          expires_at: new Date(Date.now() + 5000).toISOString() // 5 seconds from now
         })
         .select()
         .single();
