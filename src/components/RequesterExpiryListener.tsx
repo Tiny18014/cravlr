@@ -14,6 +14,7 @@ export function RequesterExpiryListener() {
     }
 
     console.log("🎯 Setting up RequesterExpiryListener for user:", user.id);
+    console.log("🎯 Current timestamp:", new Date().toISOString());
 
     const channel = supabase
       .channel(`req-expiry-${user.id}`)
