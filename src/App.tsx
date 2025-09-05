@@ -31,8 +31,8 @@ const App = () => (
           <Sonner />
           <OneSignalInit />
           <RequesterExpiryListener />
-          <PopupHost />
           <BrowserRouter>
+            <PopupHost />
             <GlobalLiveRequestPopup />
             <TestNotificationButton />
             <Routes>
