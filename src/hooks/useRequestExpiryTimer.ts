@@ -1,55 +1,96 @@
-import { useEffect } from 'react';
-import { usePopupBus } from '@/hooks/usePopupBus';
+import { useEffect, useRef } from "react";
+import { usePopupBus } from "@/hooks/usePopupBus";
+import { useClockSkew } from "@/hooks/useClockSkew";
 
 interface FoodRequest {
   id: string;
   food_type: string;
-  expires_at: string;
-  status: string;
+  expires_at: string; // ISO (UTC)
+  status: string;     // 'active' | 'expired' | ...
   requester_id: string;
 }
 
-export const useRequestExpiryTimer = (request: FoodRequest | null, userId: string | undefined) => {
+export const useRequestExpiryTimer = (
+  request: FoodRequest | null,
+  userId?: string
+) => {
   const { pushPopup } = usePopupBus();
+  const skewMs = useClockSkew();
+  const firedRef = useRef(false);
+  const timeoutIdRef = useRef<number | null>(null);
+  const intervalIdRef = useRef<number | null>(null);
+
+  // De-duped fire
+  const fire = () => {
+    if (firedRef.current || !request) return;
+    firedRef.current = true;
+    const at = new Date().toISOString();
+    console.log(
+      `⏰ Expiry fired for ${request.id} at ${at} (expected: ${request.expires_at})`
+    );
+    pushPopup({
+      type: "request_results",
+      title: "Time's up! 🎉",
+      message: `Your ${request.food_type} results are ready.`,
+      cta: { label: "View Results", to: `/requests/${request.id}/results` },
+      data: { requestId: request.id },
+    });
+  };
 
   useEffect(() => {
-    if (!request?.expires_at || !userId || request.requester_id !== userId || request.status !== 'active') {
+    // Guard: only requester gets their own expiry popup
+    if (!request || !userId || request.requester_id !== userId) return;
+    if (!request.expires_at) return;
+
+    // NOTE: do NOT rely on request.status being 'active' here; race conditions can occur.
+    // We only care about the time boundary crossing.
+
+    // Clear old timers
+    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+    if (intervalIdRef.current) clearInterval(intervalIdRef.current);
+    firedRef.current = false;
+
+    const serverExpiry = Date.parse(request.expires_at); // UTC
+    const localNow = Date.now();
+    const localExpiry = serverExpiry - skewMs; // align to local clock
+    const msUntil = localExpiry - localNow;
+
+    console.log(
+      `⏰ Scheduling expiry for ${request.id}. server=${request.expires_at}, skew=${skewMs}ms, localDelay=${Math.max(
+        0,
+        Math.round(msUntil)
+      )}ms`
+    );
+
+    // If already expired (or within a tiny threshold), fire immediately
+    if (msUntil <= 50) {
+      fire();
       return;
     }
 
-    const expiryTime = new Date(request.expires_at).getTime();
-    const now = Date.now();
-    const timeUntilExpiry = expiryTime - now;
+    // Primary: precise timeout (still subject to background throttling)
+    timeoutIdRef.current = window.setTimeout(() => {
+      fire();
+    }, msUntil);
 
-    // Don't set timer if already expired
-    if (timeUntilExpiry <= 0) return;
+    // Secondary: 1s heartbeat ONLY when visible (catches throttled timeouts)
+    const beat = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now >= localExpiry) fire();
+    };
+    intervalIdRef.current = window.setInterval(beat, 1000);
 
-    console.log(`⏰ Setting local expiry timer for request ${request.id}: ${timeUntilExpiry}ms (${Math.round(timeUntilExpiry/1000)}s)`);
-    console.log(`⏰ Request expires at: ${request.expires_at}, current time: ${new Date().toISOString()}`);
-
-    // Use exact expiry time without artificial buffer - let the timer be precise
-    const timeoutDuration = Math.min(timeUntilExpiry, 60_000 * 10); // cap at 10m but no artificial buffer
-
-    const timeoutId = window.setTimeout(() => {
-      const actualTime = new Date().toISOString();
-      console.log(`⏰ Local timer fired for request ${request.id} at ${actualTime} (expected: ${request.expires_at})`);
-      
-      
-      pushPopup({
-        type: "request_results",
-        title: "Time's up! 🎉",
-        message: `Your ${request.food_type} results are ready.`,
-        cta: {
-          label: "View Results",
-          to: `/requests/${request.id}/results`,
-        },
-        data: { requestId: request.id }
-      });
-    }, timeoutDuration);
+    // Visibility resume: fire immediately if we missed it while hidden
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") beat();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
-      console.log(`⏰ Clearing local timer for request ${request.id}`);
-      clearTimeout(timeoutId);
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      if (intervalIdRef.current) clearInterval(intervalIdRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [request?.id, request?.food_type, request?.expires_at, request?.status, request?.requester_id, userId, pushPopup]);
+  }, [request?.id, request?.food_type, request?.expires_at, request?.requester_id, userId, skewMs]);
 };
