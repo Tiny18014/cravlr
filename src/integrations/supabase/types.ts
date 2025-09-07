@@ -635,7 +635,12 @@ export type Database = {
     }
     Enums: {
       feedback_type: "thumbs_up" | "thumbs_down"
-      request_status: "active" | "completed" | "expired" | "closed"
+      request_status:
+        | "active"
+        | "completed"
+        | "expired"
+        | "closed"
+        | "fulfilled"
       user_role: "requester" | "recommender" | "both"
     }
     CompositeTypes: {
@@ -765,7 +770,7 @@ export const Constants = {
   public: {
     Enums: {
       feedback_type: ["thumbs_up", "thumbs_down"],
-      request_status: ["active", "completed", "expired", "closed"],
+      request_status: ["active", "completed", "expired", "closed", "fulfilled"],
       user_role: ["requester", "recommender", "both"],
     },
   },
