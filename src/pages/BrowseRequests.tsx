@@ -63,7 +63,7 @@ const ActionRow = ({
       <Button 
         variant="outline" 
         size="sm"
-        onClick={() => navigate(`/request/${request.id}/results`)}
+        onClick={() => navigate(`/requests/${request.id}/results`)}
       >
         {buttonText}
       </Button>

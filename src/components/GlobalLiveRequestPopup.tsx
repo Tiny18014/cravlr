@@ -97,7 +97,7 @@ export default function GlobalLiveRequestPopup() {
       
       // Navigate to the request results page to show aggregated recommendations
       console.log("🎯 Navigating to request results page");
-      navigate(`/request/${id}/results`, { replace: true });
+      navigate(`/requests/${id}/results`, { replace: true });
       
     } else {
       console.log("🎯 Handling request notification - accepting request");

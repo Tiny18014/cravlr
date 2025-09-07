@@ -361,7 +361,7 @@ const Dashboard = () => {
                               <Button 
                                 variant="default" 
                                 size="sm"
-                                onClick={() => navigate(`/request/${request.id}/results`)}
+                                onClick={() => navigate(`/requests/${request.id}/results`)}
                               >
                                 View Recommendations
                               </Button>
