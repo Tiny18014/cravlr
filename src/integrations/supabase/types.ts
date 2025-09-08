@@ -20,13 +20,20 @@ export type Database = {
           business_phone: string | null
           claimed_at: string | null
           created_at: string
+          email_verification_code: string | null
+          email_verification_sent_at: string | null
+          email_verified: boolean | null
           id: string
+          phone_verification_code: string | null
+          phone_verification_sent_at: string | null
+          phone_verified: boolean | null
           place_id: string | null
           restaurant_name: string
           status: string
           updated_at: string
           user_id: string
           verification_notes: string | null
+          verification_step: string | null
           verified_at: string | null
           verified_by: string | null
         }
@@ -35,13 +42,20 @@ export type Database = {
           business_phone?: string | null
           claimed_at?: string | null
           created_at?: string
+          email_verification_code?: string | null
+          email_verification_sent_at?: string | null
+          email_verified?: boolean | null
           id?: string
+          phone_verification_code?: string | null
+          phone_verification_sent_at?: string | null
+          phone_verified?: boolean | null
           place_id?: string | null
           restaurant_name: string
           status?: string
           updated_at?: string
           user_id: string
           verification_notes?: string | null
+          verification_step?: string | null
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -50,13 +64,20 @@ export type Database = {
           business_phone?: string | null
           claimed_at?: string | null
           created_at?: string
+          email_verification_code?: string | null
+          email_verification_sent_at?: string | null
+          email_verified?: boolean | null
           id?: string
+          phone_verification_code?: string | null
+          phone_verification_sent_at?: string | null
+          phone_verified?: boolean | null
           place_id?: string | null
           restaurant_name?: string
           status?: string
           updated_at?: string
           user_id?: string
           verification_notes?: string | null
+          verification_step?: string | null
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -745,9 +766,21 @@ export type Database = {
           restaurant_name: string
         }[]
       }
+      send_phone_verification: {
+        Args: { claim_id: string; phone_number: string }
+        Returns: boolean
+      }
       update_recommender_reputation: {
         Args: { rec_id: string }
         Returns: undefined
+      }
+      verify_business_email_domain: {
+        Args: { email: string; restaurant_name: string }
+        Returns: boolean
+      }
+      verify_phone_code: {
+        Args: { claim_id: string; provided_code: string }
+        Returns: boolean
       }
     }
     Enums: {
