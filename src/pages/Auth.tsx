@@ -5,14 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Phone, Mail, ShieldCheck, Building2, Users, Star } from 'lucide-react';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [userType, setUserType] = useState<'regular' | 'business'>('regular');
   const [loading, setLoading] = useState(false);
   
@@ -46,6 +49,16 @@ const Auth = () => {
           });
         }
       } else {
+        // Validate business signup requirements
+        if (userType === 'business' && !phoneNumber) {
+          toast({
+            title: "Phone Required",
+            description: "Business accounts require a phone number for verification.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const { error } = await signUp(email, password, displayName, userType);
         if (error) {
           toast({
@@ -56,8 +69,15 @@ const Auth = () => {
         } else {
           toast({
             title: "Account Created!",
-            description: "Please check your email to verify your account.",
+            description: userType === 'business' 
+              ? "Please complete business verification to access all features." 
+              : "Please check your email to verify your account.",
           });
+          
+          // Redirect business users to onboarding flow
+          if (userType === 'business') {
+            navigate('/business/onboarding?from=signup');
+          }
         }
       }
     } catch (error) {
@@ -89,47 +109,118 @@ const Auth = () => {
           {!isLogin && (
             <Tabs value={userType} onValueChange={(value) => setUserType(value as 'regular' | 'business')} className="mb-6">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="regular">Food Lover</TabsTrigger>
-                <TabsTrigger value="business">Business Owner</TabsTrigger>
+                <TabsTrigger value="regular" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Food Lover
+                </TabsTrigger>
+                <TabsTrigger value="business" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Business
+                </TabsTrigger>
               </TabsList>
-              <TabsContent value="regular" className="mt-4">
-                <p className="text-sm text-muted-foreground text-center">
-                  Discover great restaurants and share recommendations
-                </p>
+              
+              <TabsContent value="regular" className="mt-4 space-y-3">
+                <div className="text-center">
+                  <div className="flex justify-center mb-2">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <Star className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Discover amazing restaurants and earn rewards for sharing great recommendations
+                  </p>
+                </div>
+                
+                <div className="flex flex-wrap gap-1 justify-center">
+                  <Badge variant="secondary" className="text-xs">Instant Access</Badge>
+                  <Badge variant="secondary" className="text-xs">Earn Points</Badge>
+                  <Badge variant="secondary" className="text-xs">Get Rewards</Badge>
+                </div>
               </TabsContent>
-              <TabsContent value="business" className="mt-4">
-                <p className="text-sm text-muted-foreground text-center">
-                  Manage your restaurant and track referral performance
-                </p>
+              
+              <TabsContent value="business" className="mt-4 space-y-3">
+                <div className="text-center">
+                  <div className="flex justify-center mb-2">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Claim your restaurant, track referrals, and grow your business through verified recommendations
+                  </p>
+                </div>
+                
+                <div className="flex flex-wrap gap-1 justify-center">
+                  <Badge variant="secondary" className="text-xs">Phone Verification</Badge>
+                  <Badge variant="secondary" className="text-xs">Business Email</Badge>
+                  <Badge variant="secondary" className="text-xs">Manual Review</Badge>
+                </div>
+                
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-xs text-amber-800 text-center">
+                    <ShieldCheck className="h-3 w-3 inline mr-1" />
+                    Business accounts require verification for security
+                  </p>
+                </div>
               </TabsContent>
             </Tabs>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  type="text"
-                  placeholder="How should we call you?"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required={!isLogin}
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Display Name</Label>
+                  <Input
+                    id="displayName"
+                    type="text"
+                    placeholder="How should we call you?"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    required={!isLogin}
+                  />
+                </div>
+                
+                {userType === 'business' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Business Phone Number
+                    </Label>
+                    <Input
+                      id="phoneNumber"
+                      type="tel"
+                      placeholder="+1 (555) 123-4567"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required={userType === 'business'}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Required for business verification
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                {userType === 'business' ? 'Business Email' : 'Email'}
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder={userType === 'business' ? 'contact@yourrestaurant.com' : 'your@email.com'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+              {!isLogin && userType === 'business' && (
+                <p className="text-xs text-muted-foreground">
+                  Use your business domain for faster verification
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -147,8 +238,16 @@ const Auth = () => {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 
-                userType === 'business' ? 'Create Business Account' : 'Create Account')}
+                userType === 'business' ? 'Create & Verify Business Account' : 'Create Account')}
             </Button>
+            
+            {!isLogin && userType === 'business' && (
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">
+                  After signup, you'll need to complete phone verification and claim your restaurant
+                </p>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center">

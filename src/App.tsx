@@ -21,8 +21,10 @@ import Dashboard from "./pages/Dashboard";
 import RequestResults from "./pages/RequestResults";
 import AdminConversions from "./pages/AdminConversions";
 import BusinessClaim from "./pages/BusinessClaim";
+import BusinessOnboarding from "./pages/BusinessOnboarding";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import AdminBusinessClaims from "./pages/AdminBusinessClaims";
+import SampleAccounts from "./pages/SampleAccounts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,7 +55,9 @@ const App = () => (
               <Route path="/admin/conversions" element={<AdminConversions />} />
               <Route path="/admin/business-claims" element={<AdminBusinessClaims />} />
               <Route path="/business/claim" element={<BusinessClaim />} />
+              <Route path="/business/onboarding" element={<BusinessOnboarding />} />
               <Route path="/business/dashboard" element={<BusinessDashboard />} />
+              <Route path="/sample-accounts" element={<SampleAccounts />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

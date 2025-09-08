@@ -34,6 +34,12 @@ function UnauthenticatedView() {
         <Button asChild size="lg" className="w-full">
           <Link to="/auth">Get Started</Link>
         </Button>
+        
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm" className="flex-1">
+            <Link to="/sample-accounts">View Sample Accounts</Link>
+          </Button>
+        </div>
         <div className="space-y-3 text-sm text-muted-foreground">
           <h3 className="font-semibold">How it works:</h3>
           <div className="space-y-2">
