@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      business_claims: {
+        Row: {
+          business_email: string
+          business_phone: string | null
+          claimed_at: string | null
+          created_at: string
+          id: string
+          place_id: string | null
+          restaurant_name: string
+          status: string
+          updated_at: string
+          user_id: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          business_email: string
+          business_phone?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          place_id?: string | null
+          restaurant_name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          business_email?: string
+          business_phone?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          place_id?: string | null
+          restaurant_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      business_profiles: {
+        Row: {
+          business_address: string | null
+          business_name: string
+          business_website: string | null
+          commission_rate: number | null
+          contact_name: string
+          created_at: string
+          id: string
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_address?: string | null
+          business_name: string
+          business_website?: string | null
+          commission_rate?: number | null
+          contact_name: string
+          created_at?: string
+          id?: string
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_address?: string | null
+          business_name?: string
+          business_website?: string | null
+          commission_rate?: number | null
+          contact_name?: string
+          created_at?: string
+          id?: string
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_requests: {
         Row: {
           additional_notes: string | null
@@ -545,6 +632,19 @@ export type Database = {
       }
     }
     Views: {
+      business_analytics: {
+        Row: {
+          conversions: number | null
+          paid_commission: number | null
+          pending_commission: number | null
+          place_id: string | null
+          restaurant_name: string | null
+          total_clicks: number | null
+          total_commission: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       view_referral_conversions_recent: {
         Row: {
           awarded_points: number | null
@@ -641,7 +741,7 @@ export type Database = {
         | "expired"
         | "closed"
         | "fulfilled"
-      user_role: "requester" | "recommender" | "both"
+      user_role: "requester" | "recommender" | "both" | "business"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -771,7 +871,7 @@ export const Constants = {
     Enums: {
       feedback_type: ["thumbs_up", "thumbs_down"],
       request_status: ["active", "completed", "expired", "closed", "fulfilled"],
-      user_role: ["requester", "recommender", "both"],
+      user_role: ["requester", "recommender", "both", "business"],
     },
   },
 } as const
