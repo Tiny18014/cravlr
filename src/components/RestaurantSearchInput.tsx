@@ -12,6 +12,28 @@ interface RestaurantSuggestion {
   description: string;
 }
 
+// Test restaurants for business dashboard testing
+const TEST_RESTAURANTS: RestaurantSuggestion[] = [
+  {
+    placeId: 'test_joes_pizza_palace',
+    name: "Joe's Pizza Palace Test",
+    address: '123 Main St, Charlotte, NC 28202',
+    description: 'Test restaurant for business dashboard'
+  },
+  {
+    placeId: 'test_marias_cafe',
+    name: "Maria's Cafe Test",
+    address: '456 Oak Ave, Charlotte, NC 28203',
+    description: 'Test restaurant for business dashboard'
+  },
+  {
+    placeId: 'test_burger_spot',
+    name: "The Burger Spot Test",
+    address: '789 Pine St, Charlotte, NC 28204',
+    description: 'Test restaurant for business dashboard'
+  }
+];
+
 interface RestaurantSearchInputProps {
   value: string;
   onChange: (name: string, address: string, placeId?: string) => void;
@@ -37,7 +59,7 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchTerm && searchTerm.length >= 2) {
+      if (searchTerm && searchTerm.length >= 1) {
         searchRestaurants(searchTerm);
       } else {
         setSuggestions([]);
@@ -65,6 +87,12 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
     
     setLoading(true);
     try {
+      // Filter test restaurants that match the query
+      const filteredTestRestaurants = TEST_RESTAURANTS.filter(restaurant =>
+        restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
+        restaurant.address.toLowerCase().includes(query.toLowerCase())
+      );
+      
       console.log('🔍 Searching restaurants for:', query);
       
       const requestBody = {
@@ -81,14 +109,28 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
 
       if (error) {
         console.error('❌ Places search error:', error);
+        // Still show test restaurants even if API fails
+        setSuggestions(filteredTestRestaurants);
+        setIsOpen(true);
         return;
       }
 
       console.log('✅ Got suggestions:', data);
-      setSuggestions(data || []);
+      // Combine test restaurants with API results, test restaurants first
+      const combinedSuggestions = [...filteredTestRestaurants, ...(data || [])];
+      setSuggestions(combinedSuggestions);
       setIsOpen(true);
     } catch (error) {
       console.error('❌ Restaurant search error:', error);
+      // Show test restaurants as fallback
+      const filteredTestRestaurants = TEST_RESTAURANTS.filter(restaurant =>
+        restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
+        restaurant.address.toLowerCase().includes(query.toLowerCase())
+      );
+      setSuggestions(filteredTestRestaurants);
+      if (filteredTestRestaurants.length > 0) {
+        setIsOpen(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -109,6 +151,10 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
 
   const handleInputFocus = () => {
     if (suggestions.length > 0) {
+      setIsOpen(true);
+    } else if (!searchTerm || searchTerm.length === 0) {
+      // Show test restaurants when focusing on empty input
+      setSuggestions(TEST_RESTAURANTS);
       setIsOpen(true);
     }
   };

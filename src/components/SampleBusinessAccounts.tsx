@@ -19,33 +19,33 @@ interface SampleAccount {
 const sampleAccounts: SampleAccount[] = [
   {
     name: "Joe Martinez",
-    restaurant: "Joe's Pizza Palace",
-    email: "owner@joes-pizza.com",
+    restaurant: "Joe's Pizza Palace Test",
+    email: "owner@joes-pizza-test.com",
     phone: "+1-555-0101",
-    address: "123 Main St, New York, NY 10001",
-    website: "https://joes-pizza.com",
+    address: "123 Main St, Charlotte, NC 28202",
+    website: "https://joes-pizza-test.com",
     status: "verified",
-    description: "Family-owned Italian pizzeria with authentic recipes since 1985"
+    description: "Test business account for referral tracking and dashboard testing"
   },
   {
     name: "Maria Rodriguez", 
-    restaurant: "Mama's Kitchen",
-    email: "manager@mamas-kitchen.com",
+    restaurant: "Maria's Cafe Test",
+    email: "manager@marias-cafe-test.com",
     phone: "+1-555-0102",
-    address: "456 Oak Ave, Los Angeles, CA 90210",
-    website: "https://mamas-kitchen.com",
+    address: "456 Oak Ave, Charlotte, NC 28203",
+    website: "https://marias-cafe-test.com",
     status: "verified",
-    description: "Traditional Mexican cuisine with fresh, locally sourced ingredients"
+    description: "Test business account for business verification features"
   },
   {
     name: "David Chen",
-    restaurant: "The Golden Spoon",
-    email: "chef@the-golden-spoon.com", 
+    restaurant: "The Burger Spot Test",
+    email: "chef@burger-spot-test.com", 
     phone: "+1-555-0103",
-    address: "789 Pine St, Chicago, IL 60601",
-    website: "https://golden-spoon.com",
+    address: "789 Pine St, Charlotte, NC 28204",
+    website: "https://burger-spot-test.com",
     status: "verified",
-    description: "Modern Asian fusion restaurant with innovative culinary experiences"
+    description: "Test business account for commission tracking and analytics"
   }
 ];
 
