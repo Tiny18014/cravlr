@@ -21,36 +21,14 @@ const Index = () => {
 };
 
 function UnauthenticatedView() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex flex-col items-center justify-center p-6">
-      <div className="text-center space-y-6 max-w-md">
-        <div className="h-16 w-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl mx-auto">
-          C
-        </div>
-        <h1 className="text-4xl font-bold">Welcome to Cravlr</h1>
-        <p className="text-lg text-muted-foreground">
-          Discover amazing local restaurants through food requests and recommendations from your community.
-        </p>
-        <Button asChild size="lg" className="w-full">
-          <Link to="/auth">Get Started</Link>
-        </Button>
-        
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm" className="flex-1">
-            <Link to="/sample-accounts">View Sample Accounts</Link>
-          </Button>
-        </div>
-        <div className="space-y-3 text-sm text-muted-foreground">
-          <h3 className="font-semibold">How it works:</h3>
-          <div className="space-y-2">
-            <p>🍕 <strong>Request:</strong> Ask for food recommendations in your area</p>
-            <p>🎯 <strong>Recommend:</strong> Help others discover great restaurants</p>
-            <p>⭐ <strong>Earn Points:</strong> Build your reputation by giving helpful suggestions</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const navigate = useNavigate();
+  
+  // Redirect to welcome page instead of showing unauthenticated view
+  React.useEffect(() => {
+    navigate('/welcome');
+  }, [navigate]);
+
+  return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 }
 
 function Header({ onSignOut, userName }: { onSignOut: () => void; userName: string }) {

@@ -13,7 +13,10 @@ import { GlobalRequestExpiryManager } from "@/providers/GlobalRequestExpiryManag
 import { PopupHost } from "@/components/PopupHost";
 import { PopupDebugBinder } from "@/components/PopupDebugBinder";
 import Index from "./pages/Index";
+import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
+import AuthFoodlover from "./pages/AuthFoodlover";
+import AuthBusiness from "./pages/AuthBusiness";
 import RequestFood from "./pages/RequestFood";
 import BrowseRequests from "./pages/BrowseRequests";
 import SendRecommendation from "./pages/SendRecommendation";
@@ -46,7 +49,10 @@ const App = () => (
             {/* <TestNotificationButton /> */}
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/welcome" element={<Welcome />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/foodlover" element={<AuthFoodlover />} />
+              <Route path="/auth/business" element={<AuthBusiness />} />
               <Route path="/request-food" element={<RequestFood />} />
               <Route path="/browse-requests" element={<BrowseRequests />} />
               <Route path="/recommend/:requestId" element={<SendRecommendation />} />
