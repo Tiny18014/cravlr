@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ interface BusinessAnalytics {
 
 export default function BusinessDashboard() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const { fetchBusinessClaims, getBusinessAnalytics } = useBusinessClaims();
   const { fetchPendingReferralClicks, markConversion, loading: conversionLoading } = useReferralConversions();
   const [claims, setClaims] = useState<BusinessClaim[]>([]);
@@ -42,10 +44,15 @@ export default function BusinessDashboard() {
   const [conversionNotes, setConversionNotes] = useState('');
 
   useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    
     if (user) {
       fetchDashboardData();
     }
-  }, [user]);
+  }, [user, navigate]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
