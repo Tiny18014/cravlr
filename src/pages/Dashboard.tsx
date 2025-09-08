@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Star, User } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Star, User, LogOut } from 'lucide-react';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { useRequestExpiryTimer } from '@/hooks/useRequestExpiryTimer';
 
@@ -63,7 +63,7 @@ interface ReceivedRecommendation {
 }
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -241,15 +241,21 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-6 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Home
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Your Food Requests 📝</h1>
-            <p className="text-muted-foreground mt-1">Track responses and see recommendations.</p>
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Home
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Your Food Requests 📝</h1>
+              <p className="text-muted-foreground mt-1">Track responses and see recommendations.</p>
+            </div>
           </div>
+          <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
       </header>
 

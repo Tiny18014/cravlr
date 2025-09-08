@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useBusinessClaims } from '@/hooks/useBusinessClaims';
 import { useReferralConversions } from '@/hooks/useReferralConversions';
-import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users } from 'lucide-react';
+import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users, LogOut } from 'lucide-react';
 
 interface BusinessClaim {
   id: string;
@@ -30,7 +30,7 @@ interface BusinessAnalytics {
 }
 
 export default function BusinessDashboard() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { fetchBusinessClaims, getBusinessAnalytics } = useBusinessClaims();
   const { fetchPendingReferralClicks, markConversion, loading: conversionLoading } = useReferralConversions();
   const [claims, setClaims] = useState<BusinessClaim[]>([]);
@@ -139,12 +139,18 @@ export default function BusinessDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <Building2 className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Business Dashboard</h1>
-            <p className="text-muted-foreground">Track your restaurant's referral performance</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">Business Dashboard</h1>
+              <p className="text-muted-foreground">Track your restaurant's referral performance</p>
+            </div>
           </div>
+          <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
 
         {/* Stats Overview */}
