@@ -632,19 +632,6 @@ export type Database = {
       }
     }
     Views: {
-      business_analytics: {
-        Row: {
-          conversions: number | null
-          paid_commission: number | null
-          pending_commission: number | null
-          place_id: string | null
-          restaurant_name: string | null
-          total_clicks: number | null
-          total_commission: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
       view_referral_conversions_recent: {
         Row: {
           awarded_points: number | null
@@ -715,6 +702,19 @@ export type Database = {
       generate_referral_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_business_analytics: {
+        Args: { business_user_id?: string }
+        Returns: {
+          conversions: number
+          paid_commission: number
+          pending_commission: number
+          place_id: string
+          restaurant_name: string
+          total_clicks: number
+          total_commission: number
+          user_id: string
+        }[]
       }
       get_request_results: {
         Args: { p_request_id: string }

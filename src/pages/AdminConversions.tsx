@@ -46,8 +46,9 @@ const AdminConversions = () => {
   const [profile, setProfile] = useState<any>(null);
   const [unconvertedClicks, setUnconvertedClicks] = useState<ReferralClick[]>([]);
   const [recentConversions, setRecentConversions] = useState<ReferralClick[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'conversions' | 'business-claims'>('conversions');
   const [selectedClick, setSelectedClick] = useState<ReferralClick | null>(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<ConversionFormData>({
     conversion_value: '',
     conversion_method: '',
