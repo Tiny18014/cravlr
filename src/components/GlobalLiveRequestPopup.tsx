@@ -130,6 +130,10 @@ export default function GlobalLiveRequestPopup() {
     setIsProcessing(true);
     
     try {
+      // Clear active popup immediately and prevent queue from showing next
+      setActive(null);
+      queueRef.current = []; // Clear queue to prevent any more popups
+      
       // Handle differently based on notification type  
       if (active?.type === "recommendation") {
         console.log("🎯 Dismissing aggregated results notification");
@@ -143,8 +147,6 @@ export default function GlobalLiveRequestPopup() {
     } catch (error) {
       console.error("❌ Error ignoring request:", error);
     } finally {
-      // Always close the popup and handle queue properly
-      close();
       setIsProcessing(false);
     }
   };
