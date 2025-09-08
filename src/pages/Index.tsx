@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2 } from "lucide-react";
 import ActiveRequestsList from "@/components/ActiveRequestsList";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,7 +217,8 @@ function BottomNav() {
 
 function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   const { user } = useAuth();
-  const [userProfile, setUserProfile] = useState<{ display_name: string } | null>(null);
+  const navigate = useNavigate();
+  const [userProfile, setUserProfile] = useState<{ display_name: string; user_role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch user profile data
@@ -228,7 +229,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('display_name')
+          .select('display_name, user_role')
           .eq('user_id', user.id)
           .single();
 
@@ -236,8 +237,12 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
         setUserProfile(data);
       } catch (error) {
         console.error('Error fetching user profile:', error);
-        // Fallback to email-based display name
-        setUserProfile({ display_name: user.email?.split('@')[0] || 'foodie' });
+        // Fallback to email-based display name and check user metadata for business type
+        const userType = user.user_metadata?.user_type || 'regular';
+        setUserProfile({ 
+          display_name: user.email?.split('@')[0] || 'foodie',
+          user_role: userType === 'business' ? 'business' : 'both'
+        });
       } finally {
         setLoading(false);
       }
@@ -245,6 +250,18 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
 
     fetchUserProfile();
   }, [user]);
+
+  // Redirect business users to business dashboard
+  useEffect(() => {
+    if (!loading && userProfile) {
+      const isBusinessUser = userProfile.user_role === 'business' || user?.user_metadata?.user_type === 'business';
+      if (isBusinessUser) {
+        // Redirect to business dashboard
+        navigate('/business/dashboard', { replace: true });
+        return;
+      }
+    }
+  }, [loading, userProfile, user, navigate]);
 
   // Mock user data for rewards - you can replace with actual data from your store/profile query
   const pointsThisMonth = 0;
