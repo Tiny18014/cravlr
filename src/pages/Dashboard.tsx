@@ -252,7 +252,14 @@ const Dashboard = () => {
               <p className="text-muted-foreground mt-1">Track responses and see recommendations.</p>
             </div>
           </div>
-          <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+          <Button variant="outline" onClick={async () => {
+            try {
+              await signOut();
+              navigate('/auth');
+            } catch (error) {
+              console.error('Sign out error:', error);
+            }
+          }} className="flex items-center gap-2">
             <LogOut className="h-4 w-4" />
             Sign Out
           </Button>
