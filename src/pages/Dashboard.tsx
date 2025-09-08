@@ -110,6 +110,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      console.log('🔄 Fetching dashboard data for user:', user?.id);
       // Fetch user's requests with recommendation counts
       const { data: requests, error: requestsError } = await supabase
         .from('food_requests')
@@ -137,6 +138,7 @@ const Dashboard = () => {
       setMyRequests(requestsWithCounts);
 
       // Fetch recommendations user has made
+      console.log('🔍 Fetching recommendations for user:', user?.id);
       const { data: recommendations, error: recommendationsError } = await supabase
         .from('recommendations')
         .select(`
@@ -147,7 +149,11 @@ const Dashboard = () => {
         .eq('recommender_id', user?.id)
         .order('created_at', { ascending: false });
 
-      if (recommendationsError) throw recommendationsError;
+      console.log('📋 Recommendations query result:', { recommendations, error: recommendationsError });
+      if (recommendationsError) {
+        console.error('❌ Error fetching recommendations:', recommendationsError);
+        throw recommendationsError;
+      }
       setMyRecommendations(recommendations || []);
 
       // Fetch recommendations received by user
