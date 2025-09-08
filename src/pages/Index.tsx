@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2 } from "lucide-react";
 import ActiveRequestsList from "@/components/ActiveRequestsList";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -46,16 +47,16 @@ function UnauthenticatedView() {
   );
 }
 
-function Header({ onSignOut }: { onSignOut: () => void }) {
+function Header({ onSignOut, userName }: { onSignOut: () => void; userName: string }) {
   return (
     <header className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
         <div aria-hidden className="h-9 w-9 rounded-2xl bg-primary text-primary-foreground grid place-items-center font-semibold">
-          C
+          {userName.charAt(0).toUpperCase()}
         </div>
         <div className="leading-tight">
-          <p className="text-xs text-muted-foreground">Welcome</p>
-          <p className="text-sm font-medium">Back, foodie! 🍽️</p>
+          <p className="text-xs text-muted-foreground">Welcome back</p>
+          <p className="text-sm font-medium">{userName}! 🍽️</p>
         </div>
       </div>
       <button 
@@ -209,15 +210,50 @@ function BottomNav() {
 }
 
 function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
-  // Mock user data - you can replace with actual data from your store/profile query
-  const userFirstName = "foodie";
+  const { user } = useAuth();
+  const [userProfile, setUserProfile] = useState<{ display_name: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) throw error;
+        setUserProfile(data);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // Fallback to email-based display name
+        setUserProfile({ display_name: user.email?.split('@')[0] || 'foodie' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
+
+  // Mock user data for rewards - you can replace with actual data from your store/profile query
   const pointsThisMonth = 0;
   const goalThisMonth = 500;
   const progress = Math.min(100, Math.round((pointsThisMonth / goalThisMonth) * 100));
 
+  const userName = userProfile?.display_name || user?.email?.split('@')[0] || 'foodie';
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <main className="mx-auto max-w-md pb-28">
-      <Header onSignOut={onSignOut} />
+      <Header onSignOut={onSignOut} userName={userName} />
       <HeroCard />
       
       {/* Active Requests Section */}
