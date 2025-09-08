@@ -253,11 +253,15 @@ const Dashboard = () => {
             </div>
           </div>
           <Button variant="outline" onClick={async () => {
+            console.log('🔘 Sign out button clicked');
             try {
               await signOut();
-              navigate('/auth');
+              console.log('🔄 Navigating to welcome page...');
+              navigate('/welcome');
             } catch (error) {
-              console.error('Sign out error:', error);
+              console.error('❌ Sign out error in component:', error);
+              // Force navigation even if sign out fails
+              navigate('/welcome');
             }
           }} className="flex items-center gap-2">
             <LogOut className="h-4 w-4" />

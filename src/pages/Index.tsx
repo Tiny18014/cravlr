@@ -229,14 +229,19 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
     fetchUserProfile();
   }, [user]);
 
-  // Redirect business users to business dashboard
+  // Redirect business users to business dashboard only on initial load
   useEffect(() => {
     if (!loading && userProfile) {
       const isBusinessUser = userProfile.user_role === 'business' || user?.user_metadata?.user_type === 'business';
       if (isBusinessUser) {
-        // Redirect to business dashboard
-        navigate('/business/dashboard', { replace: true });
-        return;
+        // Only redirect if we're on the root page and user just logged in
+        // This prevents redirecting when implementing new features
+        const currentPath = window.location.pathname;
+        if (currentPath === '/') {
+          console.log('🏢 Redirecting business user to dashboard...');
+          navigate('/business/dashboard', { replace: true });
+          return;
+        }
       }
     }
   }, [loading, userProfile, user, navigate]);
