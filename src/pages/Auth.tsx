@@ -106,6 +106,52 @@ const Auth = () => {
           </p>
         </CardHeader>
         <CardContent>
+          {isLogin && (
+            <div className="mb-6 space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Choose your account type to continue
+                </p>
+              </div>
+              
+              <div className="grid gap-3">
+                <div className="border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <Users className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">Food Lover Account</p>
+                      <p className="text-xs text-muted-foreground">
+                        Personal email • Discover restaurants • Earn rewards
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">Business Account</p>
+                      <p className="text-xs text-muted-foreground">
+                        Business email • Track referrals • Manage restaurants
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">
+                  Enter your credentials below to access either account type
+                </p>
+              </div>
+            </div>
+          )}
+
           {!isLogin && (
             <Tabs value={userType} onValueChange={(value) => setUserType(value as 'regular' | 'business')} className="mb-6">
               <TabsList className="grid w-full grid-cols-2">
