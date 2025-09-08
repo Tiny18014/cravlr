@@ -728,6 +728,23 @@ export type Database = {
           status: string
         }[]
       }
+      mark_conversion: {
+        Args: {
+          p_commission_rate?: number
+          p_conversion_method?: string
+          p_conversion_value?: number
+          p_notes?: string
+          p_referral_click_id: string
+        }
+        Returns: {
+          commission_amount: number
+          conversion_value: number
+          converted: boolean
+          id: string
+          recommender_id: string
+          restaurant_name: string
+        }[]
+      }
       update_recommender_reputation: {
         Args: { rec_id: string }
         Returns: undefined

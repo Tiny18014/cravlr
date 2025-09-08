@@ -92,12 +92,12 @@ export const useReferralConversions = () => {
     try {
       setLoading(true);
 
-      const { error } = await supabase.rpc('mark_conversion', {
-        referral_click_id: clickId,
-        conversion_method: conversionMethod,
-        conversion_value: conversionValue,
-        commission_rate: 0.10, // Default 10% commission
-        notes: notes
+      const { data, error } = await supabase.rpc('mark_conversion', {
+        p_referral_click_id: clickId,
+        p_conversion_method: conversionMethod,
+        p_conversion_value: conversionValue,
+        p_commission_rate: 0.10, // Default 10% commission
+        p_notes: notes
       });
 
       if (error) {
