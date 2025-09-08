@@ -118,7 +118,18 @@ const SendRecommendation = () => {
             ...(formData.mapsUrl && { maps_url: formData.mapsUrl })
           });
 
-      if (error) throw error;
+      if (error) {
+        // Handle duplicate recommendation error specifically
+        if (error.code === '23505' && error.message.includes('recommendations_request_id_recommender_id_restaurant_name_key')) {
+          toast({
+            title: "Already recommended",
+            description: `You've already recommended "${formData.restaurantName}" for this request. Try a different restaurant.`,
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Recommendation sent!",
@@ -126,7 +137,7 @@ const SendRecommendation = () => {
       });
       
       navigate('/browse-requests');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending recommendation:', error);
       toast({
         title: "Error",
