@@ -96,25 +96,42 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             });
             
             // Show notification when request closes/expires for the requester
-            // OR when any user's request gets updated to allow testing
+            // Only show if we haven't already shown a notification for this request
             if (request.requester_id === user.id && 
                 oldRequest && 
                 oldRequest.status === 'active' && 
                 (request.status === 'closed' || request.status === 'expired')) {
               
-              console.log("🌍 Request closed/expired for user, showing aggregated results");
+              console.log("🌍 Request closed/expired for user, checking if notification already shown");
               
-              const ping: LivePing = {
-                id: request.id,
-                type: "recommendation",
-                foodType: request.food_type,
-                location: `${request.location_city}, ${request.location_state}`,
-                urgency: "soon",
-                restaurantName: "Multiple restaurants" // Will show aggregated results
-              };
+              // Check if notification already exists and was read
+              supabase
+                .from('notifications')
+                .select('read_at')
+                .eq('request_id', request.id)
+                .eq('requester_id', user.id)
+                .eq('type', 'request_results')
+                .single()
+                .then(({ data: existingNotification, error }) => {
+                  // Only show popup if no notification exists or it hasn't been read
+                  if (error || !existingNotification || !existingNotification.read_at) {
+                    console.log("🌍 No existing read notification found, showing results popup");
+                    
+                    const ping: LivePing = {
+                      id: request.id,
+                      type: "recommendation",
+                      foodType: request.food_type,
+                      location: `${request.location_city}, ${request.location_state}`,
+                      urgency: "soon",
+                      restaurantName: "Multiple restaurants" // Will show aggregated results
+                    };
 
-              console.log("🌍 Setting aggregated results ping:", ping);
-              setNextPing(ping);
+                    console.log("🌍 Setting aggregated results ping:", ping);
+                    setNextPing(ping);
+                  } else {
+                    console.log("🌍 Notification already read, not showing popup again");
+                  }
+                });
             } else {
               console.log("🌍 No notification - conditions not met for update event");
               console.log("🌍 Request belongs to:", request.requester_id);

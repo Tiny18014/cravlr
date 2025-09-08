@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useNotifications } from "@/contexts/NotificationsContext";
+import { supabase } from "@/integrations/supabase/client";
 
 type LivePing = {
   id: string;
@@ -95,6 +96,17 @@ export default function GlobalLiveRequestPopup() {
       // Clear the ping from context to prevent re-triggering
       clearPing();
       
+      // Mark as viewed to prevent re-showing
+      try {
+        await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('request_id', id)
+          .eq('requester_id', nextPing?.id || '');
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
+      
       // Navigate to the request results page to show aggregated recommendations
       console.log("🎯 Navigating to request results page");
       navigate(`/requests/${id}/results`, { replace: true });
@@ -137,6 +149,18 @@ export default function GlobalLiveRequestPopup() {
       // Handle differently based on notification type  
       if (active?.type === "recommendation") {
         console.log("🎯 Dismissing aggregated results notification");
+        
+        // Mark as viewed to prevent re-showing
+        try {
+          await supabase
+            .from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('request_id', id)
+            .eq('requester_id', nextPing?.id || '');
+        } catch (error) {
+          console.error("Error marking notification as read:", error);
+        }
+        
         // For recommendations, clear the ping from context
         clearPing();
       } else {

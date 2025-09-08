@@ -49,7 +49,7 @@ const ActiveRequestsList = ({
     }
   }, [user]);
 
-  // Add realtime subscription for new requests
+  // Add realtime subscription for new requests and recommendations
   useEffect(() => {
     if (!user) return;
 
@@ -79,6 +79,21 @@ const ActiveRequestsList = ({
         (payload) => {
           console.log('🎯 Request updated, refreshing active list:', payload.new);
           fetchRequests();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'recommendations'
+        },
+        (payload) => {
+          console.log('🎯 New recommendation created, refreshing active list:', payload.new);
+          // If the current user created this recommendation, refresh the list to update button states
+          if (payload.new.recommender_id === user.id) {
+            fetchRequests();
+          }
         }
       )
       .subscribe();
