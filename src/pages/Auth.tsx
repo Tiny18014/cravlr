@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,6 +13,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [userType, setUserType] = useState<'regular' | 'business'>('regular');
   const [loading, setLoading] = useState(false);
   
   const { signUp, signIn, user } = useAuth();
@@ -44,7 +46,7 @@ const Auth = () => {
           });
         }
       } else {
-        const { error } = await signUp(email, password, displayName);
+        const { error } = await signUp(email, password, displayName, userType);
         if (error) {
           toast({
             title: "Signup Failed",
@@ -78,12 +80,31 @@ const Auth = () => {
           </CardTitle>
           <p className="text-muted-foreground">
             {isLogin 
-              ? 'Sign in to discover great food recommendations' 
-              : 'Create an account to start sharing and discovering food'
+              ? 'Sign in to your account' 
+              : 'Create your account to get started'
             }
           </p>
         </CardHeader>
         <CardContent>
+          {!isLogin && (
+            <Tabs value={userType} onValueChange={(value) => setUserType(value as 'regular' | 'business')} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="regular">Food Lover</TabsTrigger>
+                <TabsTrigger value="business">Business Owner</TabsTrigger>
+              </TabsList>
+              <TabsContent value="regular" className="mt-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  Discover great restaurants and share recommendations
+                </p>
+              </TabsContent>
+              <TabsContent value="business" className="mt-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  Manage your restaurant and track referral performance
+                </p>
+              </TabsContent>
+            </Tabs>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">
@@ -125,7 +146,8 @@ const Auth = () => {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
+              {loading ? 'Loading...' : (isLogin ? 'Sign In' : 
+                userType === 'business' ? 'Create Business Account' : 'Create Account')}
             </Button>
           </form>
 

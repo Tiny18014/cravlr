@@ -3,9 +3,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useBusinessClaims } from '@/hooks/useBusinessClaims';
-import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { useReferralConversions } from '@/hooks/useReferralConversions';
+import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users } from 'lucide-react';
 
 interface BusinessClaim {
   id: string;
@@ -28,9 +32,14 @@ interface BusinessAnalytics {
 export default function BusinessDashboard() {
   const { user } = useAuth();
   const { fetchBusinessClaims, getBusinessAnalytics } = useBusinessClaims();
+  const { fetchPendingReferralClicks, markConversion, loading: conversionLoading } = useReferralConversions();
   const [claims, setClaims] = useState<BusinessClaim[]>([]);
   const [analytics, setAnalytics] = useState<BusinessAnalytics[]>([]);
+  const [pendingClicks, setPendingClicks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedClick, setSelectedClick] = useState<any>(null);
+  const [conversionValue, setConversionValue] = useState('');
+  const [conversionNotes, setConversionNotes] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -41,17 +50,38 @@ export default function BusinessDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [claimsData, analyticsData] = await Promise.all([
+      const [claimsData, analyticsData, pendingClicksData] = await Promise.all([
         fetchBusinessClaims(user?.id),
-        getBusinessAnalytics(user?.id)
+        getBusinessAnalytics(user?.id),
+        fetchPendingReferralClicks(user?.id)
       ]);
       
       setClaims(claimsData);
       setAnalytics(analyticsData);
+      setPendingClicks(pendingClicksData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkConversion = async () => {
+    if (!selectedClick || !conversionValue) return;
+
+    const success = await markConversion(
+      selectedClick.id,
+      parseFloat(conversionValue),
+      'business_verified',
+      conversionNotes
+    );
+
+    if (success) {
+      setSelectedClick(null);
+      setConversionValue('');
+      setConversionNotes('');
+      // Refresh data
+      fetchDashboardData();
     }
   };
 
@@ -176,6 +206,7 @@ export default function BusinessDashboard() {
         <Tabs defaultValue="analytics" className="space-y-6">
           <TabsList>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="conversions">Pending Orders ({pendingClicks.length})</TabsTrigger>
             <TabsTrigger value="claims">Restaurant Claims</TabsTrigger>
           </TabsList>
 
@@ -229,6 +260,101 @@ export default function BusinessDashboard() {
                     <p className="text-muted-foreground">No analytics available yet</p>
                     <p className="text-sm text-muted-foreground">
                       Once your restaurant claims are verified, you'll see performance data here
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="conversions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Orders</CardTitle>
+                <CardDescription>
+                  Mark orders as completed to award commissions and points
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingClicks.length > 0 ? (
+                  <div className="space-y-4">
+                    {pendingClicks.map((click) => (
+                      <div key={click.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <h3 className="font-semibold">{click.restaurant_name}</h3>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <p>Customer: {click.requester_name}</p>
+                              <p>Recommended by: {click.recommender_name}</p>
+                              <p>Clicked: {new Date(click.clicked_at).toLocaleDateString()} at {new Date(click.clicked_at).toLocaleTimeString()}</p>
+                              <p>Commission Rate: {(click.commission_rate * 100)}%</p>
+                            </div>
+                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button onClick={() => setSelectedClick(click)}>
+                                Mark as Completed
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Mark Order as Completed</DialogTitle>
+                                <DialogDescription>
+                                  Record the order details to award commission and points to the recommender.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="orderValue">Order Value ($)</Label>
+                                  <Input
+                                    id="orderValue"
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="Enter the total order amount"
+                                    value={conversionValue}
+                                    onChange={(e) => setConversionValue(e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="notes">Notes (optional)</Label>
+                                  <Input
+                                    id="notes"
+                                    placeholder="Any additional notes about this order"
+                                    value={conversionNotes}
+                                    onChange={(e) => setConversionNotes(e.target.value)}
+                                  />
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedClick(null);
+                                      setConversionValue('');
+                                      setConversionNotes('');
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    onClick={handleMarkConversion}
+                                    disabled={!conversionValue || conversionLoading}
+                                  >
+                                    {conversionLoading ? 'Processing...' : 'Mark Completed'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No pending orders</p>
+                    <p className="text-sm text-muted-foreground">
+                      Orders from Cravlr referrals will appear here for you to mark as completed
                     </p>
                   </div>
                 )}
