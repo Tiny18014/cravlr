@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { CityAutocomplete } from '@/components/CityAutocomplete';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -27,7 +27,6 @@ const profileFormSchema = z.object({
   }),
   notify_recommender: z.boolean(),
   do_not_disturb: z.boolean(),
-  user_role: z.enum(['requester', 'recommender', 'both', 'business']),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -38,6 +37,7 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -47,7 +47,6 @@ const Profile = () => {
       location_state: '',
       notify_recommender: true,
       do_not_disturb: false,
-      user_role: 'both',
     },
   });
 
@@ -73,13 +72,18 @@ const Profile = () => {
       }
 
       if (profile) {
+        const locationDisplay = profile.location_city && profile.location_state 
+          ? `${profile.location_city}, ${profile.location_state}`
+          : '';
+        
+        setLocationInput(locationDisplay);
+        
         form.reset({
           display_name: profile.display_name || '',
           location_city: profile.location_city || '',
           location_state: profile.location_state || '',
           notify_recommender: profile.notify_recommender ?? true,
           do_not_disturb: profile.do_not_disturb ?? false,
-          user_role: profile.user_role || 'both',
         });
       }
     } catch (error) {
@@ -107,7 +111,6 @@ const Profile = () => {
           location_state: values.location_state,
           notify_recommender: values.notify_recommender,
           do_not_disturb: values.do_not_disturb,
-          user_role: values.user_role,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
@@ -190,33 +193,6 @@ const Profile = () => {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="user_role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Account Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="requester">Food Requester</SelectItem>
-                          <SelectItem value="recommender">Recommender</SelectItem>
-                          <SelectItem value="both">Both</SelectItem>
-                          <SelectItem value="business">Business Owner</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Choose how you primarily use Cravlr.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
@@ -229,38 +205,21 @@ const Profile = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="location_city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Austin" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <div>
+                  <Label htmlFor="location-input">City and State</Label>
+                  <CityAutocomplete
+                    value={locationInput}
+                    onValueChange={setLocationInput}
+                    onCitySelect={(city, state) => {
+                      form.setValue('location_city', city);
+                      form.setValue('location_state', state);
+                    }}
+                    placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="location_state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., TX" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Your location helps us show you relevant food requests and recommendations in your area.
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Your location helps us show you relevant food requests and recommendations in your area.
-                </p>
               </CardContent>
             </Card>
 
