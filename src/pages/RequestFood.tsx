@@ -12,16 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { CityAutocomplete } from '@/components/CityAutocomplete';
 
-const US_STATES = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
-  'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky',
-  'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi',
-  'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico',
-  'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania',
-  'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
-  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-];
 
 const RequestFood = () => {
   const { user } = useAuth();
@@ -29,6 +21,7 @@ const RequestFood = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
   
   const [formData, setFormData] = useState({
     foodType: '',
@@ -228,31 +221,21 @@ const RequestFood = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="locationCity">City</Label>
-                  <Input
-                    id="locationCity"
-                    placeholder="Your city"
-                    value={formData.locationCity}
-                    onChange={(e) => handleChange('locationCity', e.target.value)}
-                    required
+                  <Label htmlFor="location-input">Location</Label>
+                  <CityAutocomplete
+                    value={locationInput}
+                    onValueChange={setLocationInput}
+                    onCitySelect={(city, state) => {
+                      handleChange('locationCity', city);
+                      handleChange('locationState', state);
+                    }}
+                    placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
                   />
-                </div>
-                <div>
-                  <Label htmlFor="locationState">State</Label>
-                  <Select value={formData.locationState} onValueChange={(value) => handleChange('locationState', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {US_STATES.map((state) => (
-                        <SelectItem key={state} value={state}>
-                          {state}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Enter your city to find nearby food lovers who can help with recommendations.
+                  </p>
                 </div>
               </div>
               
