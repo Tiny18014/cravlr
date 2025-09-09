@@ -28,6 +28,7 @@ import BusinessOnboarding from "./pages/BusinessOnboarding";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import AdminBusinessClaims from "./pages/AdminBusinessClaims";
 import SampleAccounts from "./pages/SampleAccounts";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/browse-requests" element={<BrowseRequests />} />
               <Route path="/recommend/:requestId" element={<SendRecommendation />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/requests/:requestId/results" element={<RequestResults />} />
               <Route path="/admin/conversions" element={<AdminConversions />} />
               <Route path="/admin/business-claims" element={<AdminBusinessClaims />} />

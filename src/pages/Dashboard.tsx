@@ -317,6 +317,10 @@ const Dashboard = () => {
           <Button variant="outline" onClick={() => navigate('/browse-requests')} className="flex-1 md:flex-none">
             Browse Requests
           </Button>
+          <Button variant="ghost" onClick={() => navigate('/profile')} className="flex-1 md:flex-none flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Profile
+          </Button>
           {userPoints.is_admin && (
             <Button variant="secondary" onClick={() => navigate('/admin/conversions')} className="flex-1 md:flex-none">
               Admin Panel
