@@ -25,12 +25,11 @@ serve(async (req) => {
   }
 
   try {
-    if (req.method !== 'GET') {
+    if (req.method !== 'POST') {
       return new Response('Method not allowed', { status: 405, headers: corsHeaders });
     }
 
-    const url = new URL(req.url);
-    const input = url.searchParams.get('input');
+    const { input } = await req.json();
 
     if (!input || input.length < 2) {
       return new Response(JSON.stringify([]), {

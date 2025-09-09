@@ -35,7 +35,9 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       if (value.length >= 2) {
         setIsLoading(true);
         try {
-          const { data, error } = await supabase.functions.invoke(`places-autocomplete?input=${encodeURIComponent(value)}`);
+          const { data, error } = await supabase.functions.invoke('places-autocomplete', {
+            body: { input: value }
+          });
 
           if (error) {
             console.error('Error fetching cities:', error);
