@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MapPin, X } from 'lucide-react';
-import { searchCities } from '@/data/cities';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CityAutocompleteProps {
   value: string;
@@ -10,6 +10,13 @@ interface CityAutocompleteProps {
   onCitySelect: (city: string, state: string) => void;
   placeholder?: string;
   disabled?: boolean;
+}
+
+interface AutocompleteResult {
+  description: string;
+  placeId: string;
+  city: string;
+  state: string;
 }
 
 export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
@@ -20,26 +27,51 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<Array<{city: string, state: string, fullName: string}>>([]);
+  const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (value.length >= 2) {
-      const results = searchCities(value, 8);
-      setSuggestions(results);
-      setIsOpen(results.length > 0);
-    } else {
-      setSuggestions([]);
-      setIsOpen(false);
-    }
+    const searchCities = async () => {
+      if (value.length >= 2) {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase.functions.invoke(`places-autocomplete?input=${encodeURIComponent(value)}`);
+
+          if (error) {
+            console.error('Error fetching cities:', error);
+            setSuggestions([]);
+            setIsOpen(false);
+            return;
+          }
+
+          const results = data || [];
+          setSuggestions(results.slice(0, 8));
+          setIsOpen(results.length > 0);
+        } catch (error) {
+          console.error('Error searching cities:', error);
+          setSuggestions([]);
+          setIsOpen(false);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setSuggestions([]);
+        setIsOpen(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchCities, 300); // Debounce API calls
+    return () => clearTimeout(timeoutId);
   }, [value]);
 
   const handleInputChange = (newValue: string) => {
     onValueChange(newValue);
   };
 
-  const handleCitySelect = (city: string, state: string, fullName: string) => {
-    onValueChange(fullName);
-    onCitySelect(city, state);
+  const handleCitySelect = (result: AutocompleteResult) => {
+    const displayValue = `${result.city}, ${result.state}`;
+    onValueChange(displayValue);
+    onCitySelect(result.city, result.state);
     setIsOpen(false);
   };
 
@@ -70,7 +102,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={disabled || isLoading}
           className="pl-10 pr-10"
         />
         {value && (
@@ -86,15 +118,24 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         )}
       </div>
       
-      {isOpen && suggestions.length > 0 && (
+      {isLoading && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg">
+          <div className="px-4 py-3 text-muted-foreground flex items-center gap-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            <span>Searching cities...</span>
+          </div>
+        </div>
+      )}
+      
+      {isOpen && suggestions.length > 0 && !isLoading && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <button
-              key={`${suggestion.city}-${suggestion.state}-${index}`}
+              key={`${suggestion.placeId}-${index}`}
               className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors"
               onMouseDown={(e) => {
                 e.preventDefault(); // Prevent input blur
-                handleCitySelect(suggestion.city, suggestion.state, suggestion.fullName);
+                handleCitySelect(suggestion);
               }}
             >
               <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
