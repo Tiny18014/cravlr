@@ -55,16 +55,8 @@ export const useBusinessClaims = () => {
         throw claimError;
       }
 
-      // Update user role to business
-      const { error: roleError } = await supabase
-        .from('profiles')
-        .update({ user_role: 'business' })
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
-
-      if (roleError) {
-        console.error('❌ Error updating user role:', roleError);
-        throw roleError;
-      }
+      // Note: Business status is now determined by having a row in business_profiles
+      // No need to update persona - users can be both requesters and recommenders
 
       toast({
         title: "Claim Submitted Successfully! 🎉",

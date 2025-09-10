@@ -258,6 +258,7 @@ export type Database = {
           location_state: string | null
           notification_email: string | null
           notify_recommender: boolean
+          persona: Database["public"]["Enums"]["persona"]
           points_this_month: number
           points_total: number
           positive_feedbacks: number | null
@@ -268,7 +269,6 @@ export type Database = {
           total_feedbacks: number | null
           updated_at: string
           user_id: string
-          user_role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
           approval_rate?: number | null
@@ -286,6 +286,7 @@ export type Database = {
           location_state?: string | null
           notification_email?: string | null
           notify_recommender?: boolean
+          persona?: Database["public"]["Enums"]["persona"]
           points_this_month?: number
           points_total?: number
           positive_feedbacks?: number | null
@@ -296,7 +297,6 @@ export type Database = {
           total_feedbacks?: number | null
           updated_at?: string
           user_id: string
-          user_role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
           approval_rate?: number | null
@@ -314,6 +314,7 @@ export type Database = {
           location_state?: string | null
           notification_email?: string | null
           notify_recommender?: boolean
+          persona?: Database["public"]["Enums"]["persona"]
           points_this_month?: number
           points_total?: number
           positive_feedbacks?: number | null
@@ -324,7 +325,6 @@ export type Database = {
           total_feedbacks?: number | null
           updated_at?: string
           user_id?: string
-          user_role?: Database["public"]["Enums"]["user_role"]
         }
         Relationships: []
       }
@@ -749,6 +749,10 @@ export type Database = {
           status: string
         }[]
       }
+      is_admin: {
+        Args: { uid?: string }
+        Returns: boolean
+      }
       mark_conversion: {
         Args: {
           p_commission_rate?: number
@@ -785,13 +789,13 @@ export type Database = {
     }
     Enums: {
       feedback_type: "thumbs_up" | "thumbs_down"
+      persona: "requester" | "recommender" | "both"
       request_status:
         | "active"
         | "completed"
         | "expired"
         | "closed"
         | "fulfilled"
-      user_role: "requester" | "recommender" | "both" | "business"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -920,8 +924,8 @@ export const Constants = {
   public: {
     Enums: {
       feedback_type: ["thumbs_up", "thumbs_down"],
+      persona: ["requester", "recommender", "both"],
       request_status: ["active", "completed", "expired", "closed", "fulfilled"],
-      user_role: ["requester", "recommender", "both", "business"],
     },
   },
 } as const

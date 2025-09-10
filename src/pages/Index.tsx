@@ -196,7 +196,7 @@ function BottomNav() {
 function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [userProfile, setUserProfile] = useState<{ display_name: string; user_role?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ display_name: string; persona?: string; is_admin?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch user profile data
@@ -207,7 +207,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('display_name, user_role')
+          .select('display_name, persona, is_admin')
           .eq('user_id', user.id)
           .single();
 
@@ -215,11 +215,11 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
         setUserProfile(data);
       } catch (error) {
         console.error('Error fetching user profile:', error);
-        // Fallback to email-based display name and check user metadata for business type
-        const userType = user.user_metadata?.user_type || 'regular';
+        // Fallback to email-based display name
         setUserProfile({ 
           display_name: user.email?.split('@')[0] || 'foodie',
-          user_role: userType === 'business' ? 'business' : 'both'
+          persona: 'both',
+          is_admin: false
         });
       } finally {
         setLoading(false);
@@ -229,20 +229,27 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
     fetchUserProfile();
   }, [user]);
 
-  // Redirect business users to business dashboard only on initial load
+  // Check if user has business accounts and redirect accordingly
   useEffect(() => {
-    if (!loading && userProfile) {
-      const isBusinessUser = userProfile.user_role === 'business' || user?.user_metadata?.user_type === 'business';
-      if (isBusinessUser) {
-        // Only redirect if we're on the root page and user just logged in
-        // This prevents redirecting when implementing new features
-        const currentPath = window.location.pathname;
-        if (currentPath === '/') {
-          console.log('🏢 Redirecting business user to dashboard...');
-          navigate('/business/dashboard', { replace: true });
-          return;
+    if (!loading && userProfile && user) {
+      // Check if user has business accounts
+      const checkBusinessAccounts = async () => {
+        const { data: businessAccounts } = await supabase
+          .from('business_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+        
+        if (businessAccounts && businessAccounts.length > 0) {
+          const currentPath = window.location.pathname;
+          if (currentPath === '/') {
+            console.log('🏢 Redirecting business user to dashboard...');
+            navigate('/business/dashboard', { replace: true });
+          }
         }
-      }
+      };
+      
+      checkBusinessAccounts();
     }
   }, [loading, userProfile, user, navigate]);
 
