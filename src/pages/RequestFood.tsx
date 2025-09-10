@@ -153,6 +153,18 @@ const RequestFood = () => {
         // Don't fail the request creation if notifications fail
       }
 
+      // Schedule redirect to recommendation page based on response window, but only if not DND
+      const responseWindowMinutes = formData.responseWindow;
+      console.log(`⏱️ Scheduling redirect in ${responseWindowMinutes} minutes for response window`);
+      
+      setTimeout(() => {
+        // Check if user is still on the main page and hasn't navigated elsewhere
+        if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+          console.log('⏱️ Response window elapsed, redirecting to recommendation page');
+          navigate(`/recommend/${data.id}`);
+        }
+      }, responseWindowMinutes * 60 * 1000); // Convert minutes to milliseconds
+
       toast({
         title: "Request created!",
         description: lat && lng 
@@ -160,7 +172,8 @@ const RequestFood = () => {
           : "Your food request has been posted with city-level matching.",
       });
       
-      navigate('/');
+      // Navigate to dashboard to wait for the recommendation delay
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error creating request:', error);
       toast({

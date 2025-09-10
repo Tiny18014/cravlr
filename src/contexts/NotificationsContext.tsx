@@ -37,6 +37,38 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const channelRef = useRef<any>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Load DND setting from user profile
+  useEffect(() => {
+    const loadDndSetting = async () => {
+      if (!user?.id) {
+        setDnd(false);
+        return;
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('notify_recommender')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading DND setting:', error);
+          return;
+        }
+
+        // DND is enabled when notify_recommender is false
+        const isDnd = profile ? !profile.notify_recommender : false;
+        console.log("🔔 Loaded DND setting:", { notify_recommender: profile?.notify_recommender, isDnd });
+        setDnd(isDnd);
+      } catch (error) {
+        console.error('Error loading DND setting:', error);
+      }
+    };
+
+    loadDndSetting();
+  }, [user?.id]);
+
   // Global realtime subscription - mounted once at app root
   useEffect(() => {
     if (!user?.id) {
@@ -45,6 +77,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     console.log("🌍 Setting up global realtime subscription for user:", user.id);
+    console.log("🌍 Current DND state:", dnd);
     
     const setupChannel = () => {
       const channel = supabase
@@ -59,6 +92,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             // Skip notifications for your own requests
             if (request.requester_id === user.id) {
               console.log("🌍 Skipping ping for own request:", request.id);
+              return;
+            }
+            
+            // Skip notifications if DND is enabled
+            if (dnd) {
+              console.log("🌍 Skipping ping due to DND enabled:", request.id);
               return;
             }
             
@@ -164,7 +203,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     setupChannel();
 
     return cleanup;
-  }, [user?.id]); // Only depend on user.id, not the full user object
+  }, [user?.id, dnd]); // Depend on user.id and dnd state
 
   const cleanup = () => {
     if (channelRef.current) {
@@ -223,11 +262,28 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     setNextPing(null);
   };
 
+  // Update DND setting when toggled
+  const updateDnd = async (enabled: boolean) => {
+    console.log("🔔 Updating DND setting:", enabled);
+    setDnd(enabled);
+    
+    if (user?.id) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ notify_recommender: !enabled })
+          .eq('user_id', user.id);
+      } catch (error) {
+        console.error('Error updating DND setting:', error);
+      }
+    }
+  };
+
   return (
     <NotificationsContext.Provider value={{
       nextPing,
       dnd,
-      setDnd,
+      setDnd: updateDnd,
       acceptRequest,
       ignoreRequest,
       clearPing

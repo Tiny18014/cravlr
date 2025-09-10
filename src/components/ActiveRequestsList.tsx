@@ -181,8 +181,7 @@ const ActiveRequestsList = ({
           : req
       ));
 
-      // Navigate to recommendation form
-      navigate(`/recommend/${requestId}`);
+      // Don't navigate immediately - let the recommendation delay timer handle it
     } catch (error) {
       console.error('Error accepting request:', error);
     }

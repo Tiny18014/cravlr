@@ -121,8 +121,7 @@ export default function GlobalLiveRequestPopup() {
       // For requests, use the existing accept flow
       try {
         await acceptRequest(id);
-        // Navigate immediately after acceptance
-        navigate(`/recommend/${id}`);
+        // Don't navigate immediately - let the recommendation delay timer handle it
       } catch (error) {
         console.error("❌ Error accepting request:", error);
         // Even if there's an error, keep the popup closed

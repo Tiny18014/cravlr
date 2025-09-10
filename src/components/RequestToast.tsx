@@ -38,8 +38,7 @@ export function RequestToast({ request, onDismiss }: RequestToastProps) {
           state: 'accepted'
         });
 
-      // Navigate to recommend page
-      navigate(`/recommend/${request.id}`);
+      // Don't navigate immediately - let the recommendation delay timer handle it
       onDismiss();
     } catch (error) {
       console.error('Error accepting request:', error);
