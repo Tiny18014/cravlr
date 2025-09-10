@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Clock, Send, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ interface FoodRequest {
   status: string;
   created_at: string;
   expires_at: string;
+  response_window: number;
   profiles: {
     display_name: string;
   };
@@ -39,6 +41,7 @@ const ActiveRequestsList = ({
   title = "Active Food Requests"
 }: ActiveRequestsListProps) => {
   const { user } = useAuth();
+  const { dnd } = useNotifications();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +121,7 @@ const ActiveRequestsList = ({
           status,
           created_at,
           expires_at,
+          response_window,
           profiles!inner(display_name)
         `)
         .eq('status', 'active')
@@ -181,7 +185,19 @@ const ActiveRequestsList = ({
           : req
       ));
 
-      // Don't navigate immediately - let the recommendation delay timer handle it
+      // Find the request to get its response window and check DND status
+      const request = requests.find(req => req.id === requestId);
+      if (request && !dnd) {
+        const responseWindowMinutes = request.response_window;
+        console.log(`⏱️ Setting recommendation delay timer for ${responseWindowMinutes} minutes`);
+        
+        setTimeout(() => {
+          console.log('⏱️ Recommendation delay elapsed, redirecting to recommendation page');
+          navigate(`/recommend/${requestId}`);
+        }, responseWindowMinutes * 60 * 1000);
+      } else if (dnd) {
+        console.log('⏱️ DND enabled, no automatic redirect to recommendation page');
+      }
     } catch (error) {
       console.error('Error accepting request:', error);
     }

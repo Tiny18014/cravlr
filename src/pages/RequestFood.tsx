@@ -155,24 +155,8 @@ const RequestFood = () => {
         // Don't fail the request creation if notifications fail
       }
 
-      // Schedule redirect to recommendation page based on response window, but only if DND is not enabled
-      const responseWindowMinutes = formData.responseWindow;
-      console.log(`⏱️ Checking DND status before scheduling redirect:`, { dnd, responseWindowMinutes });
-      
-      // Only schedule redirect if DND is not enabled
-      if (!dnd) {
-        console.log(`⏱️ Scheduling redirect in ${responseWindowMinutes} minutes for response window`);
-        
-        setTimeout(() => {
-          // Check if user is still on the main page and hasn't navigated elsewhere
-          if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-            console.log('⏱️ Response window elapsed, redirecting to recommendation page');
-            navigate(`/recommend/${data.id}`);
-          }
-        }, responseWindowMinutes * 60 * 1000); // Convert minutes to milliseconds
-      } else {
-        console.log('⏱️ DND enabled, skipping automatic redirect to recommendation page');
-      }
+      // Request created successfully - requester should wait for recommendations from others
+      // No need to redirect to recommendation page since they can't recommend for their own request
 
       toast({
         title: "Request created!",
