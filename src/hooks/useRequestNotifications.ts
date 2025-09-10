@@ -25,7 +25,7 @@ export const useRequestNotifications = () => {
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('notify_recommender')
+          .select('do_not_disturb')
           .eq('user_id', user.id)
           .single();
 
@@ -34,8 +34,8 @@ export const useRequestNotifications = () => {
           return;
         }
 
-        const isDnd = profile ? !profile.notify_recommender : false;
-        console.log("🔔 Loaded DND setting:", { notify_recommender: profile?.notify_recommender, isDnd });
+        const isDnd = profile ? profile.do_not_disturb : false;
+        console.log("🔔 Loaded DND setting:", { do_not_disturb: profile?.do_not_disturb, isDnd });
         setDndEnabled(isDnd);
       } catch (error) {
         console.error('Error loading DND setting:', error);
@@ -75,7 +75,7 @@ export const useRequestNotifications = () => {
       try {
         await supabase
           .from('profiles')
-          .update({ notify_recommender: !enabled })
+          .update({ do_not_disturb: enabled })
           .eq('user_id', user.id);
       } catch (error) {
         console.error('Error updating DND setting:', error);
