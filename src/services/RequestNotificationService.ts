@@ -135,7 +135,10 @@ export class RequestNotificationService {
 
   private handleRequestInsert(request: any): void {
     if (!this.config || this.config.dndEnabled) return;
-    if (request.requester_id === this.config.userId) return;
+    
+    // Allow self-notifications in development for testing
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovableproject.com');
+    if (!isDevelopment && request.requester_id === this.config.userId) return;
 
     // Check if collection period has ended
     const createdAt = new Date(request.created_at);
