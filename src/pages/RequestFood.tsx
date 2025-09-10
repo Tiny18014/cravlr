@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
+// Using new isolated notification system
 import { useRequestNotifications } from '@/hooks/useRequestNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +16,7 @@ import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-reac
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 
-
+// Force cache refresh - using new notification system
 const RequestFood = () => {
   const { user } = useAuth();
   const { dndEnabled } = useRequestNotifications();
