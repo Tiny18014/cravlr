@@ -68,23 +68,7 @@ const ActiveRequestsList = ({
         (payload) => {
           console.log('🎯 New request created, refreshing active list:', payload.new);
           if (payload.new.requester_id !== user.id) {
-            // Calculate when this request should become visible to recommenders
-            const createdAt = new Date(payload.new.created_at);
-            const responseWindow = payload.new.response_window || 1; // Default 1 minute
-            const collectionEndTime = new Date(createdAt.getTime() + (responseWindow * 60 * 1000));
-            const now = new Date();
-            
-            if (now >= collectionEndTime) {
-              // Collection period has ended, show immediately
-              fetchRequests();
-            } else {
-              // Schedule refresh when collection period ends
-              const delay = collectionEndTime.getTime() - now.getTime();
-              console.log(`🎯 Scheduling request visibility in ${delay}ms for request ${payload.new.id}`);
-              setTimeout(() => {
-                fetchRequests();
-              }, delay);
-            }
+            fetchRequests();
           }
         }
       )

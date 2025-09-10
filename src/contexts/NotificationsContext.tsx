@@ -101,33 +101,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
               return;
             }
             
-            // Check if collection period has ended for this request
-            const createdAt = new Date(request.created_at);
-            const responseWindow = request.response_window || 1; // Default 1 minute
-            const collectionEndTime = new Date(createdAt.getTime() + (responseWindow * 60 * 1000));
-            const now = new Date();
-            
-            if (now < collectionEndTime) {
-              // Collection period hasn't ended yet, schedule notification
-              const delay = collectionEndTime.getTime() - now.getTime();
-              console.log(`🌍 Scheduling notification in ${delay}ms for request ${request.id}`);
-              setTimeout(() => {
-                // Create ping after collection period ends
-                const ping: LivePing = {
-                  id: request.id,
-                  type: "request",
-                  foodType: request.food_type,
-                  location: `${request.location_city}, ${request.location_state}`,
-                  urgency: request.response_window <= 15 ? 'quick' : 
-                          request.response_window <= 60 ? 'soon' : 'extended'
-                };
-                console.log("🌍 Setting scheduled ping:", ping);
-                setNextPing(ping);
-              }, delay);
-              return;
-            }
-            
-            // Collection period has ended, show notification immediately
+            // Create ping (dedupe will be handled in popup component)
             const ping: LivePing = {
               id: request.id,
               type: "request",
