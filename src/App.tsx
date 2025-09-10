@@ -35,12 +35,12 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <RequestNotificationProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <OneSignalInit />
-          <BrowserRouter>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <OneSignalInit />
+        <BrowserRouter>
+          <RequestNotificationProvider>
             <RequesterExpiryListener />
             <GlobalRequestExpiryManager />
             <PopupHost />
@@ -68,9 +68,9 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </RequestNotificationProvider>
+          </RequestNotificationProvider>
+        </BrowserRouter>
+      </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
