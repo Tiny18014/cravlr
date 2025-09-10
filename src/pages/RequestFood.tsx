@@ -8,18 +8,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
-// Using new isolated notification system
-import { useRequestNotifications } from '@/hooks/useRequestNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 
-// Force cache refresh - using new notification system
+
 const RequestFood = () => {
   const { user } = useAuth();
-  const { dndEnabled } = useRequestNotifications();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -120,36 +117,6 @@ const RequestFood = () => {
         }
       }
 
-      // Validate required fields before insertion
-      if (!user?.id) {
-        throw new Error('User not authenticated');
-      }
-      if (!formData.foodType) {
-        throw new Error('Food type is required');
-      }
-      if (!formData.locationCity) {
-        throw new Error('Location city is required');
-      }
-      if (!formData.locationState) {
-        throw new Error('Location state is required');
-      }
-
-      // Verify current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Authentication session invalid');
-      }
-
-      console.log('🔧 Debug: Creating food request with data:', {
-        requester_id: user.id,
-        user_email: user.email,
-        session_user_id: session.user.id,
-        food_type: formData.foodType,
-        location_city: formData.locationCity,
-        location_state: formData.locationState,
-        response_window: formData.responseWindow
-      });
-
       const { data, error } = await supabase
         .from('food_requests')
         .insert({
@@ -167,17 +134,7 @@ const RequestFood = () => {
         .select()
         .single();
 
-      if (error) {
-        console.error('🚨 Detailed error information:', {
-          error,
-          supabaseError: error,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error;
-      }
+      if (error) throw error;
 
       console.log('✅ Request created with coordinates:', {
         id: data.id,
@@ -196,9 +153,6 @@ const RequestFood = () => {
         // Don't fail the request creation if notifications fail
       }
 
-      // Request created successfully - requester should wait for recommendations from others
-      // No need to redirect to recommendation page since they can't recommend for their own request
-
       toast({
         title: "Request created!",
         description: lat && lng 
@@ -206,8 +160,7 @@ const RequestFood = () => {
           : "Your food request has been posted with city-level matching.",
       });
       
-      // Navigate to dashboard to wait for the recommendation delay
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       console.error('Error creating request:', error);
       toast({

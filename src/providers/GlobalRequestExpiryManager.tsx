@@ -9,8 +9,6 @@ type FoodRequest = {
   expires_at: string;
   status: "active" | "expired" | string;
   requester_id: string;
-  created_at: string;
-  response_window: number;
 };
 
 function RequestTimer({ req, userId }: { req: FoodRequest; userId: string }) {
@@ -27,7 +25,7 @@ export function GlobalRequestExpiryManager() {
   const loadActive = async (uid: string) => {
     const { data, error } = await supabase
       .from("food_requests")
-      .select("id, food_type, expires_at, status, requester_id, created_at, response_window")
+      .select("id, food_type, expires_at, status, requester_id")
       .eq("requester_id", uid)
       .eq("status", "active")
       .gt("expires_at", new Date().toISOString())

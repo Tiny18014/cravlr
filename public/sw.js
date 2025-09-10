@@ -9,33 +9,21 @@ const urlsToCache = [
 
 // Install event
 self.addEventListener('install', (event) => {
-  // Skip waiting to activate immediately
-  self.skipWaiting();
-  
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        // Only cache the root path for now to avoid issues with missing static files
-        return cache.addAll(['/']);
-      })
-      .catch(error => {
-        console.log('Cache addAll failed:', error);
-        // Don't fail the install if caching fails
-        return Promise.resolve();
-      })
+      .then((cache) => cache.addAll(urlsToCache))
   );
-});
-
-// Activate event
-self.addEventListener('activate', (event) => {
-  // Claim all clients immediately
-  event.waitUntil(self.clients.claim());
 });
 
 // Fetch event
 self.addEventListener('fetch', (event) => {
-  // For now, just fetch from network to avoid cache issues
-  event.respondWith(fetch(event.request));
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Return cached version or fetch from network
+        return response || fetch(event.request);
+      })
+  );
 });
 
 // Push event handler

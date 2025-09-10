@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRequestNotifications } from '@/hooks/useRequestNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Clock, Send, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +17,6 @@ interface FoodRequest {
   status: string;
   created_at: string;
   expires_at: string;
-  response_window: number;
   profiles: {
     display_name: string;
   };
@@ -41,7 +39,6 @@ const ActiveRequestsList = ({
   title = "Active Food Requests"
 }: ActiveRequestsListProps) => {
   const { user } = useAuth();
-  const { dndEnabled } = useRequestNotifications();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +118,6 @@ const ActiveRequestsList = ({
           status,
           created_at,
           expires_at,
-          response_window,
           profiles!inner(display_name)
         `)
         .eq('status', 'active')
@@ -131,19 +127,9 @@ const ActiveRequestsList = ({
 
       if (error) throw error;
 
-      // Filter requests to only show those where the collection period has ended
-      const now = new Date();
-      const visibleRequests = (data || []).filter(request => {
-        const createdAt = new Date(request.created_at);
-        const collectionEndTime = new Date(createdAt.getTime() + (request.response_window * 60 * 1000));
-        
-        // Only show requests where the collection period has ended
-        return now >= collectionEndTime;
-      });
-
       // Enrich with recommendation count and user state
       const enrichedRequests = await Promise.all(
-        visibleRequests.map(async (request) => {
+        (data || []).map(async (request) => {
           const { count } = await supabase
             .from('recommendations')
             .select('*', { count: 'exact', head: true })
@@ -195,19 +181,8 @@ const ActiveRequestsList = ({
           : req
       ));
 
-      // Find the request to get its response window and check DND status
-      const request = requests.find(req => req.id === requestId);
-      if (request && !dndEnabled) {
-        const responseWindowMinutes = request.response_window;
-        console.log(`⏱️ Setting recommendation delay timer for ${responseWindowMinutes} minutes`);
-        
-        setTimeout(() => {
-          console.log('⏱️ Recommendation delay elapsed, redirecting to recommendation page');
-          navigate(`/recommend/${requestId}`);
-        }, responseWindowMinutes * 60 * 1000);
-      } else if (dndEnabled) {
-        console.log('⏱️ DND enabled, no automatic redirect to recommendation page');
-      }
+      // Navigate to recommendation form
+      navigate(`/recommend/${requestId}`);
     } catch (error) {
       console.error('Error accepting request:', error);
     }
@@ -314,9 +289,14 @@ const ActiveRequestsList = ({
                         </Button>
                       )}
                       {request.user_state === 'accepted' && !request.user_has_recommended && (
-                        <Badge variant="secondary" className="text-xs">
-                          Accepted - Waiting for recommendation window
-                        </Badge>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate(`/recommend/${request.id}`)}
+                          className="text-xs"
+                        >
+                          <Send className="h-3 w-3 mr-1" />
+                          Suggest Now
+                        </Button>
                       )}
                       {!compact && (
                         <Button

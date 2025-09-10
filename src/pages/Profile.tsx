@@ -14,9 +14,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
-import { ProfileDNDToggle } from '@/components/ProfileDNDToggle';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock } from 'lucide-react';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -29,9 +26,7 @@ const profileFormSchema = z.object({
     message: "State is required.",
   }),
   notify_recommender: z.boolean(),
-  timezone: z.string(),
-  quiet_hours_start: z.string().optional(),
-  quiet_hours_end: z.string().optional(),
+  do_not_disturb: z.boolean(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -51,9 +46,7 @@ const Profile = () => {
       location_city: '',
       location_state: '',
       notify_recommender: true,
-      timezone: 'America/New_York',
-      quiet_hours_start: '',
-      quiet_hours_end: '',
+      do_not_disturb: false,
     },
   });
 
@@ -90,9 +83,7 @@ const Profile = () => {
           location_city: profile.location_city || '',
           location_state: profile.location_state || '',
           notify_recommender: profile.notify_recommender ?? true,
-          timezone: profile.timezone || 'America/New_York',
-          quiet_hours_start: profile.quiet_hours_start || '',
-          quiet_hours_end: profile.quiet_hours_end || '',
+          do_not_disturb: profile.do_not_disturb ?? false,
         });
       }
     } catch (error) {
@@ -119,9 +110,7 @@ const Profile = () => {
           location_city: values.location_city,
           location_state: values.location_state,
           notify_recommender: values.notify_recommender,
-          timezone: values.timezone,
-          quiet_hours_start: values.quiet_hours_start || null,
-          quiet_hours_end: values.quiet_hours_end || null,
+          do_not_disturb: values.do_not_disturb,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
@@ -266,101 +255,38 @@ const Profile = () => {
                   )}
                 />
 
-                {/* Integrated Do Not Disturb Toggle */}
-                <ProfileDNDToggle />
-
-                  <FormField
-                    control={form.control}
-                    name="timezone"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel className="text-base flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Timezone
+                <FormField
+                  control={form.control}
+                  name="do_not_disturb"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Do Not Disturb
                         </FormLabel>
                         <FormDescription>
-                          Your timezone affects when you receive notifications.
+                          Temporarily pause all notifications.
                         </FormDescription>
-                        <FormControl>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select timezone" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
-                              <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
-                              <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
-                              <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
-                              <SelectItem value="America/Anchorage">Alaska Time (AT)</SelectItem>
-                              <SelectItem value="Pacific/Honolulu">Hawaii Time (HT)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
 
-                  {/* Quiet Hours */}
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-base flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Quiet Hours
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Set times when you don't want to receive notifications (optional).
-                      </p>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="quiet_hours_start"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Start Time</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="time"
-                                {...field}
-                                placeholder="22:00"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="quiet_hours_end"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>End Time</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="time"
-                                {...field}
-                                placeholder="08:00"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Save Button */}
-              <div className="flex justify-end">
-                <Button type="submit" disabled={saving} className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <Button type="submit" disabled={saving} className="flex items-center gap-2">
+                <Save className="h-4 w-4" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           </form>
         </Form>
       </main>
