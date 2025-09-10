@@ -29,11 +29,13 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const searchCities = async () => {
       if (value.length >= 2) {
         setIsLoading(true);
+        setError(null);
         try {
           const { data, error } = await supabase.functions.invoke('places-autocomplete', {
             body: { input: value }
@@ -41,6 +43,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
 
           if (error) {
             console.error('Error fetching cities:', error);
+            setError('Unable to search cities. Please try again.');
             setSuggestions([]);
             setIsOpen(false);
             return;
@@ -51,6 +54,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           setIsOpen(results.length > 0);
         } catch (error) {
           console.error('Error searching cities:', error);
+          setError('Unable to search cities. Please try again.');
           setSuggestions([]);
           setIsOpen(false);
         } finally {
@@ -59,6 +63,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       } else {
         setSuggestions([]);
         setIsOpen(false);
+        setError(null);
       }
     };
 
@@ -125,6 +130,14 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           <div className="px-4 py-3 text-muted-foreground flex items-center gap-2">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
             <span>Searching cities...</span>
+          </div>
+        </div>
+      )}
+      
+      {error && !isLoading && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-destructive/10 border border-destructive/20 rounded-md shadow-lg">
+          <div className="px-4 py-3 text-destructive text-sm">
+            {error}
           </div>
         </div>
       )}

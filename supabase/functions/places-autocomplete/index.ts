@@ -8,6 +8,10 @@ const corsHeaders = {
 
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY');
 
+if (!GOOGLE_API_KEY) {
+  console.error('GOOGLE_PLACES_API_KEY is not configured');
+}
+
 // Simple in-memory cache
 const cache = new Map();
 const CACHE_TTL_MIN = 30;
@@ -30,6 +34,14 @@ serve(async (req) => {
     }
 
     const { input } = await req.json();
+
+    if (!GOOGLE_API_KEY) {
+      console.error('Google Places API key not configured');
+      return new Response(JSON.stringify({ error: 'Places API not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     if (!input || input.length < 2) {
       return new Response(JSON.stringify([]), {
@@ -58,10 +70,27 @@ serve(async (req) => {
     autocompleteUrl.searchParams.set('language', 'en');
 
     const response = await fetch(autocompleteUrl.toString());
+    
+    if (!response.ok) {
+      console.error('Google Places API HTTP error:', response.status, response.statusText);
+      return new Response(JSON.stringify({ error: 'Places API request failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
     const data = await response.json();
 
+    if (data.status && data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.error('Google Places API error:', data.status, data.error_message);
+      return new Response(JSON.stringify({ error: `Places API error: ${data.status}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     if (!data.predictions) {
-      console.error('Places Autocomplete API error:', data);
+      console.log('No predictions returned from Places API');
       return new Response(JSON.stringify([]), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
