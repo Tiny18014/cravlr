@@ -134,11 +134,24 @@ export class RequestNotificationService {
   }
 
   private handleRequestInsert(request: any): void {
-    if (!this.config || this.config.dndEnabled) return;
+    console.log("🔔 Received request insert:", { 
+      request: request,
+      dndEnabled: this.config?.dndEnabled,
+      currentUserId: this.config?.userId,
+      requesterId: request.requester_id
+    });
+    
+    if (!this.config || this.config.dndEnabled) {
+      console.log("🔔 Skipping notification - DND enabled or no config");
+      return;
+    }
     
     // Allow self-notifications in development for testing
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovableproject.com');
-    if (!isDevelopment && request.requester_id === this.config.userId) return;
+    if (!isDevelopment && request.requester_id === this.config.userId) {
+      console.log("🔔 Skipping notification - self request in production");
+      return;
+    }
 
     // Check if collection period has ended
     const createdAt = new Date(request.created_at);
