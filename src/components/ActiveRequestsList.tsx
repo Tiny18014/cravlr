@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationsContext';
+import { useRequestNotifications } from '@/hooks/useRequestNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Clock, Send, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -41,7 +41,7 @@ const ActiveRequestsList = ({
   title = "Active Food Requests"
 }: ActiveRequestsListProps) => {
   const { user } = useAuth();
-  const { dnd } = useNotifications();
+  const { dndEnabled } = useRequestNotifications();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,7 +197,7 @@ const ActiveRequestsList = ({
 
       // Find the request to get its response window and check DND status
       const request = requests.find(req => req.id === requestId);
-      if (request && !dnd) {
+      if (request && !dndEnabled) {
         const responseWindowMinutes = request.response_window;
         console.log(`⏱️ Setting recommendation delay timer for ${responseWindowMinutes} minutes`);
         
@@ -205,7 +205,7 @@ const ActiveRequestsList = ({
           console.log('⏱️ Recommendation delay elapsed, redirecting to recommendation page');
           navigate(`/recommend/${requestId}`);
         }, responseWindowMinutes * 60 * 1000);
-      } else if (dnd) {
+      } else if (dndEnabled) {
         console.log('⏱️ DND enabled, no automatic redirect to recommendation page');
       }
     } catch (error) {
