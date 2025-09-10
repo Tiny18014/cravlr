@@ -58,15 +58,16 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Request not found');
     }
 
-    // Find users in the same geographic area
-    // First try to find users in the same city/state
+    // Find users in the same geographic area who want to receive notifications
+    // First try to find users in the same city/state who have notifications enabled
     const { data: nearbyUsers, error: usersError } = await supabase
       .from('profiles')
       .select('email, display_name, notification_email, user_id, location_lat, location_lng')
       .eq('location_city', request.location_city)
       .eq('location_state', request.location_state)
       .neq('user_id', request.requester_id) // Don't notify the requester
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .eq('notify_recommender', true); // Only notify users who want notifications (DND is off)
 
     if (usersError) {
       console.error('Error fetching nearby users:', usersError);

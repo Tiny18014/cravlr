@@ -288,14 +288,9 @@ const ActiveRequestsList = ({
                         </Button>
                       )}
                       {request.user_state === 'accepted' && !request.user_has_recommended && (
-                        <Button
-                          size="sm"
-                          onClick={() => navigate(`/recommend/${request.id}`)}
-                          className="text-xs"
-                        >
-                          <Send className="h-3 w-3 mr-1" />
-                          Suggest Now
-                        </Button>
+                        <Badge variant="secondary" className="text-xs">
+                          Accepted - Waiting for recommendation window
+                        </Badge>
                       )}
                       {!compact && (
                         <Button

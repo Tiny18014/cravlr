@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
@@ -17,6 +18,7 @@ import { CityAutocomplete } from '@/components/CityAutocomplete';
 
 const RequestFood = () => {
   const { user } = useAuth();
+  const { dnd } = useNotifications();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,17 +155,24 @@ const RequestFood = () => {
         // Don't fail the request creation if notifications fail
       }
 
-      // Schedule redirect to recommendation page based on response window, but only if not DND
+      // Schedule redirect to recommendation page based on response window, but only if DND is not enabled
       const responseWindowMinutes = formData.responseWindow;
-      console.log(`⏱️ Scheduling redirect in ${responseWindowMinutes} minutes for response window`);
+      console.log(`⏱️ Checking DND status before scheduling redirect:`, { dnd, responseWindowMinutes });
       
-      setTimeout(() => {
-        // Check if user is still on the main page and hasn't navigated elsewhere
-        if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-          console.log('⏱️ Response window elapsed, redirecting to recommendation page');
-          navigate(`/recommend/${data.id}`);
-        }
-      }, responseWindowMinutes * 60 * 1000); // Convert minutes to milliseconds
+      // Only schedule redirect if DND is not enabled
+      if (!dnd) {
+        console.log(`⏱️ Scheduling redirect in ${responseWindowMinutes} minutes for response window`);
+        
+        setTimeout(() => {
+          // Check if user is still on the main page and hasn't navigated elsewhere
+          if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+            console.log('⏱️ Response window elapsed, redirecting to recommendation page');
+            navigate(`/recommend/${data.id}`);
+          }
+        }, responseWindowMinutes * 60 * 1000); // Convert minutes to milliseconds
+      } else {
+        console.log('⏱️ DND enabled, skipping automatic redirect to recommendation page');
+      }
 
       toast({
         title: "Request created!",
