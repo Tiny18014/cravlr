@@ -131,9 +131,19 @@ const ActiveRequestsList = ({
 
       if (error) throw error;
 
+      // Filter requests to only show those where the collection period has ended
+      const now = new Date();
+      const visibleRequests = (data || []).filter(request => {
+        const createdAt = new Date(request.created_at);
+        const collectionEndTime = new Date(createdAt.getTime() + (request.response_window * 60 * 1000));
+        
+        // Only show requests where the collection period has ended
+        return now >= collectionEndTime;
+      });
+
       // Enrich with recommendation count and user state
       const enrichedRequests = await Promise.all(
-        (data || []).map(async (request) => {
+        visibleRequests.map(async (request) => {
           const { count } = await supabase
             .from('recommendations')
             .select('*', { count: 'exact', head: true })
