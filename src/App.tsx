@@ -4,8 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { NotificationsProvider } from "@/contexts/NotificationsContext";
-import GlobalLiveRequestPopup from "@/components/GlobalLiveRequestPopup";
+import { RequestNotificationProvider } from "@/components/RequestNotificationProvider";
 // import TestNotificationButton from "@/components/TestNotificationButton";
 import { OneSignalInit } from "@/components/OneSignalInit";
 import { RequesterExpiryListener } from "@/components/RequesterExpiryListener";
@@ -36,7 +35,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <NotificationsProvider>
+      <RequestNotificationProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -46,7 +45,7 @@ const App = () => (
             <GlobalRequestExpiryManager />
             <PopupHost />
             <PopupDebugBinder />
-            <GlobalLiveRequestPopup />
+            
             {/* <TestNotificationButton /> */}
             <Routes>
               <Route path="/" element={<Index />} />
@@ -71,7 +70,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
-      </NotificationsProvider>
+      </RequestNotificationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
