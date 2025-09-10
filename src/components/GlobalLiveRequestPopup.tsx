@@ -24,12 +24,30 @@ export default function GlobalLiveRequestPopup() {
   useEffect(() => {
     console.log("🎯 Global popup effect triggered:", { nextPing, dnd, active });
     
+    // If DND is enabled, clear everything and don't show any notifications
     if (dnd) {
-      console.log("🎯 Skipping ping due to DND:", { hasNextPing: !!nextPing, dnd });
+      console.log("🎯 DND enabled - clearing all notifications");
+      setActive(null);
+      queueRef.current = [];
       return;
     }
     
-    // Only add new pings when they arrive, don't clear on null
+    // Handle explicit clear (when nextPing is set to null)
+    if (nextPing === null) {
+      console.log("🎯 nextPing cleared - removing active and processing queue");
+      setActive(null);
+      // Process next in queue after a short delay
+      setTimeout(() => {
+        const next = queueRef.current.shift();
+        if (next) {
+          console.log("🎯 Setting next from queue:", next);
+          setActive(next);
+        }
+      }, 100);
+      return;
+    }
+    
+    // Only add new pings when they arrive
     if (nextPing) {
       // Base dedupe on id AND type, not just id
       const existsInQueue = queueRef.current.find(q => q.id === nextPing.id && q.type === nextPing.type);
@@ -39,7 +57,7 @@ export default function GlobalLiveRequestPopup() {
         console.log("🎯 Adding ping to global queue:", nextPing);
         queueRef.current.push(nextPing);
         
-        // Always setActive when no active ping
+        // If no active ping, show this one immediately
         if (!active) {
           console.log("🎯 Setting active immediately:", nextPing);
           const nextActive = queueRef.current.shift();
@@ -50,13 +68,6 @@ export default function GlobalLiveRequestPopup() {
       } else {
         console.log("🎯 Ping already exists, skipping:", nextPing.id, nextPing.type);
       }
-    }
-    
-    // Only clear active state if nextPing is explicitly null AND we have an active ping
-    // This prevents navigation from accidentally clearing important notifications
-    if (nextPing === null && active) {
-      console.log("🎯 nextPing explicitly cleared by context, checking if we should clear active");
-      // Only clear if this was an explicit dismissal, not just navigation
     }
   }, [nextPing, dnd, active]);
 
@@ -141,10 +152,6 @@ export default function GlobalLiveRequestPopup() {
     setIsProcessing(true);
     
     try {
-      // Clear active popup immediately and prevent queue from showing next
-      setActive(null);
-      queueRef.current = []; // Clear queue to prevent any more popups
-      
       // Handle differently based on notification type  
       if (active?.type === "recommendation") {
         console.log("🎯 Dismissing aggregated results notification");
@@ -167,6 +174,10 @@ export default function GlobalLiveRequestPopup() {
         // For requests, use the existing ignore flow
         await ignoreRequest(id);
       }
+      
+      // Clear current popup and queue properly
+      setActive(null);
+      queueRef.current = [];
     } catch (error) {
       console.error("❌ Error ignoring request:", error);
     } finally {
