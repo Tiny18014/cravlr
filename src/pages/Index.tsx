@@ -202,19 +202,29 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       
       try {
+        console.log('🔍 Fetching user profile for:', user.id);
+        
         const { data, error } = await supabase
           .from('profiles')
           .select('display_name, persona, is_admin')
           .eq('user_id', user.id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Profile fetch error (will use fallback):', error);
+          throw error;
+        }
+        
+        console.log('✅ Profile fetched successfully:', data);
         setUserProfile(data);
       } catch (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('Error fetching user profile, using fallback:', error);
         // Fallback to email-based display name
         setUserProfile({ 
           display_name: user.email?.split('@')[0] || 'foodie',
@@ -222,6 +232,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
           is_admin: false
         });
       } finally {
+        console.log('🏁 Profile loading complete');
         setLoading(false);
       }
     };
@@ -234,22 +245,35 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
     if (!loading && userProfile && user) {
       // Check if user has business accounts
       const checkBusinessAccounts = async () => {
-        const { data: businessAccounts } = await supabase
-          .from('business_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1);
-        
-        if (businessAccounts && businessAccounts.length > 0) {
-          const currentPath = window.location.pathname;
-          if (currentPath === '/') {
-            console.log('🏢 Redirecting business user to dashboard...');
-            navigate('/business/dashboard', { replace: true });
+        try {
+          console.log('🏢 Checking for business accounts...');
+          
+          const { data: businessAccounts, error } = await supabase
+            .from('business_profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1);
+          
+          if (error) {
+            console.warn('Error checking business accounts:', error);
+            return;
           }
+          
+          if (businessAccounts && businessAccounts.length > 0) {
+            const currentPath = window.location.pathname;
+            if (currentPath === '/') {
+              console.log('🏢 Redirecting business user to dashboard...');
+              navigate('/business/dashboard', { replace: true });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to check business accounts:', error);
+          // Don't block the user if this fails
         }
       };
       
-      checkBusinessAccounts();
+      // Add a small delay to prevent redirect loops
+      setTimeout(checkBusinessAccounts, 100);
     }
   }, [loading, userProfile, user, navigate]);
 
