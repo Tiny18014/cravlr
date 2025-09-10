@@ -120,6 +120,36 @@ const RequestFood = () => {
         }
       }
 
+      // Validate required fields before insertion
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      if (!formData.foodType) {
+        throw new Error('Food type is required');
+      }
+      if (!formData.locationCity) {
+        throw new Error('Location city is required');
+      }
+      if (!formData.locationState) {
+        throw new Error('Location state is required');
+      }
+
+      // Verify current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Authentication session invalid');
+      }
+
+      console.log('🔧 Debug: Creating food request with data:', {
+        requester_id: user.id,
+        user_email: user.email,
+        session_user_id: session.user.id,
+        food_type: formData.foodType,
+        location_city: formData.locationCity,
+        location_state: formData.locationState,
+        response_window: formData.responseWindow
+      });
+
       const { data, error } = await supabase
         .from('food_requests')
         .insert({
@@ -137,7 +167,17 @@ const RequestFood = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('🚨 Detailed error information:', {
+          error,
+          supabaseError: error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
 
       console.log('✅ Request created with coordinates:', {
         id: data.id,
