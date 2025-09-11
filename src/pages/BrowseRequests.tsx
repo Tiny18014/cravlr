@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, MapPin, Clock, Send } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Send, Bell, BellOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CountdownTimer from '@/components/CountdownTimer';
 import { ReputationBadge } from '@/components/ReputationBadge';
+import { useNotifications } from '@/contexts/UnifiedNotificationContext';
+import { Switch } from '@/components/ui/switch';
 
 interface FoodRequest {
   id: string;
@@ -131,6 +133,7 @@ const ActionRow = ({
 
 const BrowseRequests = () => {
   const { user } = useAuth();
+  const { dnd, setDnd } = useNotifications();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -306,14 +309,36 @@ const BrowseRequests = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-6 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Home
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Requests Near You 🍽️</h1>
-            <p className="text-muted-foreground mt-1">Tap a request to share your favorite spot.</p>
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Home
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Requests Near You 🍽️</h1>
+              <p className="text-muted-foreground mt-1">Tap a request to share your favorite spot.</p>
+            </div>
+          </div>
+          
+          {/* Do Not Disturb Toggle */}
+          <div className="flex items-center gap-2">
+            {dnd ? (
+              <BellOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Bell className="h-4 w-4 text-primary" />
+            )}
+            <Switch
+              id="dnd-toggle-browse"
+              checked={!dnd}
+              onCheckedChange={(enabled) => {
+                console.log("🔄 DND toggle clicked on Browse:", !enabled);
+                setDnd(!enabled);
+              }}
+            />
+            <span className="text-sm font-medium">
+              {dnd ? 'Do Not Disturb' : 'Notifications'}
+            </span>
           </div>
         </div>
       </header>
