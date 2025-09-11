@@ -61,6 +61,12 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           // Skip notifications for your own requests
           if (request.requester_id === user.id) return;
           
+          // Skip if Do Not Disturb is enabled
+          if (dnd) {
+            console.log("🔕 Skipping notification due to DND mode");
+            return;
+          }
+          
           showNotification({
             type: 'new_request',
             title: 'New request nearby',
@@ -199,7 +205,11 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   };
 
   const showNotification = (notification: Omit<Notification, 'id'>) => {
-    if (dnd) return;
+    // Double-check DND status before showing any notification
+    if (dnd) {
+      console.log("🔕 Blocking notification due to DND mode:", notification.type);
+      return;
+    }
 
     const fullNotification: Notification = {
       ...notification,
