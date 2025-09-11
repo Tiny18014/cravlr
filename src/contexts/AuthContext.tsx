@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  validating: boolean; // Add validation state to prevent flashing
   signUp: (email: string, password: string, displayName?: string, userType?: 'regular' | 'business') => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -25,14 +26,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('🔐 Auth state change:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        // Reset validation state when auth changes
+        setValidating(false);
       }
     );
 
@@ -65,6 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
+    // Set validating to true to prevent UI flashing
+    setValidating(true);
+    
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -79,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any local state first
       setUser(null);
       setSession(null);
+      setValidating(false);
       
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -91,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Even if there's an error, try to clear local state
       setUser(null);
       setSession(null);
+      setValidating(false);
       throw error;
     }
   };
@@ -99,6 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     loading,
+    validating,
     signUp,
     signIn,
     signOut,

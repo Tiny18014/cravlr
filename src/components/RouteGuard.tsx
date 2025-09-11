@@ -16,7 +16,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
   businessOnly = false,
   regularUserOnly = false
 }) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, validating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [userProfile, setUserProfile] = useState<{ persona?: string; is_admin?: boolean } | null>(null);
@@ -139,8 +139,8 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
     checkUserAccess();
   }, [user, authLoading, navigate, location.pathname, requiresAuth, businessOnly, regularUserOnly]);
 
-  // Show loading while checking access
-  if (authLoading || loading) {
+  // Show loading while checking access or validating account type
+  if (authLoading || loading || validating) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 

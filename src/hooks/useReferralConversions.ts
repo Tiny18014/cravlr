@@ -63,16 +63,16 @@ export const useReferralConversions = () => {
       const transformedData = await Promise.all((data || []).map(async (click: any) => {
         const [recommenderProfile, requesterProfile] = await Promise.all([
           supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', click.recommender_id)
-            .single(),
-          supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', click.requester_id)
-            .single()
-        ]);
+             .from('profiles')
+             .select('display_name')
+             .eq('user_id', click.recommender_id)
+             .maybeSingle(),
+           supabase
+             .from('profiles')
+             .select('display_name')
+             .eq('user_id', click.requester_id)
+             .maybeSingle()
+         ]);
 
         return {
           ...click,
