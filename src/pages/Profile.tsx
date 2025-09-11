@@ -111,15 +111,16 @@ const Profile = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          user_id: user.id,
+          email: user.email || '',
           display_name: values.display_name,
           location_city: values.location_city,
           location_state: values.location_state,
           notify_recommender: values.notify_recommender,
           do_not_disturb: values.do_not_disturb,
           updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
+        });
 
       if (error) {
         console.error("❌ Profile update error:", error);
