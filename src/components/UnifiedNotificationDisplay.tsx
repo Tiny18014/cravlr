@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import { RequestService } from '@/services/RequestService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,7 @@ export const UnifiedNotificationDisplay: React.FC = () => {
   const { currentNotification, dismissNotification } = useNotifications();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleAction = async () => {
     if (!currentNotification) return;
@@ -53,7 +54,17 @@ export const UnifiedNotificationDisplay: React.FC = () => {
     }
   };
 
+  // Don't show notifications if user is already on the results page for this request
   if (!currentNotification) return null;
+  
+  // If it's a view_results notification and user is already on that results page, don't show
+  if (currentNotification.type === 'request_results' && 
+      currentNotification.data?.requestId && 
+      location.pathname.includes(`/requests/${currentNotification.data.requestId}/results`)) {
+    // Auto-dismiss since user is already on the target page
+    dismissNotification();
+    return null;
+  }
 
   return (
     <div 
