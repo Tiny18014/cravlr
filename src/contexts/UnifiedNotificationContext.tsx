@@ -112,8 +112,20 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           table: 'notifications',
           filter: `requester_id=eq.${user.id}`
         },
-        (payload) => {
+        async (payload) => {
           const notification = payload.new;
+          
+          // Skip if already read
+          if (notification.read_at) {
+            console.log("🔕 Skipping notification - already read");
+            return;
+          }
+          
+          // Skip if Do Not Disturb is enabled
+          if (dnd) {
+            console.log("🔕 Skipping notification due to DND mode");
+            return;
+          }
           
           if (notification.type === 'request_results') {
             showNotification({
