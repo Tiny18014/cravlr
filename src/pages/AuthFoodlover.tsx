@@ -40,6 +40,7 @@ const AuthFoodlover = () => {
             variant: "destructive",
           });
         } else {
+          console.log('🍕 Food Lover login successful, navigating to main app');
           toast({
             title: "Welcome back!",
             description: "You've been logged in successfully.",

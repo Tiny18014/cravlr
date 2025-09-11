@@ -42,6 +42,7 @@ const AuthBusiness = () => {
             variant: "destructive",
           });
         } else {
+          console.log('🏢 Business login successful, navigating to business dashboard');
           toast({
             title: "Welcome back!",
             description: "Redirecting to your business dashboard...",
