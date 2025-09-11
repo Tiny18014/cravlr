@@ -41,14 +41,28 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   const [notificationQueue, setNotificationQueue] = useState<Notification[]>([]);
   const channelsRef = useRef<any[]>([]);
 
-  // Unified realtime subscription setup
+  // Unified realtime subscription setup - wait for DND state to load
   useEffect(() => {
     if (!user?.id) {
       cleanup();
       return;
     }
 
-    console.log("🔔 Setting up unified notification system for user:", user.id);
+    // Wait a moment for DND state to load before setting up subscriptions
+    const timer = setTimeout(() => {
+      console.log("🔔 Setting up unified notification system for user:", user.id, "DND:", dnd);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [user?.id, dnd]);
+  // Set up actual realtime subscriptions
+  useEffect(() => {
+    if (!user?.id) {
+      cleanup();
+      return;
+    }
+
+    console.log("🔔 Setting up realtime subscriptions for user:", user.id, "DND state:", dnd);
     
     // Listen for new requests (for recommenders)
     const requestChannel = supabase
@@ -58,8 +72,13 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         (payload) => {
           const request = payload.new;
           
+          console.log("🔔 New request received, DND state:", dnd, "Request:", request.food_type);
+          
           // Skip notifications for your own requests
-          if (request.requester_id === user.id) return;
+          if (request.requester_id === user.id) {
+            console.log("🔕 Skipping notification - own request");
+            return;
+          }
           
           // Skip if Do Not Disturb is enabled
           if (dnd) {
@@ -67,6 +86,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
             return;
           }
           
+          console.log("📨 Proceeding to show notification");
           showNotification({
             type: 'new_request',
             title: 'New request nearby',
@@ -150,7 +170,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     channelsRef.current = [requestChannel, notificationChannel, statusChannel];
 
     return cleanup;
-  }, [user?.id]);
+  }, [user?.id, dnd]); // Add dnd as dependency so subscriptions restart when DND changes
 
   // Load DND state from profile on mount
   useEffect(() => {
@@ -158,6 +178,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     
     const loadDndState = async () => {
       try {
+        console.log("🔕 Loading DND state for user:", user.id);
         const { data: profile } = await supabase
           .from('profiles')
           .select('do_not_disturb')
@@ -165,10 +186,15 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           .single();
           
         if (profile) {
+          console.log("🔕 DND state loaded:", profile.do_not_disturb);
           setDndState(profile.do_not_disturb ?? false);
+        } else {
+          console.log("🔕 No profile found, defaulting DND to false");
+          setDndState(false);
         }
       } catch (error) {
         console.error('Error loading DND state:', error);
+        setDndState(false); // Default to false on error
       }
     };
     
@@ -183,7 +209,11 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ do_not_disturb: enabled })
+        .upsert({ 
+          user_id: user.id,
+          email: user.email || '',
+          do_not_disturb: enabled 
+        })
         .eq('user_id', user.id);
         
       if (error) throw error;
@@ -205,6 +235,8 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   };
 
   const showNotification = (notification: Omit<Notification, 'id'>) => {
+    console.log("🔔 showNotification called, DND state:", dnd, "Notification type:", notification.type);
+    
     // Double-check DND status before showing any notification
     if (dnd) {
       console.log("🔕 Blocking notification due to DND mode:", notification.type);
