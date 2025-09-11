@@ -173,54 +173,54 @@ export default function BusinessDashboard() {
 
         {/* Stats Overview */}
         <div className="grid gap-6 md:grid-cols-4">
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-              <MousePointer className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Leads</CardTitle>
+              <MousePointer className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalStats.clicks}</div>
-              <p className="text-xs text-muted-foreground">
-                Referral link clicks
+              <div className="text-2xl font-bold text-blue-800 dark:text-blue-200">{totalStats.clicks}</div>
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                Referral link clicks from recommendations
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Conversions</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">Confirmed Visits</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalStats.conversions}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-green-800 dark:text-green-200">{totalStats.conversions}</div>
+              <p className="text-xs text-green-600 dark:text-green-400">
                 {totalStats.clicks > 0 ? `${((totalStats.conversions / totalStats.clicks) * 100).toFixed(1)}%` : '0%'} conversion rate
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900 border-yellow-200 dark:border-yellow-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Commission</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Pending Payout</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalStats.pendingCommission.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                Awaiting payment
+              <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">${totalStats.pendingCommission.toFixed(2)}</div>
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                Awaiting next payment cycle
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Earned</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Total ROI</CardTitle>
+              <DollarSign className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalStats.totalCommission.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                ${totalStats.paidCommission.toFixed(2)} paid
+              <div className="text-2xl font-bold text-purple-800 dark:text-purple-200">${totalStats.totalCommission.toFixed(2)}</div>
+              <p className="text-xs text-purple-600 dark:text-purple-400">
+                ${totalStats.paidCommission.toFixed(2)} paid out
               </p>
             </CardContent>
           </Card>
