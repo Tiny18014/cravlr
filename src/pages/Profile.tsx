@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -35,6 +36,7 @@ const Profile = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { dnd, setDnd } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locationInput, setLocationInput] = useState('');
@@ -85,6 +87,9 @@ const Profile = () => {
           notify_recommender: profile.notify_recommender ?? true,
           do_not_disturb: profile.do_not_disturb ?? false,
         });
+        
+        // Sync with notification context
+        setDnd(profile.do_not_disturb ?? false);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -271,7 +276,10 @@ const Profile = () => {
                       <FormControl>
                         <Switch
                           checked={field.value}
-                          onCheckedChange={field.onChange}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            setDnd(checked);
+                          }}
                         />
                       </FormControl>
                     </FormItem>

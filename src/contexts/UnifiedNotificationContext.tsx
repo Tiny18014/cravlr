@@ -37,7 +37,7 @@ export const useNotifications = () => {
 export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
-  const [dnd, setDnd] = useState(false);
+  const [dnd, setDndState] = useState(false);
   const [notificationQueue, setNotificationQueue] = useState<Notification[]>([]);
   const channelsRef = useRef<any[]>([]);
 
@@ -145,6 +145,48 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
     return cleanup;
   }, [user?.id]);
+
+  // Load DND state from profile on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const loadDndState = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('do_not_disturb')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (profile) {
+          setDndState(profile.do_not_disturb ?? false);
+        }
+      } catch (error) {
+        console.error('Error loading DND state:', error);
+      }
+    };
+    
+    loadDndState();
+  }, [user?.id]);
+
+  const setDnd = async (enabled: boolean) => {
+    if (!user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ do_not_disturb: enabled })
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      setDndState(enabled);
+    } catch (error) {
+      console.error('Error updating DND state:', error);
+      // Revert state on error
+      setDndState(!enabled);
+    }
+  };
 
   const cleanup = () => {
     channelsRef.current.forEach(channel => {
