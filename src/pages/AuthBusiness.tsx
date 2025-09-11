@@ -18,7 +18,7 @@ const AuthBusiness = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signUp, signIn, user } = useAuth();
+  const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -53,6 +53,7 @@ const AuthBusiness = () => {
             
           if (claimsError) {
             console.error('Error checking business claims:', claimsError);
+            clearValidating(); // Clear validation state on error
             toast({
               title: "Access Error",
               description: "Unable to verify business account status.",
@@ -65,6 +66,7 @@ const AuthBusiness = () => {
             console.log('🚫 Non-business account trying to access business login');
             // Sign out the user since they're on wrong platform
             await supabase.auth.signOut();
+            clearValidating(); // Clear validation state
             toast({
               title: "Wrong Account Type", 
               description: "This is a Food Lover account. Please use the Food Lover sign-in.",
@@ -74,6 +76,7 @@ const AuthBusiness = () => {
           }
           
           console.log('✅ User has verified business claims, navigating to business dashboard');
+          clearValidating(); // Clear validation state before navigation
           toast({
             title: "Welcome back!",
             description: "Redirecting to your business dashboard...",

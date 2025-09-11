@@ -6,10 +6,11 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  validating: boolean; // Add validation state to prevent flashing
+  validating: boolean;
   signUp: (email: string, password: string, displayName?: string, userType?: 'regular' | 'business') => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  clearValidating: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,8 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        // Reset validation state when auth changes
-        setValidating(false);
+        // Don't reset validating state here - let the auth pages control it
+        // setValidating(false); // Removed - this was causing the flash
       }
     );
 
@@ -105,6 +106,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Function to clear validation state (called by auth pages after validation)
+  const clearValidating = () => {
+    setValidating(false);
+  };
+
   const value = {
     user,
     session,
@@ -113,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
+    clearValidating,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

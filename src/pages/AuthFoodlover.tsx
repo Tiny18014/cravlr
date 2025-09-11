@@ -16,7 +16,7 @@ const AuthFoodlover = () => {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signUp, signIn, user } = useAuth();
+  const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -51,6 +51,7 @@ const AuthFoodlover = () => {
             
           if (claimsError) {
             console.error('Error checking business claims:', claimsError);
+            clearValidating(); // Clear validation state on error
             toast({
               title: "Access Error", 
               description: "Unable to verify account type.",
@@ -63,6 +64,7 @@ const AuthFoodlover = () => {
             console.log('🚫 Business account trying to access food lover login');
             // Sign out the user since they're on wrong platform
             await supabase.auth.signOut();
+            clearValidating(); // Clear validation state
             toast({
               title: "Wrong Account Type",
               description: "This is a Business account. Please use the Business Owner sign-in.",
@@ -72,6 +74,7 @@ const AuthFoodlover = () => {
           }
           
           console.log('✅ Food lover account confirmed, navigating to main app');
+          clearValidating(); // Clear validation state before navigation
           toast({
             title: "Welcome back!",
             description: "You've been logged in successfully.",
