@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Star, User, LogOut } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Star, User, LogOut, Bell, BellOff } from 'lucide-react';
 import { ReputationBadge } from '@/components/ReputationBadge';
+import { useNotifications } from '@/contexts/UnifiedNotificationContext';
+import { Switch } from '@/components/ui/switch';
 // Timer is now handled globally via UnifiedRequestManager
 
 interface FoodRequest {
@@ -64,6 +66,7 @@ interface ReceivedRecommendation {
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const { dnd, setDnd } = useNotifications();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -310,7 +313,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex gap-4 flex-wrap">
+        <div className="flex gap-4 flex-wrap items-center">
           <Button onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
             Request Food
           </Button>
@@ -326,6 +329,26 @@ const Dashboard = () => {
               Admin Panel
             </Button>
           )}
+          
+          {/* Do Not Disturb Toggle */}
+          <div className="flex items-center gap-2 ml-auto">
+            {dnd ? (
+              <BellOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Bell className="h-4 w-4 text-primary" />
+            )}
+            <Switch
+              id="dnd-toggle"
+              checked={!dnd}
+              onCheckedChange={(enabled) => {
+                console.log("🔄 DND toggle clicked:", !enabled);
+                setDnd(!enabled);
+              }}
+            />
+            <span className="text-sm font-medium">
+              {dnd ? 'Do Not Disturb' : 'Notifications'}
+            </span>
+          </div>
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
