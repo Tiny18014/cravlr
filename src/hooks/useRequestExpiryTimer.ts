@@ -27,22 +27,26 @@ export const useRequestExpiryTimer = (
     firedRef.current = true;
     const at = new Date().toISOString();
     console.log(
-      `⏰ Expiry fired for ${request.id} at ${at} (expected: ${request.expires_at})`
+      `⏰ EXPIRY TIMER: Expiry fired for ${request.id} at ${at} (expected: ${request.expires_at})`
     );
 
     // Check if there are any recommendations before showing popup
+    console.log(`⏰ EXPIRY TIMER: Checking recommendations for request ${request.id}`);
     const { data: recommendations, error } = await supabase
       .from('recommendations')
       .select('id')
       .eq('request_id', request.id);
 
     if (error) {
-      console.error('Error checking recommendations:', error);
+      console.error('⏰ EXPIRY TIMER: Error checking recommendations:', error);
       return;
     }
 
+    console.log(`⏰ EXPIRY TIMER: Found ${recommendations?.length || 0} recommendations for ${request.id}`);
+
     // Only show popup if there are recommendations
     if (recommendations && recommendations.length > 0) {
+      console.log(`⏰ EXPIRY TIMER: Pushing popup for ${request.id} with ${recommendations.length} recommendations`);
       pushPopup({
         type: "request_results",
         title: "Time's up! 🎉",
@@ -51,7 +55,7 @@ export const useRequestExpiryTimer = (
         data: { requestId: request.id },
       });
     } else {
-      console.log(`⏰ No popup sent for ${request.id} - no recommendations found`);
+      console.log(`⏰ EXPIRY TIMER: No popup sent for ${request.id} - no recommendations found`);
     }
   };
 
