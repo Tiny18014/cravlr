@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Building2, Shield, Phone, Mail, ShieldCheck } from 'lucide-react';
 
 const AuthBusiness = () => {
@@ -42,7 +43,36 @@ const AuthBusiness = () => {
             variant: "destructive",
           });
         } else {
-          console.log('🏢 Business login successful, navigating to business dashboard');
+          console.log('🏢 Business login successful, checking business claims...');
+          
+          // Check if user has verified business claims before redirecting
+          const { data: businessClaims, error: claimsError } = await supabase
+            .from('business_claims')
+            .select('id, status')
+            .eq('status', 'verified');
+            
+          if (claimsError) {
+            console.error('Error checking business claims:', claimsError);
+            toast({
+              title: "Access Error",
+              description: "Unable to verify business account status.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          if (!businessClaims || businessClaims.length === 0) {
+            console.log('🚫 User has no verified business claims, redirecting to business onboarding');
+            toast({
+              title: "Business Verification Required",
+              description: "Please complete business verification to access the dashboard.",
+              variant: "default",
+            });
+            navigate('/business/onboarding?from=login');
+            return;
+          }
+          
+          console.log('✅ User has verified business claims, navigating to business dashboard');
           toast({
             title: "Welcome back!",
             description: "Redirecting to your business dashboard...",
