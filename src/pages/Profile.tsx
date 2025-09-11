@@ -277,6 +277,7 @@ const Profile = () => {
                         <Switch
                           checked={field.value}
                           onCheckedChange={(checked) => {
+                            console.log("🔄 DND toggle clicked:", checked);
                             field.onChange(checked);
                             setDnd(checked);
                           }}

@@ -172,6 +172,8 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   const setDnd = async (enabled: boolean) => {
     if (!user?.id) return;
     
+    console.log("🔕 Setting DND state:", enabled, "for user:", user.id);
+    
     try {
       const { error } = await supabase
         .from('profiles')
@@ -180,9 +182,10 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         
       if (error) throw error;
       
+      console.log("✅ DND state updated successfully:", enabled);
       setDndState(enabled);
     } catch (error) {
-      console.error('Error updating DND state:', error);
+      console.error('❌ Error updating DND state:', error);
       // Revert state on error
       setDndState(!enabled);
     }
