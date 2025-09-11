@@ -258,35 +258,38 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
     console.log("🔔 Showing notification:", fullNotification);
 
-    // Dedupe by type and data
-    const isDuplicate = notificationQueue.some(n => 
+    // Enhanced deduplication - check both current notification and queue
+    const isDuplicateOfCurrent = currentNotification && 
+      currentNotification.type === fullNotification.type && 
+      JSON.stringify(currentNotification.data) === JSON.stringify(fullNotification.data);
+      
+    const isDuplicateInQueue = notificationQueue.some(n => 
       n.type === fullNotification.type && 
       JSON.stringify(n.data) === JSON.stringify(fullNotification.data)
     );
 
-    if (!isDuplicate) {
-      if (!currentNotification) {
-        setCurrentNotification(fullNotification);
-      } else {
-        setNotificationQueue(prev => [...prev, fullNotification]);
-      }
+    if (isDuplicateOfCurrent || isDuplicateInQueue) {
+      console.log("🔕 Blocking duplicate notification:", fullNotification.type);
+      return;
+    }
+
+    if (!currentNotification) {
+      setCurrentNotification(fullNotification);
+    } else {
+      setNotificationQueue(prev => [...prev, fullNotification]);
     }
   };
 
   const dismissNotification = () => {
     console.log("🔔 Dismissing notification");
+    
+    // Clear current notification immediately
     setCurrentNotification(null);
     
-    // Show next notification after a brief delay
-    setTimeout(() => {
-      setNotificationQueue(prev => {
-        const [next, ...rest] = prev;
-        if (next) {
-          setCurrentNotification(next);
-        }
-        return rest;
-      });
-    }, 300);
+    // Clear the entire queue to prevent multiple popups for the same event
+    setNotificationQueue([]);
+    
+    console.log("🔔 Notification queue cleared");
   };
 
   return (
