@@ -62,13 +62,14 @@ const AuthBusiness = () => {
           }
           
           if (!businessClaims || businessClaims.length === 0) {
-            console.log('🚫 User has no verified business claims, redirecting to business onboarding');
+            console.log('🚫 Non-business account trying to access business login');
+            // Sign out the user since they're on wrong platform
+            await supabase.auth.signOut();
             toast({
-              title: "Business Verification Required",
-              description: "Please complete business verification to access the dashboard.",
-              variant: "default",
+              title: "Wrong Account Type", 
+              description: "This is a Food Lover account. Please use the Food Lover sign-in.",
+              variant: "destructive",
             });
-            navigate('/business/onboarding?from=login');
             return;
           }
           

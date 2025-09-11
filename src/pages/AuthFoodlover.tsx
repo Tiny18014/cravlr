@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Users, Star, Mail } from 'lucide-react';
 
 const AuthFoodlover = () => {
@@ -40,7 +41,37 @@ const AuthFoodlover = () => {
             variant: "destructive",
           });
         } else {
-          console.log('🍕 Food Lover login successful, navigating to main app');
+          console.log('🍕 Food Lover login successful, checking user type...');
+          
+          // Check if user has business claims - food lovers should NOT have any
+          const { data: businessClaims, error: claimsError } = await supabase
+            .from('business_claims')
+            .select('id, status')
+            .eq('status', 'verified');
+            
+          if (claimsError) {
+            console.error('Error checking business claims:', claimsError);
+            toast({
+              title: "Access Error", 
+              description: "Unable to verify account type.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          if (businessClaims && businessClaims.length > 0) {
+            console.log('🚫 Business account trying to access food lover login');
+            // Sign out the user since they're on wrong platform
+            await supabase.auth.signOut();
+            toast({
+              title: "Wrong Account Type",
+              description: "This is a Business account. Please use the Business Owner sign-in.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          console.log('✅ Food lover account confirmed, navigating to main app');
           toast({
             title: "Welcome back!",
             description: "You've been logged in successfully.",
