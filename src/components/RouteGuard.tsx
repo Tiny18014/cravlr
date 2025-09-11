@@ -76,27 +76,48 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
         const isBusinessUser = businessClaims && businessClaims.length > 0;
         setHasBusinessProfile(isBusinessUser);
 
-        // Enhanced access control logic
+        // STRICT ROLE SEPARATION - Business and Food Lover accounts are completely separate
+        
+        // Business-only routes: Only verified business users can access
         if (businessOnly && !isBusinessUser) {
           console.log('🚫 Non-business user trying to access business route, redirecting to home');
           navigate('/');
           return;
         }
 
+        // Regular user-only routes: Business users are completely blocked
         if (regularUserOnly && isBusinessUser) {
           console.log('🚫 Business user trying to access regular user route, redirecting to business dashboard');
           navigate('/business/dashboard');
           return;
         }
 
-        // Special handling for root path - redirect based on user type
-        if (location.pathname === '/' && isBusinessUser) {
-          console.log('🏢 Business user accessing root, redirecting to business dashboard');
+        // Root path routing: Strict separation based on user type
+        if (location.pathname === '/') {
+          if (isBusinessUser) {
+            console.log('🏢 Business user accessing root, redirecting to business dashboard');
+            navigate('/business/dashboard');
+            return;
+          }
+          // Food lovers stay on the main app (root path is fine for them)
+        }
+
+        // Business users should NEVER access these food lover paths
+        const foodLoverPaths = ['/request', '/browse', '/recommend', '/profile', '/dashboard'];
+        if (isBusinessUser && foodLoverPaths.some(path => location.pathname.startsWith(path))) {
+          console.log('🚫 Business user trying to access food lover route, redirecting to business dashboard');
           navigate('/business/dashboard');
           return;
         }
 
-        // For admin routes, check admin permissions separately
+        // Food lovers should NEVER access business paths (except admin)
+        if (!isBusinessUser && location.pathname.startsWith('/business/') && !profile?.is_admin) {
+          console.log('🚫 Food lover trying to access business route, redirecting to home');
+          navigate('/');
+          return;
+        }
+
+        // Admin routes: Check admin permissions separately
         if (location.pathname.startsWith('/admin/')) {
           const isAdmin = profile?.is_admin === true;
           if (!isAdmin) {

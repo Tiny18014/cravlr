@@ -21,6 +21,7 @@ const AuthFoodlover = () => {
 
   useEffect(() => {
     if (user) {
+      // Food lovers always go to the main app
       navigate('/');
     }
   }, [user, navigate]);
@@ -43,6 +44,8 @@ const AuthFoodlover = () => {
             title: "Welcome back!",
             description: "You've been logged in successfully.",
           });
+          // Redirect food lovers directly to the main app
+          navigate('/');
         }
       } else {
         const { error } = await signUp(email, password, displayName, 'regular');

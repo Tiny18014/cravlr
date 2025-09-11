@@ -23,7 +23,8 @@ const AuthBusiness = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      // Business users always go to business dashboard
+      navigate('/business/dashboard');
     }
   }, [user, navigate]);
 
