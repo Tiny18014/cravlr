@@ -39,6 +39,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
   const [dnd, setDndState] = useState(false);
   const [notificationQueue, setNotificationQueue] = useState<Notification[]>([]);
+  const [dismissedRequestIds, setDismissedRequestIds] = useState<Set<string>>(new Set());
   const channelsRef = useRef<any[]>([]);
 
   // Unified realtime subscription setup - wait for DND state to load
@@ -118,6 +119,12 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           // Skip if already read
           if (notification.read_at) {
             console.log("🔕 Skipping notification - already read");
+            return;
+          }
+          
+          // Skip if request was already dismissed
+          if (dismissedRequestIds.has(notification.request_id)) {
+            console.log("🔕 Skipping notification - request already dismissed");
             return;
           }
           
@@ -282,6 +289,12 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
   const dismissNotification = () => {
     console.log("🔔 Dismissing notification");
+    
+    // Add the request ID to dismissed list to prevent future notifications
+    if (currentNotification?.data?.requestId) {
+      setDismissedRequestIds(prev => new Set([...prev, currentNotification.data.requestId]));
+      console.log("🔕 Added request to dismissed list:", currentNotification.data.requestId);
+    }
     
     // Clear current notification immediately
     setCurrentNotification(null);
