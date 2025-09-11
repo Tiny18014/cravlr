@@ -1,14 +1,14 @@
 import { useEffect } from "react";
-import { usePopupBus } from "@/hooks/usePopupBus";
+import { useNotifications } from "@/contexts/UnifiedNotificationContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function PopupDebugBinder() {
-  const { pushPopup } = usePopupBus();
+  const { showNotification } = useNotifications();
   const { user } = useAuth();
   
   useEffect(() => {
-    (window as any).__pushPopup = pushPopup;
+    (window as any).__showNotification = showNotification;
     
     // Add test functions for the full notification flow
     (window as any).__testNotification = async (requestId: string) => {
@@ -105,7 +105,7 @@ export function PopupDebugBinder() {
     };
     
     console.log("🔧 Debug functions bound:");
-    console.log("  __pushPopup({ type: 'request_results', title: 'Test', message: 'Hello', cta:{label:'Open', to:'/'} })");
+    console.log("  __showNotification({ type: 'request_results', title: 'Test', message: 'Hello', actionLabel: 'Open', actionUrl: '/', data: {}, priority: 'high' })");
     console.log("  __testNotification('request-id') - Test notification insertion");
     console.log("  __testRLSRecommendations('request-id') - Test RLS for recommendations");
     console.log("  __testSaferRPC('request-id') - Test safer RPC function");
@@ -118,7 +118,7 @@ export function PopupDebugBinder() {
     //     (window as any).__manualTriggerNotification('a1a6c762-594a-44ed-bd18-f8d87f9f4f15');
     //   }, 2000);
     // }
-  }, [pushPopup, user]);
+  }, [showNotification, user]);
   
   return null;
 }

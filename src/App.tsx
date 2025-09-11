@@ -4,13 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { NotificationsProvider } from "@/contexts/NotificationsContext";
-import GlobalLiveRequestPopup from "@/components/GlobalLiveRequestPopup";
-// import TestNotificationButton from "@/components/TestNotificationButton";
+import { UnifiedNotificationProvider } from "@/contexts/UnifiedNotificationContext";
+import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisplay";
 import { OneSignalInit } from "@/components/OneSignalInit";
-import { RequesterExpiryListener } from "@/components/RequesterExpiryListener";
-import { GlobalRequestExpiryManager } from "@/providers/GlobalRequestExpiryManager";
-import { PopupHost } from "@/components/PopupHost";
+import { UnifiedRequestManager } from "@/providers/UnifiedRequestManager";
 import { PopupDebugBinder } from "@/components/PopupDebugBinder";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
@@ -36,17 +33,15 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <NotificationsProvider>
+    <UnifiedNotificationProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
           <OneSignalInit />
           <BrowserRouter>
-            <RequesterExpiryListener />
-            <GlobalRequestExpiryManager />
-            <PopupHost />
+            <UnifiedRequestManager />
+            <UnifiedNotificationDisplay />
             <PopupDebugBinder />
-            <GlobalLiveRequestPopup />
             {/* <TestNotificationButton /> */}
             <Routes>
               <Route path="/" element={<Index />} />
@@ -71,7 +66,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
-      </NotificationsProvider>
+      </UnifiedNotificationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

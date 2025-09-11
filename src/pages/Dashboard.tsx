@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Clock, Star, User, LogOut } from 'lucide-react';
 import { ReputationBadge } from '@/components/ReputationBadge';
-import { useRequestExpiryTimer } from '@/hooks/useRequestExpiryTimer';
+// Timer is now handled globally via UnifiedRequestManager
 
 interface FoodRequest {
   id: string;
@@ -84,7 +84,7 @@ const Dashboard = () => {
   // Get the default tab from URL parameter
   const defaultTab = searchParams.get('tab') || 'requests';
 
-  // Timer is now handled globally in App.tsx via GlobalRequestExpiryManager
+  // Timer is now handled globally via UnifiedRequestManager
 
   useEffect(() => {
     if (!user) {
