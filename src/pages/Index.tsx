@@ -244,18 +244,19 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
     fetchUserProfile();
   }, [user]);
 
-  // Check if user has business accounts and redirect accordingly
+  // Check if user has business claims and redirect accordingly
   useEffect(() => {
     if (!loading && userProfile && user) {
-      // Check if user has business accounts
+      // Check if user has verified business claims
       const checkBusinessAccounts = async () => {
-        const { data: businessAccounts } = await supabase
-          .from('business_profiles')
-          .select('id')
+        const { data: businessClaims } = await supabase
+          .from('business_claims')
+          .select('id, status')
           .eq('user_id', user.id)
+          .eq('status', 'verified')
           .limit(1);
         
-        if (businessAccounts && businessAccounts.length > 0) {
+        if (businessClaims && businessClaims.length > 0) {
           const currentPath = window.location.pathname;
           if (currentPath === '/') {
             console.log('🏢 Redirecting business user to dashboard...');
