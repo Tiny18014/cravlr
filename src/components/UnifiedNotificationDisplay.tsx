@@ -14,6 +14,9 @@ export const UnifiedNotificationDisplay: React.FC = () => {
 
     const { data, actionUrl } = currentNotification;
 
+    // Dismiss notification first to prevent it from reappearing
+    dismissNotification();
+
     try {
       if (data.requestType === 'accept') {
         await RequestService.acceptRequest(data.requestId);
@@ -29,14 +32,15 @@ export const UnifiedNotificationDisplay: React.FC = () => {
     } catch (error) {
       console.error("Error handling notification action:", error);
     }
-
-    dismissNotification();
   };
 
   const handleIgnore = async () => {
     if (!currentNotification) return;
 
     const { data } = currentNotification;
+
+    // Dismiss notification first to prevent it from reappearing
+    dismissNotification();
 
     try {
       if (data.requestType === 'accept') {
@@ -47,8 +51,6 @@ export const UnifiedNotificationDisplay: React.FC = () => {
     } catch (error) {
       console.error("Error handling notification dismiss:", error);
     }
-
-    dismissNotification();
   };
 
   if (!currentNotification) return null;
