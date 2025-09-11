@@ -287,13 +287,13 @@ const Profile = () => {
                         </FormDescription>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={(checked) => {
-                            console.log("🔄 DND toggle clicked:", checked);
-                            field.onChange(checked);
-                            setDnd(checked);
-                          }}
+                         <Switch
+                           checked={field.value}
+                           onCheckedChange={(checked) => {
+                             console.log("🔄 DND toggle clicked:", checked);
+                             field.onChange(checked);
+                             // Don't sync to context here - let form submission handle it
+                           }}
                         />
                       </FormControl>
                     </FormItem>

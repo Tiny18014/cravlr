@@ -209,11 +209,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     try {
       const { error } = await supabase
         .from('profiles')
-        .upsert({ 
-          user_id: user.id,
-          email: user.email || '',
-          do_not_disturb: enabled 
-        })
+        .update({ do_not_disturb: enabled })
         .eq('user_id', user.id);
         
       if (error) throw error;
