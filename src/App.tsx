@@ -9,6 +9,7 @@ import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisp
 import { OneSignalInit } from "@/components/OneSignalInit";
 import { UnifiedRequestManager } from "@/providers/UnifiedRequestManager";
 import { PopupDebugBinder } from "@/components/PopupDebugBinder";
+import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -44,23 +45,23 @@ const App = () => (
             <PopupDebugBinder />
             {/* <TestNotificationButton /> */}
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/welcome" element={<Welcome />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/auth/foodlover" element={<AuthFoodlover />} />
-              <Route path="/auth/business" element={<AuthBusiness />} />
-              <Route path="/request-food" element={<RequestFood />} />
-              <Route path="/browse-requests" element={<BrowseRequests />} />
-              <Route path="/recommend/:requestId" element={<SendRecommendation />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/requests/:requestId/results" element={<RequestResults />} />
-              <Route path="/admin/conversions" element={<AdminConversions />} />
-              <Route path="/admin/business-claims" element={<AdminBusinessClaims />} />
-              <Route path="/business/claim" element={<BusinessClaim />} />
-              <Route path="/business/onboarding" element={<BusinessOnboarding />} />
-              <Route path="/business/dashboard" element={<BusinessDashboard />} />
-              <Route path="/sample-accounts" element={<SampleAccounts />} />
+              <Route path="/" element={<RouteGuard><Index /></RouteGuard>} />
+              <Route path="/welcome" element={<RouteGuard requiresAuth={false}><Welcome /></RouteGuard>} />
+              <Route path="/auth" element={<RouteGuard requiresAuth={false}><Auth /></RouteGuard>} />
+              <Route path="/auth/foodlover" element={<RouteGuard requiresAuth={false}><AuthFoodlover /></RouteGuard>} />
+              <Route path="/auth/business" element={<RouteGuard requiresAuth={false}><AuthBusiness /></RouteGuard>} />
+              <Route path="/request-food" element={<RouteGuard regularUserOnly={true}><RequestFood /></RouteGuard>} />
+              <Route path="/browse-requests" element={<RouteGuard regularUserOnly={true}><BrowseRequests /></RouteGuard>} />
+              <Route path="/recommend/:requestId" element={<RouteGuard regularUserOnly={true}><SendRecommendation /></RouteGuard>} />
+              <Route path="/dashboard" element={<RouteGuard regularUserOnly={true}><Dashboard /></RouteGuard>} />
+              <Route path="/profile" element={<RouteGuard><Profile /></RouteGuard>} />
+              <Route path="/requests/:requestId/results" element={<RouteGuard regularUserOnly={true}><RequestResults /></RouteGuard>} />
+              <Route path="/admin/conversions" element={<RouteGuard><AdminConversions /></RouteGuard>} />
+              <Route path="/admin/business-claims" element={<RouteGuard><AdminBusinessClaims /></RouteGuard>} />
+              <Route path="/business/claim" element={<RouteGuard businessOnly={true}><BusinessClaim /></RouteGuard>} />
+              <Route path="/business/onboarding" element={<RouteGuard businessOnly={true}><BusinessOnboarding /></RouteGuard>} />
+              <Route path="/business/dashboard" element={<RouteGuard businessOnly={true}><BusinessDashboard /></RouteGuard>} />
+              <Route path="/sample-accounts" element={<RouteGuard requiresAuth={false}><SampleAccounts /></RouteGuard>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
