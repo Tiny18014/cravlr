@@ -39,10 +39,7 @@ export const useReferralConversions = () => {
       let query = supabase
         .from('referral_clicks')
         .select(`
-          *,
-          recommendations!inner(recommender_id),
-          profiles!referral_clicks_recommender_id_fkey(display_name),
-          profiles!referral_clicks_requester_id_fkey(display_name)
+          *
         `)
         .eq('converted', false);
 
@@ -62,11 +59,26 @@ export const useReferralConversions = () => {
         throw error;
       }
 
-      // Transform data to include display names
-      const transformedData = (data || []).map((click: any) => ({
-        ...click,
-        recommender_name: click.profiles?.display_name || 'Unknown',
-        requester_name: click.profiles?.display_name || 'Unknown'
+      // Get display names separately to avoid foreign key issues
+      const transformedData = await Promise.all((data || []).map(async (click: any) => {
+        const [recommenderProfile, requesterProfile] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', click.recommender_id)
+            .single(),
+          supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', click.requester_id)
+            .single()
+        ]);
+
+        return {
+          ...click,
+          recommender_name: recommenderProfile.data?.display_name || 'Unknown',
+          requester_name: requesterProfile.data?.display_name || 'Unknown'
+        };
       }));
 
       return transformedData;

@@ -43,8 +43,10 @@ const AuthBusiness = () => {
         } else {
           toast({
             title: "Welcome back!",
-            description: "You've been logged in successfully.",
+            description: "Redirecting to your business dashboard...",
           });
+          // Redirect business login directly to business dashboard
+          navigate('/business/dashboard');
         }
       } else {
         // Validate business signup requirements
