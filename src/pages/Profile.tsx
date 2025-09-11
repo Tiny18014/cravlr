@@ -106,6 +106,7 @@ const Profile = () => {
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
     
+    console.log("💾 Submitting profile form:", values);
     setSaving(true);
     try {
       const { error } = await supabase
@@ -120,7 +121,18 @@ const Profile = () => {
         })
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Profile update error:", error);
+        throw error;
+      }
+
+      console.log("✅ Profile updated successfully");
+      
+      // Reset form with new values to clear dirty state
+      form.reset(values);
+      
+      // Sync DND state with notification context
+      setDnd(values.do_not_disturb);
 
       toast({
         title: "Profile updated",
@@ -290,11 +302,22 @@ const Profile = () => {
             </Card>
 
             {/* Save Button */}
-            <div className="flex justify-end">
-              <Button type="submit" disabled={saving} className="flex items-center gap-2">
-                <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
+            <div className="flex items-center justify-between">
+              {form.formState.isDirty && (
+                <p className="text-sm text-muted-foreground">
+                  You have unsaved changes
+                </p>
+              )}
+              <div className={form.formState.isDirty ? "" : "ml-auto"}>
+                <Button 
+                  type="submit" 
+                  disabled={saving || !form.formState.isDirty} 
+                  className="flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
           </form>
         </Form>
