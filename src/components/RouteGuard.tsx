@@ -19,7 +19,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [userProfile, setUserProfile] = useState<{ persona?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ persona?: string; is_admin?: boolean } | null>(null);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +52,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
         const [profileResult, businessResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('persona')
+            .select('persona, is_admin')
             .eq('user_id', user.id)
             .single(),
           supabase
@@ -73,20 +73,37 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
         });
         
         setUserProfile(profile);
-        setHasBusinessProfile(businessClaims && businessClaims.length > 0);
+        const isBusinessUser = businessClaims && businessClaims.length > 0;
+        setHasBusinessProfile(isBusinessUser);
 
-        // Business-only routes
-        if (businessOnly && (!businessClaims || businessClaims.length === 0)) {
-          console.log('🚫 Non-business user trying to access business route');
+        // Enhanced access control logic
+        if (businessOnly && !isBusinessUser) {
+          console.log('🚫 Non-business user trying to access business route, redirecting to home');
           navigate('/');
           return;
         }
 
-        // Regular user-only routes (business users should not access these)
-        if (regularUserOnly && businessClaims && businessClaims.length > 0) {
+        if (regularUserOnly && isBusinessUser) {
           console.log('🚫 Business user trying to access regular user route, redirecting to business dashboard');
           navigate('/business/dashboard');
           return;
+        }
+
+        // Special handling for root path - redirect based on user type
+        if (location.pathname === '/' && isBusinessUser) {
+          console.log('🏢 Business user accessing root, redirecting to business dashboard');
+          navigate('/business/dashboard');
+          return;
+        }
+
+        // For admin routes, check admin permissions separately
+        if (location.pathname.startsWith('/admin/')) {
+          const isAdmin = profile?.is_admin === true;
+          if (!isAdmin) {
+            console.log('🚫 Non-admin user trying to access admin route');
+            navigate(isBusinessUser ? '/business/dashboard' : '/');
+            return;
+          }
         }
 
         console.log('✅ RouteGuard: Access granted for path:', location.pathname);
