@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2, BellOff } from "lucide-react";
 import ActiveRequestsList from "@/components/ActiveRequestsList";
 import { supabase } from "@/integrations/supabase/client";
+import { useNotifications } from "@/contexts/UnifiedNotificationContext";
+import { Switch } from "@/components/ui/switch";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -32,6 +34,8 @@ function UnauthenticatedView() {
 }
 
 function Header({ onSignOut, userName }: { onSignOut: () => void; userName: string }) {
+  const { dnd, setDnd } = useNotifications();
+  
   return (
     <header className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
@@ -43,16 +47,27 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
           <p className="text-sm font-medium">{userName}! 🍽️</p>
         </div>
       </div>
-      <button 
-        onClick={onSignOut}
-        aria-label="Notifications" 
-        className="relative rounded-full p-2 hover:bg-muted"
-      >
-        <Bell className="h-5 w-5" />
-        <span className="absolute -right-0.5 -top-0.5 h-4 min-w-[16px] rounded-full bg-destructive px-1 text-[10px] leading-4 text-destructive-foreground text-center">
-          3
-        </span>
-      </button>
+      <div className="flex items-center gap-2">
+        {/* Do Not Disturb Toggle */}
+        <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+          <div className="flex items-center gap-1.5">
+            {dnd ? <BellOff className="h-4 w-4 text-muted-foreground" /> : <Bell className="h-4 w-4 text-muted-foreground" />}
+            <span className="text-xs text-muted-foreground">DND</span>
+          </div>
+          <Switch
+            checked={dnd}
+            onCheckedChange={setDnd}
+            aria-label="Do Not Disturb"
+          />
+        </div>
+        <button 
+          onClick={onSignOut}
+          aria-label="Sign out" 
+          className="rounded-full p-2 hover:bg-muted text-muted-foreground"
+        >
+          <User className="h-5 w-5" />
+        </button>
+      </div>
     </header>
   );
 }
