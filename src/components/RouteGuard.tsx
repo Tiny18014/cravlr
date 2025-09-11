@@ -40,7 +40,15 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
       }
 
       try {
-        // Fetch user profile and business profile
+        console.log('🔍 RouteGuard: Checking user access for:', {
+          userId: user.id,
+          email: user.email,
+          currentPath: location.pathname,
+          businessOnly,
+          regularUserOnly
+        });
+
+        // Fetch user profile and business claims (not just business_profiles)
         const [profileResult, businessResult] = await Promise.all([
           supabase
             .from('profiles')
@@ -48,34 +56,43 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
             .eq('user_id', user.id)
             .single(),
           supabase
-            .from('business_profiles')
-            .select('id')
+            .from('business_claims')
+            .select('id, status')
             .eq('user_id', user.id)
+            .eq('status', 'verified')
             .limit(1)
         ]);
 
         const profile = profileResult.data;
-        const businessProfiles = businessResult.data;
+        const businessClaims = businessResult.data;
+        
+        console.log('🔍 RouteGuard: Profile data:', {
+          profile,
+          businessClaims,
+          hasBusinessClaim: businessClaims && businessClaims.length > 0
+        });
         
         setUserProfile(profile);
-        setHasBusinessProfile(businessProfiles && businessProfiles.length > 0);
+        setHasBusinessProfile(businessClaims && businessClaims.length > 0);
 
         // Business-only routes
-        if (businessOnly && !businessProfiles?.length) {
+        if (businessOnly && (!businessClaims || businessClaims.length === 0)) {
           console.log('🚫 Non-business user trying to access business route');
           navigate('/');
           return;
         }
 
         // Regular user-only routes (business users should not access these)
-        if (regularUserOnly && businessProfiles?.length > 0) {
-          console.log('🚫 Business user trying to access regular user route');
+        if (regularUserOnly && businessClaims && businessClaims.length > 0) {
+          console.log('🚫 Business user trying to access regular user route, redirecting to business dashboard');
           navigate('/business/dashboard');
           return;
         }
 
+        console.log('✅ RouteGuard: Access granted for path:', location.pathname);
+
       } catch (error) {
-        console.error('Error checking user access:', error);
+        console.error('❌ RouteGuard: Error checking user access:', error);
       } finally {
         setLoading(false);
       }
