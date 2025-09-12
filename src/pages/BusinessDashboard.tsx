@@ -154,22 +154,52 @@ export default function BusinessDashboard() {
               <p className="text-muted-foreground">Track your restaurant's referral performance</p>
             </div>
           </div>
-          <Button variant="outline" onClick={async () => {
-            console.log('🔘 Sign out button clicked');
-            try {
-              await signOut();
-              console.log('🔄 Navigating to welcome page...');
-              navigate('/welcome');
-            } catch (error) {
-              console.error('❌ Sign out error in component:', error);
-              // Force navigation even if sign out fails
-              navigate('/welcome');
-            }
-          }} className="flex items-center gap-2">
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={() => navigate('/how-it-works')} className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              How It Works
+            </Button>
+            <Button variant="outline" onClick={async () => {
+              console.log('🔘 Sign out button clicked');
+              try {
+                await signOut();
+                console.log('🔄 Navigating to welcome page...');
+                navigate('/welcome');
+              } catch (error) {
+                console.error('❌ Sign out error in component:', error);
+                // Force navigation even if sign out fails
+                navigate('/welcome');
+              }
+            }} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+
+        {/* Welcome Banner for New Users */}
+        {claims.length === 0 && (
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold">Welcome to Cravlr Business!</h2>
+                  <p className="text-muted-foreground">
+                    Get started by claiming your restaurant or learn more about how our referral system works.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => navigate('/how-it-works')}>
+                    Learn More
+                  </Button>
+                  <Button onClick={() => navigate('/business/claim')}>
+                    Claim Restaurant
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Overview */}
         <div className="grid gap-6 md:grid-cols-4">
