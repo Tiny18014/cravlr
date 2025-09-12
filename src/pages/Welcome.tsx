@@ -121,7 +121,15 @@ const Welcome = () => {
                 </Button>
 
                 <div className="text-xs text-muted-foreground">
-                  Verification required • Business email • Phone confirmation
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/how-it-works');
+                    }} 
+                    className="text-primary hover:underline"
+                  >
+                    How it works
+                  </button> • Verification required • Business email
                 </div>
               </div>
             </CardContent>

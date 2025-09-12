@@ -26,6 +26,7 @@ import BusinessOnboarding from "./pages/BusinessOnboarding";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import AdminBusinessClaims from "./pages/AdminBusinessClaims";
 import SampleAccounts from "./pages/SampleAccounts";
+import HowItWorks from "./pages/HowItWorks";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/business/claim" element={<RouteGuard businessOnly={true}><BusinessClaim /></RouteGuard>} />
               <Route path="/business/onboarding" element={<RouteGuard businessOnly={true}><BusinessOnboarding /></RouteGuard>} />
               <Route path="/business/dashboard" element={<RouteGuard businessOnly={true}><BusinessDashboard /></RouteGuard>} />
+              <Route path="/how-it-works" element={<RouteGuard requiresAuth={false}><HowItWorks /></RouteGuard>} />
               <Route path="/sample-accounts" element={<RouteGuard requiresAuth={false}><SampleAccounts /></RouteGuard>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
