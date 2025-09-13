@@ -316,7 +316,7 @@ const RequestResults = () => {
         return;
       }
 
-      // Generate referral link - this is required for tracking clicks
+      // Generate or get existing referral link
       let referralLinkId = null;
       
       if (group.recommendationId && group.mapsUrl) {
@@ -340,13 +340,7 @@ const RequestResults = () => {
         }
       }
 
-      if (!referralLinkId) {
-        console.error('Failed to generate referral link');
-        toast.error('Failed to log intent');
-        return;
-      }
-
-      // Log the intent to visit
+      // Log the intent to visit (referral_link_id can be null for now)
       const { error } = await supabase
         .from('referral_clicks')
         .insert({
@@ -354,7 +348,7 @@ const RequestResults = () => {
           request_id: request.id,
           requester_id: user.id,
           recommender_id: recommendationData.recommender_id,
-          referral_link_id: referralLinkId,
+          referral_link_id: referralLinkId, // This can be null
           restaurant_name: group.name,
           place_id: group.placeId,
           click_source: 'going_button',
