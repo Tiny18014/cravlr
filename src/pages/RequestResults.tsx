@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, ArrowLeft, MapPin, Star, DollarSign, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, ArrowLeft, MapPin, Star, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useReferralLinks } from "@/hooks/useReferralLinks";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Note {
   by: string;
@@ -61,6 +62,7 @@ const RequestResults = () => {
   const [loading, setLoading] = useState(true);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [goingIntents, setGoingIntents] = useState<Set<string>>(new Set());
   const { generateReferralLink } = useReferralLinks();
 
   const fetchResults = async () => {
@@ -297,6 +299,66 @@ const RequestResults = () => {
     return `https://edazolwepxbdeniluamf.supabase.co/functions/v1/places-photo?ref=${photoToken}&w=200`;
   };
 
+  const handleGoingClick = async (group: RecommendationGroup) => {
+    if (!user || !request) return;
+    
+    try {
+      // Generate referral link if not already exists
+      let referralUrl = group.referralUrl;
+      
+      if (!referralUrl && group.recommendationId && group.mapsUrl) {
+        const referralData = await generateReferralLink({
+          recommendationId: group.recommendationId,
+          requestId: request.id,
+          restaurantName: group.name,
+          placeId: group.placeId,
+          mapsUrl: group.mapsUrl
+        });
+        
+        if (referralData) {
+          referralUrl = referralData.referralUrl;
+        }
+      }
+
+      // Log the intent to visit
+      const { error } = await supabase
+        .from('referral_clicks')
+        .insert({
+          recommendation_id: group.recommendationId,
+          request_id: request.id,
+          requester_id: user.id,
+          recommender_id: group.recommendationId, // We'll need to get this from recommendations
+          referral_link_id: group.recommendationId, // Placeholder
+          restaurant_name: group.name,
+          place_id: group.placeId,
+          click_source: 'going_button',
+          clicked_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('Error logging going intent:', error);
+        toast.error('Failed to log your intent');
+        return;
+      }
+
+      // Mark as "going" in local state
+      setGoingIntents(prev => new Set([...prev, group.key]));
+      
+      // Show success message with referral link
+      toast.success(`Great choice! We've logged your intent to visit ${group.name}`, {
+        description: referralUrl ? "Click to open directions" : undefined,
+        action: referralUrl ? {
+          label: "Open Maps",
+          onClick: () => window.open(referralUrl, '_blank')
+        } : undefined
+      });
+
+    } catch (error) {
+      console.error('Error handling going click:', error);
+      toast.error('Something went wrong');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -471,8 +533,29 @@ const RequestResults = () => {
                             )}
                           </div>
 
-                          {/* Maps Button */}
-                          <div className="shrink-0">
+                          {/* Action Buttons */}
+                          <div className="shrink-0 flex gap-2">
+                            {/* Going Button */}
+                            {user && request && user.id === request.requester_id && (
+                              <Button 
+                                variant={goingIntents.has(group.key) ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleGoingClick(group)}
+                                disabled={goingIntents.has(group.key)}
+                                className="whitespace-nowrap"
+                              >
+                                {goingIntents.has(group.key) ? (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Going!
+                                  </>
+                                ) : (
+                                  "I'm Going"
+                                )}
+                              </Button>
+                            )}
+                            
+                            {/* Maps Button */}
                             {(group.referralUrl || group.mapsUrl) && (
                               <Button 
                                 variant="outline" 
