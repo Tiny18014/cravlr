@@ -6,6 +6,10 @@ import { RequestService, FoodRequest } from "@/services/RequestService";
 // Global store to track which requests have already fired expiry notifications
 const firedRequests = new Set<string>();
 
+// Global store to track notification counts per request to prevent spam
+const notificationCounts = new Map<string, number>();
+const MAX_NOTIFICATIONS_PER_REQUEST = 1;
+
 export const useRequestExpiry = (
   request: FoodRequest | null,
   userId?: string
@@ -17,14 +21,19 @@ export const useRequestExpiry = (
 
   const fire = async () => {
     if (!request || firedRequests.has(request.id)) return;
-    firedRequests.add(request.id);
     
-    // console.log(`⏰ UNIFIED: Request ${request.id} expired, checking for recommendations`);
+    // Check notification count to prevent spam
+    const currentCount = notificationCounts.get(request.id) || 0;
+    if (currentCount >= MAX_NOTIFICATIONS_PER_REQUEST) {
+      return;
+    }
+    
+    firedRequests.add(request.id);
+    notificationCounts.set(request.id, currentCount + 1);
 
     const recommendations = await RequestService.getRequestRecommendations(request.id);
 
     if (recommendations.length > 0) {
-      // console.log(`⏰ UNIFIED: Showing expiry notification for ${request.id} with ${recommendations.length} recommendations`);
       showNotification({
         type: "request_results",
         title: "Time's up! 🎉",
@@ -34,8 +43,6 @@ export const useRequestExpiry = (
         data: { requestId: request.id, requestType: 'view_results' },
         priority: 'high'
       });
-    } else {
-      // console.log(`⏰ UNIFIED: No recommendations found for ${request.id}, skipping notification`);
     }
   };
 
@@ -56,8 +63,6 @@ export const useRequestExpiry = (
     const localExpiry = serverExpiry - skewMs;
     const msUntil = localExpiry - localNow;
 
-    // console.log(`⏰ UNIFIED: Scheduling expiry for ${request.id} in ${Math.max(0, Math.round(msUntil))}ms`);
-
     if (msUntil <= 50) {
       fire();
       return;
@@ -66,14 +71,16 @@ export const useRequestExpiry = (
     // Primary timer
     timeoutIdRef.current = window.setTimeout(fire, msUntil);
 
-    // Backup heartbeat - but only if request hasn't fired yet
+    // Backup heartbeat - but only if request hasn't fired yet and not too frequent
     const beat = () => {
       if (document.visibilityState !== "visible") return;
       if (firedRequests.has(request.id)) return; // Skip if already fired
       const now = Date.now();
       if (now >= localExpiry) fire();
     };
-    intervalIdRef.current = window.setInterval(beat, 1000);
+    
+    // Reduce heartbeat frequency to every 5 seconds instead of every second
+    intervalIdRef.current = window.setInterval(beat, 5000);
 
     // Visibility resume
     const onVisibility = () => {
@@ -87,4 +94,16 @@ export const useRequestExpiry = (
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [request?.id, request?.expires_at, request?.requester_id, userId, skewMs, showNotification]);
+
+  // Cleanup function to reset notification counts when component unmounts
+  useEffect(() => {
+    return () => {
+      if (request?.id) {
+        // Don't reset fired status, but we can clean up counts after a delay
+        setTimeout(() => {
+          notificationCounts.delete(request.id);
+        }, 60000); // Clean up after 1 minute
+      }
+    };
+  }, [request?.id]);
 };

@@ -183,7 +183,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         }
       )
       .subscribe((status) => {
-        console.log("🔔 Status notifications status:", status);
+        // console.log("🔔 Status notifications status:", status);
       });
 
     channelsRef.current = [requestChannel, notificationChannel, statusChannel];
@@ -197,7 +197,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     
     const loadDndState = async () => {
       try {
-        console.log("🔕 Loading DND state for user:", user.id);
         const { data: profile } = await supabase
           .from('profiles')
           .select('do_not_disturb')
@@ -205,10 +204,8 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           .single();
           
         if (profile) {
-          console.log("🔕 DND state loaded:", profile.do_not_disturb);
           setDndState(profile.do_not_disturb ?? false);
         } else {
-          console.log("🔕 No profile found, defaulting DND to false");
           setDndState(false);
         }
       } catch (error) {
@@ -223,8 +220,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   const setDnd = async (enabled: boolean) => {
     if (!user?.id) return;
     
-    console.log("🔕 Setting DND state:", enabled, "for user:", user.id);
-    
     try {
       const { error } = await supabase
         .from('profiles')
@@ -233,7 +228,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         
       if (error) throw error;
       
-      console.log("✅ DND state updated successfully:", enabled);
       setDndState(enabled);
     } catch (error) {
       console.error('❌ Error updating DND state:', error);
@@ -250,11 +244,8 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   };
 
   const showNotification = (notification: Omit<Notification, 'id'>) => {
-    console.log("🔔 showNotification called, DND state:", dnd, "Notification type:", notification.type);
-    
     // Double-check DND status before showing any notification
     if (dnd) {
-      console.log("🔕 Blocking notification due to DND mode:", notification.type);
       return;
     }
 
@@ -262,8 +253,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
       ...notification,
       id: Math.random().toString(36).substr(2, 9)
     };
-
-    console.log("🔔 Showing notification:", fullNotification);
 
     // Enhanced deduplication - check both current notification and queue
     const isDuplicateOfCurrent = currentNotification && 
@@ -276,7 +265,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     );
 
     if (isDuplicateOfCurrent || isDuplicateInQueue) {
-      console.log("🔕 Blocking duplicate notification:", fullNotification.type);
       return;
     }
 
@@ -288,12 +276,9 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   };
 
   const dismissNotification = () => {
-    console.log("🔔 Dismissing notification");
-    
     // Add the request ID to dismissed list to prevent future notifications
     if (currentNotification?.data?.requestId) {
       setDismissedRequestIds(prev => new Set([...prev, currentNotification.data.requestId]));
-      console.log("🔕 Added request to dismissed list:", currentNotification.data.requestId);
     }
     
     // Clear current notification immediately
@@ -301,8 +286,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     
     // Clear the entire queue to prevent multiple popups for the same event
     setNotificationQueue([]);
-    
-    console.log("🔔 Notification queue cleared");
   };
 
   return (
