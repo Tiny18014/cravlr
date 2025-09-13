@@ -303,6 +303,19 @@ const RequestResults = () => {
     if (!user || !request) return;
     
     try {
+      // Get the recommender ID from the recommendation
+      const { data: recommendationData, error: recError } = await supabase
+        .from('recommendations')
+        .select('recommender_id')
+        .eq('id', group.recommendationId)
+        .single();
+
+      if (recError || !recommendationData) {
+        console.error('Error fetching recommendation data:', recError);
+        toast.error('Failed to log intent');
+        return;
+      }
+
       // Generate referral link if not already exists
       let referralUrl = group.referralUrl;
       
@@ -320,6 +333,13 @@ const RequestResults = () => {
         }
       }
 
+      // Get referral link ID if it exists
+      const { data: referralLinkData } = await supabase
+        .from('referral_links')
+        .select('id')
+        .eq('recommendation_id', group.recommendationId)
+        .single();
+
       // Log the intent to visit
       const { error } = await supabase
         .from('referral_clicks')
@@ -327,8 +347,8 @@ const RequestResults = () => {
           recommendation_id: group.recommendationId,
           request_id: request.id,
           requester_id: user.id,
-          recommender_id: group.recommendationId, // We'll need to get this from recommendations
-          referral_link_id: group.recommendationId, // Placeholder
+          recommender_id: recommendationData.recommender_id,
+          referral_link_id: referralLinkData?.id || group.recommendationId,
           restaurant_name: group.name,
           place_id: group.placeId,
           click_source: 'going_button',
