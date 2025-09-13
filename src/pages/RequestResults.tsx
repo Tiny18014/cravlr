@@ -316,10 +316,10 @@ const RequestResults = () => {
         return;
       }
 
-      // Generate referral link if not already exists
-      let referralUrl = group.referralUrl;
+      // Generate referral link - this is required for tracking clicks
+      let referralLinkId = null;
       
-      if (!referralUrl && group.recommendationId && group.mapsUrl) {
+      if (group.recommendationId && group.mapsUrl) {
         const referralData = await generateReferralLink({
           recommendationId: group.recommendationId,
           requestId: request.id,
@@ -329,16 +329,22 @@ const RequestResults = () => {
         });
         
         if (referralData) {
-          referralUrl = referralData.referralUrl;
+          // Get the actual referral link ID from the database
+          const { data: referralLinkData } = await supabase
+            .from('referral_links')
+            .select('id')
+            .eq('recommendation_id', group.recommendationId)
+            .single();
+          
+          referralLinkId = referralLinkData?.id;
         }
       }
 
-      // Get referral link ID if it exists
-      const { data: referralLinkData } = await supabase
-        .from('referral_links')
-        .select('id')
-        .eq('recommendation_id', group.recommendationId)
-        .single();
+      if (!referralLinkId) {
+        console.error('Failed to generate referral link');
+        toast.error('Failed to log intent');
+        return;
+      }
 
       // Log the intent to visit
       const { error } = await supabase
@@ -348,7 +354,7 @@ const RequestResults = () => {
           request_id: request.id,
           requester_id: user.id,
           recommender_id: recommendationData.recommender_id,
-          referral_link_id: referralLinkData?.id || group.recommendationId,
+          referral_link_id: referralLinkId,
           restaurant_name: group.name,
           place_id: group.placeId,
           click_source: 'going_button',
@@ -364,14 +370,8 @@ const RequestResults = () => {
       // Mark as "going" in local state
       setGoingIntents(prev => new Set([...prev, group.key]));
       
-      // Show success message with referral link
-      toast.success(`Great choice! We've logged your intent to visit ${group.name}`, {
-        description: referralUrl ? "Click to open directions" : undefined,
-        action: referralUrl ? {
-          label: "Open Maps",
-          onClick: () => window.open(referralUrl, '_blank')
-        } : undefined
-      });
+      // Show success message
+      toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
 
     } catch (error) {
       console.error('Error handling going click:', error);

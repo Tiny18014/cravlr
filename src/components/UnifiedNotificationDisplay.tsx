@@ -57,12 +57,20 @@ export const UnifiedNotificationDisplay: React.FC = () => {
   // Don't show notifications if user is already on the results page for this request
   if (!currentNotification) return null;
   
-  // If it's a view_results notification and user is already on that results page, don't show
+  // Use useEffect to prevent infinite re-renders when auto-dismissing
+  React.useEffect(() => {
+    if (currentNotification.type === 'request_results' && 
+        currentNotification.data?.requestId && 
+        location.pathname.includes(`/requests/${currentNotification.data.requestId}/results`)) {
+      // Auto-dismiss since user is already on the target page
+      dismissNotification();
+    }
+  }, [currentNotification, location.pathname, dismissNotification]);
+  
+  // Don't render if we're on the target page to prevent flashing
   if (currentNotification.type === 'request_results' && 
       currentNotification.data?.requestId && 
       location.pathname.includes(`/requests/${currentNotification.data.requestId}/results`)) {
-    // Auto-dismiss since user is already on the target page
-    dismissNotification();
     return null;
   }
 
