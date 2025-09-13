@@ -51,7 +51,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
     // Wait a moment for DND state to load before setting up subscriptions
     const timer = setTimeout(() => {
-      console.log("🔔 Setting up unified notification system for user:", user.id, "DND:", dnd);
+        // console.log("🔔 Setting up unified notification system for user:", user.id, "DND:", dnd);
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -100,7 +100,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         }
       )
       .subscribe((status) => {
-        console.log("🔔 Request notifications status:", status);
+        // console.log("🔔 Request notifications status:", status);
       });
 
     // Listen for request results (for requesters)
@@ -118,19 +118,19 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           
           // Skip if already read
           if (notification.read_at) {
-            console.log("🔕 Skipping notification - already read");
+            // console.log("🔕 Skipping notification - already read");
             return;
           }
           
           // Skip if request was already dismissed
           if (dismissedRequestIds.has(notification.request_id)) {
-            console.log("🔕 Skipping notification - request already dismissed");
+            // console.log("🔕 Skipping notification - request already dismissed");
             return;
           }
           
           // Skip if Do Not Disturb is enabled
           if (dnd) {
-            console.log("🔕 Skipping notification due to DND mode");
+            // console.log("🔕 Skipping notification due to DND mode");
             return;
           }
           

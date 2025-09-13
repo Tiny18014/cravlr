@@ -25,7 +25,7 @@ export const useReferralLinks = () => {
     setError(null);
 
     try {
-      console.log('🔗 Generating referral link for:', params.restaurantName);
+      // console.log('🔗 Generating referral link for:', params.restaurantName);
 
       const { data, error } = await supabase.functions.invoke('generate-referral-link', {
         body: params
@@ -37,7 +37,7 @@ export const useReferralLinks = () => {
         return null;
       }
 
-      console.log('✅ Generated referral link:', data.referralCode);
+      // console.log('✅ Generated referral link:', data.referralCode);
       return data;
 
     } catch (err: any) {

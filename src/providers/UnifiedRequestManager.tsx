@@ -16,7 +16,7 @@ export function UnifiedRequestManager() {
   const loadActiveRequests = async (uid: string) => {
     const requests = await RequestService.getUserActiveRequests(uid);
     setActiveRequests(requests);
-    console.log(`🔄 UNIFIED: Loaded ${requests.length} active requests for user ${uid}`);
+    // console.log(`🔄 UNIFIED: Loaded ${requests.length} active requests for user ${uid}`);
   };
 
   useEffect(() => {
@@ -39,12 +39,12 @@ export function UnifiedRequestManager() {
           filter: `requester_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log("🔄 UNIFIED: User request change detected:", payload);
+          // console.log("🔄 UNIFIED: User request change detected:", payload);
           loadActiveRequests(user.id);
         }
       )
       .subscribe((status) => {
-        console.log("🔄 UNIFIED: Request manager subscription:", status);
+        // console.log("🔄 UNIFIED: Request manager subscription:", status);
       });
 
     return () => {

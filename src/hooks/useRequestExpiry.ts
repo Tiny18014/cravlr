@@ -19,12 +19,12 @@ export const useRequestExpiry = (
     if (!request || firedRequests.has(request.id)) return;
     firedRequests.add(request.id);
     
-    console.log(`⏰ UNIFIED: Request ${request.id} expired, checking for recommendations`);
+    // console.log(`⏰ UNIFIED: Request ${request.id} expired, checking for recommendations`);
 
     const recommendations = await RequestService.getRequestRecommendations(request.id);
 
     if (recommendations.length > 0) {
-      console.log(`⏰ UNIFIED: Showing expiry notification for ${request.id} with ${recommendations.length} recommendations`);
+      // console.log(`⏰ UNIFIED: Showing expiry notification for ${request.id} with ${recommendations.length} recommendations`);
       showNotification({
         type: "request_results",
         title: "Time's up! 🎉",
@@ -35,7 +35,7 @@ export const useRequestExpiry = (
         priority: 'high'
       });
     } else {
-      console.log(`⏰ UNIFIED: No recommendations found for ${request.id}, skipping notification`);
+      // console.log(`⏰ UNIFIED: No recommendations found for ${request.id}, skipping notification`);
     }
   };
 
@@ -56,7 +56,7 @@ export const useRequestExpiry = (
     const localExpiry = serverExpiry - skewMs;
     const msUntil = localExpiry - localNow;
 
-    console.log(`⏰ UNIFIED: Scheduling expiry for ${request.id} in ${Math.max(0, Math.round(msUntil))}ms`);
+    // console.log(`⏰ UNIFIED: Scheduling expiry for ${request.id} in ${Math.max(0, Math.round(msUntil))}ms`);
 
     if (msUntil <= 50) {
       fire();
