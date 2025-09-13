@@ -3,19 +3,21 @@ import { useClockSkew } from "@/hooks/useClockSkew";
 import { useNotifications } from "@/contexts/UnifiedNotificationContext";
 import { RequestService, FoodRequest } from "@/services/RequestService";
 
+// Global store to track which requests have already fired expiry notifications
+const firedRequests = new Set<string>();
+
 export const useRequestExpiry = (
   request: FoodRequest | null,
   userId?: string
 ) => {
   const { showNotification } = useNotifications();
   const skewMs = useClockSkew();
-  const firedRef = useRef(false);
   const timeoutIdRef = useRef<number | null>(null);
   const intervalIdRef = useRef<number | null>(null);
 
   const fire = async () => {
-    if (firedRef.current || !request) return;
-    firedRef.current = true;
+    if (!request || firedRequests.has(request.id)) return;
+    firedRequests.add(request.id);
     
     console.log(`⏰ UNIFIED: Request ${request.id} expired, checking for recommendations`);
 
@@ -41,11 +43,13 @@ export const useRequestExpiry = (
     // Guard: only requester gets their own expiry notification
     if (!request || !userId || request.requester_id !== userId) return;
     if (!request.expires_at) return;
+    
+    // Skip if already fired for this request
+    if (firedRequests.has(request.id)) return;
 
     // Clear old timers
     if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
     if (intervalIdRef.current) clearInterval(intervalIdRef.current);
-    firedRef.current = false;
 
     const serverExpiry = Date.parse(request.expires_at);
     const localNow = Date.now();
@@ -62,9 +66,10 @@ export const useRequestExpiry = (
     // Primary timer
     timeoutIdRef.current = window.setTimeout(fire, msUntil);
 
-    // Backup heartbeat
+    // Backup heartbeat - but only if request hasn't fired yet
     const beat = () => {
       if (document.visibilityState !== "visible") return;
+      if (firedRequests.has(request.id)) return; // Skip if already fired
       const now = Date.now();
       if (now >= localExpiry) fire();
     };
