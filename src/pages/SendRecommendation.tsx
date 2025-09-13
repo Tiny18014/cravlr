@@ -271,7 +271,8 @@ const SendRecommendation = () => {
                         onClick={() => {
                           const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
                           const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-                          window.open(mapsUrl, '_blank');
+                          // Use location.assign instead of window.open to avoid popup blockers
+                          window.location.assign(mapsUrl);
                         }}
                         className="text-xs h-6"
                       >
