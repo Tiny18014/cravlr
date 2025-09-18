@@ -10,7 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useBusinessClaims } from '@/hooks/useBusinessClaims';
 import { useReferralConversions } from '@/hooks/useReferralConversions';
-import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users, LogOut } from 'lucide-react';
+import ReferralAttributionDashboard from '@/components/ReferralAttributionDashboard';
+import SmartConversionSuggestions from '@/components/SmartConversionSuggestions';
+import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users, LogOut, Activity } from 'lucide-react';
 
 interface BusinessClaim {
   id: string;
@@ -257,12 +259,18 @@ export default function BusinessDashboard() {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="analytics" className="space-y-6">
+        <Tabs defaultValue="attribution" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="attribution">Live Attribution</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="conversions">Pending Orders ({pendingClicks.length})</TabsTrigger>
             <TabsTrigger value="claims">Restaurant Claims</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="attribution" className="space-y-6">
+            <SmartConversionSuggestions />
+            <ReferralAttributionDashboard />
+          </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
             <Card>
