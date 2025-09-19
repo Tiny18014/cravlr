@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Star } from 'lucide-react';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
+import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 
 interface FoodRequest {
   id: string;
@@ -334,7 +335,8 @@ const SendRecommendation = () => {
               </form>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </EmailVerificationRequired>
       </main>
     </div>
   );

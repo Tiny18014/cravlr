@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useBusinessClaims } from '@/hooks/useBusinessClaims';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { Building2, Mail, Phone, Globe, MapPin, User } from 'lucide-react';
+import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 
 export default function BusinessClaim() {
   const navigate = useNavigate();
@@ -27,50 +28,40 @@ export default function BusinessClaim() {
     business_website: ''
   });
 
-  const handleRestaurantSelect = (name: string, address: string, placeId?: string) => {
-    setClaimData(prev => ({
-      ...prev,
-      restaurant_name: name,
-      place_id: placeId || ''
-    }));
-    
-    if (address) {
-      setProfileData(prev => ({
-        ...prev,
-        business_address: address
-      }));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!claimData.restaurant_name || !claimData.business_email || !profileData.business_name || !profileData.contact_name) {
+    if (!claimData.restaurant_name || !claimData.business_email) {
       return;
     }
 
-    const success = await submitBusinessClaim(claimData, profileData);
-    if (success) {
-      navigate('/business/dashboard');
-    }
+    await submitBusinessClaim(claimData, profileData);
+    navigate('/');
+  };
+
+  const handleRestaurantSelect = (restaurant: any) => {
+    setClaimData(prev => ({
+      ...prev,
+      restaurant_name: restaurant.name,
+      place_id: restaurant.place_id || ''
+    }));
+    setProfileData(prev => ({
+      ...prev,
+      business_name: restaurant.name,
+      business_address: restaurant.formatted_address || restaurant.vicinity || ''
+    }));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <Building2 className="h-16 w-16 mx-auto mb-4 text-primary" />
-          <h1 className="text-3xl font-bold mb-2">Claim Your Restaurant</h1>
-          <p className="text-muted-foreground">
-            Join our platform to track referrals, manage your restaurant profile, and earn commissions
-          </p>
-        </div>
-
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <EmailVerificationRequired action="claim a business">
         <Card>
           <CardHeader>
-            <CardTitle>Restaurant Claim Form</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Claim Your Restaurant
+            </CardTitle>
             <CardDescription>
-              Fill out the form below to claim ownership of your restaurant. All claims are manually verified.
+              Take control of your restaurant's presence and start receiving customer recommendations.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -90,115 +81,102 @@ export default function BusinessClaim() {
                 )}
               </div>
 
-              {/* Business Information */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="business_name">Business Name *</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="business_name"
-                      placeholder="Your business name"
-                      value={profileData.business_name}
-                      onChange={(e) => setProfileData(prev => ({
-                        ...prev,
-                        business_name: e.target.value
-                      }))}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contact_name">Contact Name *</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="contact_name"
-                      placeholder="Your full name"
-                      value={profileData.contact_name}
-                      onChange={(e) => setProfileData(prev => ({
-                        ...prev,
-                        contact_name: e.target.value
-                      }))}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="grid gap-4 md:grid-cols-2">
+              {/* Business Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Contact Information</h3>
+                
                 <div className="space-y-2">
                   <Label htmlFor="business_email">Business Email *</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       id="business_email"
                       type="email"
-                      placeholder="contact@restaurant.com"
+                      required
                       value={claimData.business_email}
                       onChange={(e) => setClaimData(prev => ({
                         ...prev,
                         business_email: e.target.value
                       }))}
+                      placeholder="restaurant@example.com"
                       className="pl-10"
-                      required
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use your restaurant's official email address
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="business_phone">Business Phone</Label>
+                  <Label htmlFor="business_phone">Phone Number</Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       id="business_phone"
-                      placeholder="+1 (555) 123-4567"
+                      type="tel"
                       value={claimData.business_phone}
                       onChange={(e) => setClaimData(prev => ({
                         ...prev,
                         business_phone: e.target.value
                       }))}
+                      placeholder="(555) 123-4567"
                       className="pl-10"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Address and Website */}
+              {/* Business Profile */}
               <div className="space-y-4">
+                <h3 className="text-lg font-medium">Business Profile</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="contact_name">Contact Person</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      id="contact_name"
+                      value={profileData.contact_name}
+                      onChange={(e) => setProfileData(prev => ({
+                        ...prev,
+                        contact_name: e.target.value
+                      }))}
+                      placeholder="Your name"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="business_address">Business Address</Label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <MapPin className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
                     <Textarea
                       id="business_address"
-                      placeholder="Your restaurant's full address"
                       value={profileData.business_address}
                       onChange={(e) => setProfileData(prev => ({
                         ...prev,
                         business_address: e.target.value
                       }))}
+                      placeholder="Full business address"
                       className="pl-10 min-h-[80px]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="business_website">Website</Label>
+                  <Label htmlFor="business_website">Website (Optional)</Label>
                   <div className="relative">
-                    <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       id="business_website"
-                      placeholder="https://yourrestaurant.com"
+                      type="url"
                       value={profileData.business_website}
                       onChange={(e) => setProfileData(prev => ({
                         ...prev,
                         business_website: e.target.value
                       }))}
+                      placeholder="https://yourrestaurant.com"
                       className="pl-10"
                     />
                   </div>
@@ -234,7 +212,7 @@ export default function BusinessClaim() {
             </form>
           </CardContent>
         </Card>
-      </div>
+      </EmailVerificationRequired>
     </div>
   );
 }

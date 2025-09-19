@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_rate_limits: {
+        Row: {
+          action_type: string
+          id: string
+          ip_address: unknown | null
+          performed_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          id?: string
+          ip_address?: unknown | null
+          performed_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          id?: string
+          ip_address?: unknown | null
+          performed_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_claims: {
         Row: {
           business_email: string
@@ -716,6 +740,18 @@ export type Database = {
         Args: { base_points: number; feedback_bonus?: number; rec_id: string }
         Returns: undefined
       }
+      can_perform_sensitive_action: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_rate_limit: {
+        Args: {
+          p_action_type: string
+          p_max_attempts?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       close_expired_requests: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -737,6 +773,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_public_profile_info: {
+        Args: { profile_user_id: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       get_request_results: {
         Args: { p_request_id: string }
         Returns: {
@@ -751,6 +794,10 @@ export type Database = {
       }
       is_admin: {
         Args: { uid?: string }
+        Returns: boolean
+      }
+      is_email_verified: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       mark_conversion: {

@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useEmailVerification } from './useEmailVerification';
+import { toast as sonnerToast } from 'sonner';
 
 interface PendingReferralClick {
   id: string;
@@ -18,6 +20,7 @@ interface PendingReferralClick {
 
 export const useReferralConversions = () => {
   const [loading, setLoading] = useState(false);
+  const { isVerified } = useEmailVerification();
   const { toast } = useToast();
 
   const fetchPendingReferralClicks = useCallback(async (userId?: string) => {
@@ -101,6 +104,12 @@ export const useReferralConversions = () => {
     conversionMethod: string = 'business_verified',
     notes?: string
   ) => {
+    // Check email verification first
+    if (!isVerified) {
+      sonnerToast.error('Please verify your email address to mark conversions');
+      return false;
+    }
+
     try {
       setLoading(true);
 
@@ -133,7 +142,7 @@ export const useReferralConversions = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, isVerified]);
 
   return {
     fetchPendingReferralClicks,
