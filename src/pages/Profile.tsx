@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { useNotifications } from '@/contexts/UnifiedNotificationContext';
+import AccountDeletion from '@/components/AccountDeletion';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -301,6 +302,9 @@ const Profile = () => {
                 />
               </CardContent>
             </Card>
+
+            {/* Account Deletion Section */}
+            <AccountDeletion />
 
             {/* Save Button */}
             <div className="flex items-center justify-between">

@@ -7,6 +7,7 @@ import ActiveRequestsList from "@/components/ActiveRequestsList";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotifications } from "@/contexts/UnifiedNotificationContext";
 import { Switch } from "@/components/ui/switch";
+import Footer from "@/components/Footer";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -297,6 +298,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       <HowItWorks />
       <RewardsSection pointsThisMonth={pointsThisMonth} goalThisMonth={goalThisMonth} progress={progress} />
       <BottomNav />
+      <Footer />
     </main>
   );
 }

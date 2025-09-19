@@ -9,6 +9,7 @@ import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisp
 import { OneSignalInit } from "@/components/OneSignalInit";
 import { UnifiedRequestManager } from "@/providers/UnifiedRequestManager";
 import { PopupDebugBinder } from "@/components/PopupDebugBinder";
+import CookieConsent from "@/components/CookieConsent";
 import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
@@ -28,6 +29,8 @@ import AdminBusinessClaims from "./pages/AdminBusinessClaims";
 import SampleAccounts from "./pages/SampleAccounts";
 import HowItWorks from "./pages/HowItWorks";
 import Profile from "./pages/Profile";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +47,7 @@ const App = () => (
             <UnifiedRequestManager />
             <UnifiedNotificationDisplay />
             <PopupDebugBinder />
+            <CookieConsent />
             {/* <TestNotificationButton /> */}
             <Routes>
               <Route path="/" element={<RouteGuard><Index /></RouteGuard>} />
@@ -64,6 +68,8 @@ const App = () => (
               <Route path="/business/dashboard" element={<RouteGuard businessOnly={true}><BusinessDashboard /></RouteGuard>} />
               <Route path="/how-it-works" element={<RouteGuard requiresAuth={false}><HowItWorks /></RouteGuard>} />
               <Route path="/sample-accounts" element={<RouteGuard requiresAuth={false}><SampleAccounts /></RouteGuard>} />
+              <Route path="/terms-of-service" element={<RouteGuard requiresAuth={false}><TermsOfService /></RouteGuard>} />
+              <Route path="/privacy-policy" element={<RouteGuard requiresAuth={false}><PrivacyPolicy /></RouteGuard>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
