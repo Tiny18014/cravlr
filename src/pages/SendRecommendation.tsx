@@ -245,98 +245,99 @@ const SendRecommendation = () => {
           </Card>
 
           {/* Recommendation Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Recommendation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="restaurantSearch">Restaurant Name *</Label>
-                  <RestaurantSearchInput
-                    value={formData.restaurantName}
-                    onChange={handleRestaurantChange}
-                    placeholder="Search for restaurants (e.g., Oli...)"
-                    required
-                    userLocation={userLocation}
-                  />
-                  {formData.restaurantAddress && (
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs text-muted-foreground">
-                        📍 {formData.restaurantAddress}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
-                          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-                          // Use location.assign instead of window.open to avoid popup blockers
-                          window.location.assign(mapsUrl);
-                        }}
-                        className="text-xs h-6"
-                      >
-                        <MapPin className="h-3 w-3 mr-1" />
-                        Open in Maps
-                      </Button>
+          <EmailVerificationRequired action="send a recommendation">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Recommendation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <Label htmlFor="restaurantSearch">Restaurant Name *</Label>
+                    <RestaurantSearchInput
+                      value={formData.restaurantName}
+                      onChange={handleRestaurantChange}
+                      placeholder="Search for restaurants (e.g., Oli...)"
+                      required
+                      userLocation={userLocation}
+                    />
+                    {formData.restaurantAddress && (
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          📍 {formData.restaurantAddress}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
+                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                            // Use location.assign instead of window.open to avoid popup blockers
+                            window.location.assign(mapsUrl);
+                          }}
+                          className="text-xs h-6"
+                        >
+                          <MapPin className="h-3 w-3 mr-1" />
+                          Open in Maps
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="confidenceScore" className="flex items-center gap-2">
+                      <Star className="h-4 w-4" />
+                      Confidence Level: {formData.confidenceScore[0]}/5
+                    </Label>
+                    <div className="px-3 py-4">
+                      <Slider
+                        id="confidenceScore"
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={formData.confidenceScore}
+                        onValueChange={(value) => handleChange('confidenceScore', value)}
+                        className="w-full"
+                      />
                     </div>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="confidenceScore" className="flex items-center gap-2">
-                    <Star className="h-4 w-4" />
-                    Confidence Level: {formData.confidenceScore[0]}/5
-                  </Label>
-                  <div className="px-3 py-4">
-                    <Slider
-                      id="confidenceScore"
-                      min={1}
-                      max={5}
-                      step={1}
-                      value={formData.confidenceScore}
-                      onValueChange={(value) => handleChange('confidenceScore', value)}
-                      className="w-full"
+                    <p className="text-xs text-muted-foreground">
+                      How confident are you in this recommendation? (1 = worth trying, 5 = absolutely amazing)
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="notes">Why do you recommend this place?</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Share what makes this place special - the food, atmosphere, service, etc."
+                      value={formData.notes}
+                      onChange={(e) => handleChange('notes', e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    How confident are you in this recommendation? (1 = worth trying, 5 = absolutely amazing)
-                  </p>
-                </div>
-                
-                <div>
-                  <Label htmlFor="notes">Why do you recommend this place?</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Share what makes this place special - the food, atmosphere, service, etc."
-                    value={formData.notes}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                  />
-                </div>
-                
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate('/browse-requests')}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || !formData.restaurantName}
-                    className="flex-1"
-                  >
-                    {isSubmitting ? 'Sending...' : 'Send Recommendation'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-          </div>
-        </EmailVerificationRequired>
+                  
+                  <div className="flex gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate('/browse-requests')}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || !formData.restaurantName}
+                      className="flex-1"
+                    >
+                      {isSubmitting ? 'Sending...' : 'Send Recommendation'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </EmailVerificationRequired>
+        </div>
       </main>
     </div>
   );
