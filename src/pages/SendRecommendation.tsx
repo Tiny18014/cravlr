@@ -245,8 +245,7 @@ const SendRecommendation = () => {
           </Card>
 
           {/* Recommendation Form */}
-          <EmailVerificationRequired action="send a recommendation">
-            <Card>
+          <Card>
               <CardHeader>
                 <CardTitle>Your Recommendation</CardTitle>
               </CardHeader>
@@ -336,7 +335,6 @@ const SendRecommendation = () => {
                 </form>
               </CardContent>
             </Card>
-          </EmailVerificationRequired>
         </div>
       </main>
     </div>
