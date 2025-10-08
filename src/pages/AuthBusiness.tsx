@@ -49,6 +49,7 @@ const AuthBusiness = () => {
           const { data: businessClaims, error: claimsError } = await supabase
             .from('business_claims')
             .select('id, status')
+            .eq('user_id', user?.id)
             .eq('status', 'verified');
             
           if (claimsError) {
@@ -62,25 +63,24 @@ const AuthBusiness = () => {
             return;
           }
           
-          if (!businessClaims || businessClaims.length === 0) {
-            console.log('🚫 Non-business account trying to access business login');
-            // Sign out the user since they're on wrong platform
-            await supabase.auth.signOut();
-            clearValidating(); // Clear validation state
+          // Allow login regardless of verification status
+          // Users without verified claims will see the verification prompt in dashboard
+          clearValidating(); // Clear validation state before navigation
+          
+          if (businessClaims && businessClaims.length > 0) {
+            console.log('✅ User has verified business claims');
             toast({
-              title: "Wrong Account Type", 
-              description: "This is a Food Lover account. Please use the Food Lover sign-in.",
-              variant: "destructive",
+              title: "Welcome back!",
+              description: "Redirecting to your business dashboard...",
             });
-            return;
+          } else {
+            console.log('ℹ️ User has no verified business claims yet');
+            toast({
+              title: "Welcome!",
+              description: "Complete business verification to unlock all features.",
+            });
           }
           
-          console.log('✅ User has verified business claims, navigating to business dashboard');
-          clearValidating(); // Clear validation state before navigation
-          toast({
-            title: "Welcome back!",
-            description: "Redirecting to your business dashboard...",
-          });
           // Redirect business login directly to business dashboard
           navigate('/business/dashboard');
         }
