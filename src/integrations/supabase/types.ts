@@ -511,7 +511,7 @@ export type Database = {
           place_id: string | null
           recommendation_id: string
           recommender_id: string
-          referral_link_id: string
+          referral_link_id: string | null
           reported_by: string | null
           request_id: string
           requester_id: string
@@ -536,7 +536,7 @@ export type Database = {
           place_id?: string | null
           recommendation_id: string
           recommender_id: string
-          referral_link_id: string
+          referral_link_id?: string | null
           reported_by?: string | null
           request_id: string
           requester_id: string
@@ -561,7 +561,7 @@ export type Database = {
           place_id?: string | null
           recommendation_id?: string
           recommender_id?: string
-          referral_link_id?: string
+          referral_link_id?: string | null
           reported_by?: string | null
           request_id?: string
           requester_id?: string
