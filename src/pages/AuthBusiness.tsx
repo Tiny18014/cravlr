@@ -45,44 +45,49 @@ const AuthBusiness = () => {
         } else {
           console.log('🏢 Business login successful, checking business claims...');
           
-          // Check if user has verified business claims before redirecting
-          const { data: businessClaims, error: claimsError } = await supabase
-            .from('business_claims')
-            .select('id, status')
-            .eq('user_id', user?.id)
-            .eq('status', 'verified');
+          // Get current user session to check business claims
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          
+          if (currentUser) {
+            // Check if user has verified business claims before redirecting
+            const { data: businessClaims, error: claimsError } = await supabase
+              .from('business_claims')
+              .select('id, status')
+              .eq('user_id', currentUser.id)
+              .eq('status', 'verified');
+              
+            if (claimsError) {
+              console.error('Error checking business claims:', claimsError);
+              clearValidating(); // Clear validation state on error
+              toast({
+                title: "Access Error",
+                description: "Unable to verify business account status.",
+                variant: "destructive",
+              });
+              return;
+            }
             
-          if (claimsError) {
-            console.error('Error checking business claims:', claimsError);
-            clearValidating(); // Clear validation state on error
-            toast({
-              title: "Access Error",
-              description: "Unable to verify business account status.",
-              variant: "destructive",
-            });
-            return;
+            // Allow login regardless of verification status
+            // Users without verified claims will see the verification prompt in dashboard
+            clearValidating(); // Clear validation state before navigation
+            
+            if (businessClaims && businessClaims.length > 0) {
+              console.log('✅ User has verified business claims');
+              toast({
+                title: "Welcome back!",
+                description: "Redirecting to your business dashboard...",
+              });
+            } else {
+              console.log('ℹ️ User has no verified business claims yet');
+              toast({
+                title: "Welcome!",
+                description: "Complete business verification to unlock all features.",
+              });
+            }
+            
+            // Redirect business login directly to business dashboard
+            navigate('/business/dashboard');
           }
-          
-          // Allow login regardless of verification status
-          // Users without verified claims will see the verification prompt in dashboard
-          clearValidating(); // Clear validation state before navigation
-          
-          if (businessClaims && businessClaims.length > 0) {
-            console.log('✅ User has verified business claims');
-            toast({
-              title: "Welcome back!",
-              description: "Redirecting to your business dashboard...",
-            });
-          } else {
-            console.log('ℹ️ User has no verified business claims yet');
-            toast({
-              title: "Welcome!",
-              description: "Complete business verification to unlock all features.",
-            });
-          }
-          
-          // Redirect business login directly to business dashboard
-          navigate('/business/dashboard');
         }
       } else {
         // Validate business signup requirements
