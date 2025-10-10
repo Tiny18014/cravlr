@@ -12,6 +12,9 @@ import { useBusinessClaims } from '@/hooks/useBusinessClaims';
 import { useReferralConversions } from '@/hooks/useReferralConversions';
 import ReferralAttributionDashboard from '@/components/ReferralAttributionDashboard';
 import SmartConversionSuggestions from '@/components/SmartConversionSuggestions';
+import { CommissionSettings } from '@/components/CommissionSettings';
+import { CommissionSummary } from '@/components/CommissionSummary';
+import { PremiumUpgrade } from '@/components/PremiumUpgrade';
 import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users, LogOut, Activity } from 'lucide-react';
 
 interface BusinessClaim {
@@ -82,6 +85,7 @@ export default function BusinessDashboard() {
       selectedClick.id,
       parseFloat(conversionValue),
       'business_verified',
+      undefined, // visitDate - not captured in old form
       conversionNotes
     );
 
@@ -260,16 +264,33 @@ export default function BusinessDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="attribution" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="attribution">Live Attribution</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="conversions">Pending Orders ({pendingClicks.length})</TabsTrigger>
-            <TabsTrigger value="claims">Restaurant Claims</TabsTrigger>
+            <TabsTrigger value="commission">Commission</TabsTrigger>
+            <TabsTrigger value="conversions">Pending ({pendingClicks.length})</TabsTrigger>
+            <TabsTrigger value="claims">Claims</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="attribution" className="space-y-6">
             <SmartConversionSuggestions />
             <ReferralAttributionDashboard />
+          </TabsContent>
+
+          <TabsContent value="commission" className="space-y-6">
+            <CommissionSummary userId={user?.id || ''} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <PremiumUpgrade 
+              isPremium={false} 
+              onUpgrade={() => {
+                // TODO: Implement Stripe integration
+                console.log('Upgrade to premium clicked');
+              }} 
+            />
+            <CommissionSettings userId={user?.id || ''} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">

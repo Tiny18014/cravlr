@@ -102,6 +102,7 @@ export const useReferralConversions = () => {
     clickId: string,
     conversionValue: number,
     conversionMethod: string = 'business_verified',
+    visitDate?: Date,
     notes?: string
   ) => {
     // Check email verification first
@@ -113,6 +114,7 @@ export const useReferralConversions = () => {
     try {
       setLoading(true);
 
+      // First, mark the conversion using the RPC function
       const { data, error } = await supabase.rpc('mark_conversion', {
         p_referral_click_id: clickId,
         p_conversion_method: conversionMethod,
@@ -125,9 +127,24 @@ export const useReferralConversions = () => {
         throw error;
       }
 
+      // Update additional fields if provided
+      if (visitDate) {
+        const { error: updateError } = await supabase
+          .from('referral_clicks')
+          .update({ 
+            visit_date: visitDate.toISOString().split('T')[0],
+            business_notes: notes 
+          })
+          .eq('id', clickId);
+
+        if (updateError) {
+          console.error('Error updating visit details:', updateError);
+        }
+      }
+
       toast({
-        title: "Conversion Marked! 🎉",
-        description: `Order value of $${conversionValue} has been recorded. Commission and points have been awarded.`,
+        title: "Visit Confirmed! 🎉",
+        description: `Order value of $${conversionValue} has been recorded. Commission of $${(conversionValue * 0.10).toFixed(2)} has been calculated.`,
       });
 
       return true;
