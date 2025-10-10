@@ -36,7 +36,7 @@ export function PremiumUpgrade({ isPremium, onUpgrade }: PremiumUpgradeProps) {
   const features = [
     {
       icon: Star,
-      title: 'Priority Display',
+      title: 'Priority Placement',
       description: 'Get featured first in recommendations'
     },
     {
@@ -46,13 +46,13 @@ export function PremiumUpgrade({ isPremium, onUpgrade }: PremiumUpgradeProps) {
     },
     {
       icon: Zap,
-      title: 'Featured Badge',
-      description: 'Stand out with a premium badge'
+      title: 'Featured Badge & Listings',
+      description: 'Stand out with premium badges'
     },
     {
       icon: CheckCircle,
-      title: 'Seasonal Campaigns',
-      description: 'Access to exclusive promotional opportunities'
+      title: 'Higher Visibility',
+      description: 'Reach more food lovers actively looking'
     }
   ];
 
@@ -70,9 +70,12 @@ export function PremiumUpgrade({ isPremium, onUpgrade }: PremiumUpgradeProps) {
       <CardContent className="space-y-6">
         <div className="text-center py-4">
           <div className="inline-flex items-baseline">
-            <span className="text-4xl font-bold">$25</span>
+            <span className="text-4xl font-bold">$49</span>
             <span className="text-muted-foreground ml-2">/month per location</span>
           </div>
+          <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+            Early adopter special: $29/month for first 3 months
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

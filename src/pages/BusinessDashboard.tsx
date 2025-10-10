@@ -15,6 +15,7 @@ import SmartConversionSuggestions from '@/components/SmartConversionSuggestions'
 import { CommissionSettings } from '@/components/CommissionSettings';
 import { CommissionSummary } from '@/components/CommissionSummary';
 import { PremiumUpgrade } from '@/components/PremiumUpgrade';
+import { supabase } from '@/integrations/supabase/client';
 import { Building2, TrendingUp, MousePointer, DollarSign, Clock, CheckCircle, XCircle, Users, LogOut, Activity } from 'lucide-react';
 
 interface BusinessClaim {
@@ -47,6 +48,7 @@ export default function BusinessDashboard() {
   const [selectedClick, setSelectedClick] = useState<any>(null);
   const [conversionValue, setConversionValue] = useState('');
   const [conversionNotes, setConversionNotes] = useState('');
+  const [hasSubscription, setHasSubscription] = useState<boolean>(false);
 
   useEffect(() => {
     if (!user) {
@@ -62,6 +64,21 @@ export default function BusinessDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
+      // Check subscription status
+      const { data: profile } = await supabase
+        .from('business_profiles')
+        .select('is_premium')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      // If no subscription selected yet, redirect to subscription page
+      if (profile && profile.is_premium === null) {
+        navigate('/business/subscription');
+        return;
+      }
+
+      setHasSubscription(true);
+
       const [claimsData, analyticsData, pendingClicksData] = await Promise.all([
         fetchBusinessClaims(user?.id),
         getBusinessAnalytics(user?.id),
