@@ -115,7 +115,11 @@ export type Database = {
           commission_rate: number | null
           contact_name: string
           created_at: string
+          default_ticket_value: number | null
           id: string
+          is_premium: boolean | null
+          premium_started_at: string | null
+          stripe_subscription_id: string | null
           subscription_tier: string | null
           updated_at: string
           user_id: string
@@ -127,7 +131,11 @@ export type Database = {
           commission_rate?: number | null
           contact_name: string
           created_at?: string
+          default_ticket_value?: number | null
           id?: string
+          is_premium?: boolean | null
+          premium_started_at?: string | null
+          stripe_subscription_id?: string | null
           subscription_tier?: string | null
           updated_at?: string
           user_id: string
@@ -139,7 +147,11 @@ export type Database = {
           commission_rate?: number | null
           contact_name?: string
           created_at?: string
+          default_ticket_value?: number | null
           id?: string
+          is_premium?: boolean | null
+          premium_started_at?: string | null
+          stripe_subscription_id?: string | null
           subscription_tier?: string | null
           updated_at?: string
           user_id?: string
@@ -494,6 +506,7 @@ export type Database = {
       }
       referral_clicks: {
         Row: {
+          business_notes: string | null
           click_source: string
           clicked_at: string
           commission_amount: number | null
@@ -517,8 +530,10 @@ export type Database = {
           requester_id: string
           restaurant_name: string
           user_agent: string | null
+          visit_date: string | null
         }
         Insert: {
+          business_notes?: string | null
           click_source?: string
           clicked_at?: string
           commission_amount?: number | null
@@ -542,8 +557,10 @@ export type Database = {
           requester_id: string
           restaurant_name?: string
           user_agent?: string | null
+          visit_date?: string | null
         }
         Update: {
+          business_notes?: string | null
           click_source?: string
           clicked_at?: string
           commission_amount?: number | null
@@ -567,6 +584,7 @@ export type Database = {
           requester_id?: string
           restaurant_name?: string
           user_agent?: string | null
+          visit_date?: string | null
         }
         Relationships: [
           {
@@ -677,6 +695,25 @@ export type Database = {
       }
     }
     Views: {
+      view_business_commissions: {
+        Row: {
+          business_notes: string | null
+          click_id: string | null
+          clicked_at: string | null
+          commission_amount: number | null
+          commission_paid: boolean | null
+          commission_paid_at: string | null
+          place_id: string | null
+          recommender_id: string | null
+          recommender_name: string | null
+          restaurant_name: string | null
+          spend_amount: number | null
+          user_id: string | null
+          visit_confirmed_at: string | null
+          visit_date: string | null
+        }
+        Relationships: []
+      }
       view_referral_conversions_recent: {
         Row: {
           awarded_points: number | null
@@ -791,6 +828,10 @@ export type Database = {
           restaurant_name: string
           status: string
         }[]
+      }
+      get_unpaid_commissions: {
+        Args: { business_user_id: string }
+        Returns: number
       }
       is_admin: {
         Args: { uid?: string }
