@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { 
   MousePointer, 
   TrendingUp, 
@@ -17,6 +18,7 @@ import {
   Globe,
   Activity
 } from 'lucide-react';
+import { AdvancedAnalytics } from './AdvancedAnalytics';
 
 interface ClickEvent {
   id: string;
@@ -47,13 +49,16 @@ interface AttributionStats {
 
 export default function ReferralAttributionDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [clicks, setClicks] = useState<ClickEvent[]>([]);
   const [stats, setStats] = useState<AttributionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('24h');
+  const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     if (user) {
+      fetchPremiumStatus();
       fetchAttributionData();
       
       // Set up real-time subscription for new clicks
@@ -78,6 +83,20 @@ export default function ReferralAttributionDashboard() {
       };
     }
   }, [user, timeRange]);
+
+  const fetchPremiumStatus = async () => {
+    try {
+      const { data } = await supabase
+        .from('business_profiles')
+        .select('is_premium')
+        .eq('user_id', user?.id)
+        .single();
+      
+      setIsPremium(data?.is_premium === true);
+    } catch (error) {
+      console.error('Error fetching premium status:', error);
+    }
+  };
 
   const fetchAttributionData = async () => {
     try {
@@ -343,6 +362,7 @@ export default function ReferralAttributionDashboard() {
           <TabsTrigger value="recent">Recent Activity</TabsTrigger>
           <TabsTrigger value="sources">Traffic Sources</TabsTrigger>
           <TabsTrigger value="devices">Device Analytics</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="recent" className="space-y-4">
@@ -472,6 +492,14 @@ export default function ReferralAttributionDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-4">
+          <AdvancedAnalytics 
+            isPremium={isPremium}
+            onUpgrade={() => navigate('/business/subscription')}
+            clickData={clicks}
+          />
         </TabsContent>
       </Tabs>
     </div>

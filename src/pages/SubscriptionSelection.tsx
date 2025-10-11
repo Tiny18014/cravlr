@@ -14,7 +14,8 @@ import {
   Zap,
   DollarSign,
   Clock,
-  Sparkles
+  Sparkles,
+  Eye
 } from 'lucide-react';
 
 interface PlanFeature {
@@ -78,7 +79,7 @@ export default function SubscriptionSelection() {
         { text: 'Only pay per confirmed visit', icon: DollarSign },
         { text: 'No monthly fees', icon: CheckCircle },
         { text: 'Basic referral tracking', icon: BarChart3 },
-        { text: 'Standard visibility', icon: Star }
+        { text: 'Standard visibility', icon: Eye }
       ]
     },
     {
@@ -110,7 +111,8 @@ export default function SubscriptionSelection() {
         .from('business_profiles')
         .update({
           is_premium: isPremium,
-          premium_started_at: isPremium ? new Date().toISOString() : null
+          premium_started_at: isPremium ? new Date().toISOString() : null,
+          subscription_tier: planId === 'growth' ? 'growth' : 'basic'
         })
         .eq('user_id', user.id);
 
@@ -201,18 +203,25 @@ export default function SubscriptionSelection() {
 
                 <CardContent className="space-y-6">
                   {/* Pricing */}
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <div className="text-3xl font-bold">{plan.price}</div>
                     {plan.introPrice && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                          <Clock className="mr-1 h-3 w-3" />
-                          Early Adopter Special
-                        </Badge>
-                        <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                          {plan.introPrice}
-                        </span>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+                            <Clock className="mr-1 h-3 w-3" />
+                            Early Adopter Special
+                          </Badge>
+                          <span className="text-lg text-green-600 dark:text-green-400 font-semibold">
+                            {plan.introPrice}
+                          </span>
+                        </div>
+                        <div className="inline-block px-3 py-1 bg-green-50 dark:bg-green-950 rounded-full">
+                          <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                            💰 Save $60 in your first quarter!
+                          </p>
+                        </div>
+                      </>
                     )}
                   </div>
 

@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MapPin, Loader2, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { PremiumBadge } from './PremiumBadge';
 
 interface RestaurantSuggestion {
   placeId: string;
   name: string;
   address: string;
   description: string;
+  isPremium?: boolean;
 }
 
 // Test restaurants for business dashboard testing
@@ -116,8 +118,44 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
       }
 
       console.log('✅ Got suggestions:', data);
-      // Combine test restaurants with API results, test restaurants first
-      const combinedSuggestions = [...filteredTestRestaurants, ...(data || [])];
+      
+      // Combine test restaurants with API results
+      let combinedSuggestions = [...filteredTestRestaurants, ...(data || [])];
+      
+      // Fetch premium status for all suggestions
+      const placeIds = combinedSuggestions.map(s => s.placeId).filter(Boolean);
+      if (placeIds.length > 0) {
+        const { data: businessData } = await supabase
+          .from('business_claims')
+          .select(`
+            place_id,
+            business_profiles!inner(is_premium)
+          `)
+          .in('place_id', placeIds)
+          .eq('status', 'verified');
+        
+        // Create premium map
+        const premiumMap = new Map();
+        businessData?.forEach((claim: any) => {
+          if (claim.place_id) {
+            premiumMap.set(claim.place_id, claim.business_profiles?.is_premium === true);
+          }
+        });
+        
+        // Add premium status and sort (premium first)
+        combinedSuggestions = combinedSuggestions
+          .map(s => ({
+            ...s,
+            isPremium: premiumMap.get(s.placeId) || false
+          }))
+          .sort((a, b) => {
+            // Premium restaurants first
+            if (a.isPremium && !b.isPremium) return -1;
+            if (!a.isPremium && b.isPremium) return 1;
+            return 0;
+          });
+      }
+      
       setSuggestions(combinedSuggestions);
       setIsOpen(true);
     } catch (error) {
@@ -190,9 +228,14 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
               >
                 <div className="flex items-start gap-3 w-full">
                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">
-                      {suggestion.name}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm truncate">
+                        {suggestion.name}
+                      </span>
+                      {suggestion.isPremium && (
+                        <PremiumBadge size="sm" variant="featured" />
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
                       {suggestion.address}

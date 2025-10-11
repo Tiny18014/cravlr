@@ -32,6 +32,7 @@ interface RecommendationGroup {
   notes: Note[];
   recommendationId?: string; // Add for referral tracking
   referralUrl?: string; // Add for referral tracking
+  isPremium?: boolean; // Premium business flag
 }
 
 interface RequestResultsData {
@@ -154,9 +155,44 @@ const RequestResults = () => {
         }
       }
 
-      // Convert to array and sort by count, then alphabetically
+      // Fetch premium status for each restaurant
+      const placeIds = Array.from(groups.values())
+        .filter(g => g.placeId)
+        .map(g => g.placeId);
+      
+      const { data: businessClaims } = await supabase
+        .from('business_claims')
+        .select(`
+          place_id,
+          user_id,
+          business_profiles!inner(is_premium)
+        `)
+        .in('place_id', placeIds)
+        .eq('status', 'verified');
+
+      // Create a map of place_id to premium status
+      const premiumMap = new Map();
+      businessClaims?.forEach((claim: any) => {
+        if (claim.place_id) {
+          premiumMap.set(claim.place_id, claim.business_profiles?.is_premium === true);
+        }
+      });
+
+      // Add premium status to groups
+      groups.forEach((group) => {
+        group.isPremium = group.placeId ? (premiumMap.get(group.placeId) || false) : false;
+      });
+
+      // Convert to array and sort with priority placement for premium businesses
       const sortedGroups = Array.from(groups.values()).sort((a, b) => {
+        // Priority 1: Premium status (premium businesses first)
+        if (a.isPremium && !b.isPremium) return -1;
+        if (!a.isPremium && b.isPremium) return 1;
+        
+        // Priority 2: Recommendation count
         if (b.count !== a.count) return b.count - a.count;
+        
+        // Priority 3: Alphabetically
         return a.name.localeCompare(b.name);
       });
 
@@ -484,6 +520,11 @@ const RequestResults = () => {
                             {/* Name and Badge */}
                             <div className="flex items-center gap-3 flex-wrap">
                               <h3 className="font-semibold text-lg">{group.name}</h3>
+                              {group.isPremium && (
+                                <Badge variant="default" className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-0 shrink-0">
+                                  ⭐ Featured Partner
+                                </Badge>
+                              )}
                               <Badge variant="secondary" className="shrink-0">
                                 {group.count} recommended
                               </Badge>

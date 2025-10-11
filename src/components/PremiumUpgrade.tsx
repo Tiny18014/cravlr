@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Crown, TrendingUp, Star, Zap, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PremiumUpgradeProps {
   isPremium: boolean;
@@ -73,8 +73,13 @@ export function PremiumUpgrade({ isPremium, onUpgrade }: PremiumUpgradeProps) {
             <span className="text-4xl font-bold">$49</span>
             <span className="text-muted-foreground ml-2">/month per location</span>
           </div>
-          <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-            Early adopter special: $29/month for first 3 months
+          <div className="mt-2">
+            <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm px-3 py-1">
+              🎉 Early Adopter: $29/month for first 3 months
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Save $60 in your first quarter!
           </p>
         </div>
 
