@@ -15,6 +15,9 @@ import { CommissionSummary } from '@/components/CommissionSummary';
 import { PremiumUpgrade } from '@/components/PremiumUpgrade';
 import { AdvancedAnalytics } from '@/components/AdvancedAnalytics';
 import { supabase } from '@/integrations/supabase/client';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import testData from '@/data/test-dashboard-data.json';
 
 
 interface BusinessClaim {
@@ -46,6 +49,9 @@ export default function BusinessDashboard() {
   const [pendingClicks, setPendingClicks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [clickData, setClickData] = useState<any[]>([]);
+  const [testMode, setTestMode] = useState(() => {
+    return localStorage.getItem('cravlr_test_mode') === 'true';
+  });
 
   useEffect(() => {
     if (!user) {
@@ -56,11 +62,52 @@ export default function BusinessDashboard() {
     if (user) {
       fetchDashboardData();
     }
-  }, [user, navigate]);
+  }, [user, navigate, testMode]);
+
+  const toggleTestMode = () => {
+    const newMode = !testMode;
+    setTestMode(newMode);
+    localStorage.setItem('cravlr_test_mode', newMode.toString());
+  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
+      // If test mode is enabled, use test data
+      if (testMode) {
+        setTimeout(() => {
+          setClaims([{
+            id: 'test-1',
+            restaurant_name: testData.business_name,
+            status: 'verified',
+            created_at: new Date().toISOString(),
+            verified_at: new Date().toISOString(),
+          }]);
+          
+          setAnalytics([{
+            restaurant_name: testData.business_name,
+            total_clicks: testData.dashboard_metrics.clicks_from_cravlr,
+            conversions: testData.dashboard_metrics.customer_visits,
+            total_commission: testData.dashboard_metrics.roi,
+            paid_commission: testData.dashboard_metrics.roi - testData.dashboard_metrics.payout_next_cycle,
+            pending_commission: testData.dashboard_metrics.payout_next_cycle,
+          }]);
+          
+          setClickData(testData.commissions.map((commission, idx) => ({
+            id: `test-click-${idx}`,
+            clicked_at: commission.visit_date,
+            restaurant_name: testData.business_name,
+            converted: commission.status === 'Confirmed',
+            conversion_value: commission.order_value,
+            commission_amount: commission.commission,
+          })));
+          
+          setPendingClicks([]);
+          setLoading(false);
+        }, 500); // Simulate loading
+        return;
+      }
+
       // Check subscription status
       const { data: bizProfile } = await supabase
         .from('business_profiles')
@@ -134,9 +181,34 @@ export default function BusinessDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto py-10 px-6">
-      <h1 className="text-2xl font-bold mb-6">
-        Welcome to Cravlr, {profile?.business_name || 'Business Owner'}! 🍕
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">
+          Welcome to Cravlr, {profile?.business_name || 'Business Owner'}! 🍕
+        </h1>
+        
+        {/* Test Mode Toggle */}
+        <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+          <Switch 
+            id="test-mode" 
+            checked={testMode} 
+            onCheckedChange={toggleTestMode}
+          />
+          <Label htmlFor="test-mode" className="text-sm cursor-pointer">
+            Test Mode {testMode && '✅'}
+          </Label>
+        </div>
+      </div>
+
+      {/* Test Mode Banner */}
+      {testMode && (
+        <Card className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              🧪 Test Mode Active - You're viewing demo data for UX testing. Real business data is not affected.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

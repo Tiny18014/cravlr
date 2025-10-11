@@ -1,0 +1,56 @@
+{
+    "business_name": "Joe\u2019s Pizza Palace",
+    "test_mode": true,
+    "dashboard_metrics": {
+        "clicks_from_cravlr": 120,
+        "customer_visits": 24,
+        "payout_next_cycle": 36.0,
+        "roi": 204.0,
+        "conversion_power": "20%",
+        "top_location": "Joe\u2019s Pizza Palace (Concord, NC)",
+        "average_commission": 1.5
+    },
+    "analytics": {
+        "smart_conversion_intel": {
+            "high_probability_clicks": 6,
+            "smart_analysis_conversions": 3
+        },
+        "digital_attribution": {
+            "total_clicks": 120,
+            "conversion_rate": "20%",
+            "average_order_value": 15.0,
+            "peak_hour": "6:00 PM"
+        },
+        "advanced_analytics": {
+            "click_through_rate": "5\u20137 PM",
+            "response_time": "2.4 hours",
+            "geo_heatmap": [
+                "Charlotte",
+                "Concord"
+            ]
+        }
+    },
+    "commissions": [
+        {
+            "visit_date": "2025-10-05",
+            "customer_name": "Alice K.",
+            "order_value": 18.0,
+            "commission": 1.8,
+            "status": "Confirmed"
+        },
+        {
+            "visit_date": "2025-10-06",
+            "customer_name": "John R.",
+            "order_value": 22.0,
+            "commission": 2.2,
+            "status": "Confirmed"
+        },
+        {
+            "visit_date": "2025-10-07",
+            "customer_name": "Test User",
+            "order_value": 15.0,
+            "commission": 1.5,
+            "status": "Pending"
+        }
+    ]
+}
