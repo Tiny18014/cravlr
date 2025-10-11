@@ -17,6 +17,8 @@ import { AdvancedAnalytics } from '@/components/AdvancedAnalytics';
 import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { HelpCircle } from 'lucide-react';
 import testData from '@/data/test-dashboard-data.json';
 
 
@@ -180,43 +182,60 @@ export default function BusinessDashboard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">
-          Welcome to Cravlr, {profile?.business_name || 'Business Owner'}! 🍕
-        </h1>
-        
-        {/* Test Mode Toggle */}
-        <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
-          <Switch 
-            id="test-mode" 
-            checked={testMode} 
-            onCheckedChange={toggleTestMode}
-          />
-          <Label htmlFor="test-mode" className="text-sm cursor-pointer">
-            Test Mode {testMode && '✅'}
-          </Label>
+    <TooltipProvider>
+      <div className="max-w-5xl mx-auto py-10 px-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">
+            Welcome to Cravlr, {profile?.business_name || 'Business Owner'}! 🍕
+          </h1>
+          
+          {/* Test Mode Toggle */}
+          <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+            <Switch 
+              id="test-mode" 
+              checked={testMode} 
+              onCheckedChange={toggleTestMode}
+            />
+            <Label htmlFor="test-mode" className="text-sm cursor-pointer">
+              Test Mode {testMode && '✅'}
+            </Label>
+          </div>
         </div>
-      </div>
 
-      {/* Test Mode Banner */}
-      {testMode && (
-        <Card className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-          <CardContent className="p-4">
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-              🧪 Test Mode Active - You're viewing demo data for UX testing. Real business data is not affected.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        {/* Test Mode Banner */}
+        {testMode && (
+          <Card className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                🧪 Test Mode Active - You're viewing demo data for UX testing. Real business data is not affected.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Top Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <SummaryCard title="Clicks from Cravlr" value={totalStats.totalClicks.toString()} />
-        <SummaryCard title="Customer Visits" value={totalStats.totalConversions.toString()} />
-        <SummaryCard title="Payout Next Cycle" value={`$${totalStats.pendingCommission.toFixed(2)}`} />
-        <SummaryCard title="Your Growth Stats" value={roi} />
-      </div>
+        {/* Top Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <SummaryCard 
+            title="Clicks from Cravlr" 
+            value={totalStats.totalClicks.toString()} 
+            tooltip="Total number of times customers clicked your restaurant links from Cravlr recommendations"
+          />
+          <SummaryCard 
+            title="Customer Visits" 
+            value={totalStats.totalConversions.toString()} 
+            tooltip="Confirmed visits where customers came to your restaurant after clicking a Cravlr recommendation"
+          />
+          <SummaryCard 
+            title="Payout Next Cycle" 
+            value={`$${totalStats.pendingCommission.toFixed(2)}`} 
+            tooltip="Pending commission earnings that will be paid out in the next payment cycle"
+          />
+          <SummaryCard 
+            title="Your Growth Stats" 
+            value={roi} 
+            tooltip="Total return on investment from all Cravlr-driven customer visits and recommendations"
+          />
+        </div>
 
       {/* Smart Tips */}
       <Card className="mb-6">
@@ -238,24 +257,30 @@ export default function BusinessDashboard() {
         </CardContent>
       </Card>
 
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <AnalyticsCard title="⚡ Conversion Power" value={`${conversionRate}%`} />
-        <AnalyticsCard 
-          title="📍 Top Location" 
-          value={claims[0]?.restaurant_name ? claims[0].restaurant_name.split(',')[0] : 'N/A'} 
-        />
-        <AnalyticsCard 
-          title="💰 Avg Commission" 
-          value={totalStats.totalConversions > 0 
-            ? `$${(totalStats.totalCommission / totalStats.totalConversions).toFixed(2)}`
-            : '$0.00'
-          } 
-        />
-      </div>
+        {/* Performance Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <AnalyticsCard 
+            title="⚡ Conversion Power" 
+            value={`${conversionRate}%`} 
+            tooltip="Percentage of clicks that converted into actual customer visits to your restaurant"
+          />
+          <AnalyticsCard 
+            title="📍 Top Location" 
+            value={claims[0]?.restaurant_name ? claims[0].restaurant_name.split(',')[0] : 'N/A'} 
+            tooltip="Your best-performing restaurant location based on customer engagement and conversions"
+          />
+          <AnalyticsCard 
+            title="💰 Avg Commission" 
+            value={totalStats.totalConversions > 0 
+              ? `$${(totalStats.totalCommission / totalStats.totalConversions).toFixed(2)}`
+              : '$0.00'
+            }
+            tooltip="Average commission earned per confirmed customer visit from Cravlr recommendations"
+          />
+        </div>
 
-      {/* Growth Tier Benefits */}
-      {isPremium && (
+        {/* Growth Tier Benefits */}
+        {isPremium && (
         <Card className="mb-6">
           <CardContent className="p-4">
             <h2 className="font-semibold mb-2">⭐ Your Growth Tier Benefits</h2>
@@ -270,8 +295,8 @@ export default function BusinessDashboard() {
         </Card>
       )}
 
-      {/* Navigation Tabs */}
-      <Tabs defaultValue="dashboard" className="mb-6">
+        {/* Navigation Tabs */}
+        <Tabs defaultValue="dashboard" className="mb-6">
         <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
           <TabsTrigger value="analytics">📈 Analytics</TabsTrigger>
@@ -326,34 +351,59 @@ export default function BusinessDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Help Prompt */}
-      <div className="text-center text-sm text-muted-foreground pt-4">
-        Need help understanding your dashboard?{' '}
-        <span className="text-primary underline cursor-pointer" onClick={() => navigate('/profile')}>
-          Contact Support
-        </span>
+        {/* Help Prompt */}
+        <div className="text-center text-sm text-muted-foreground pt-4">
+          Need help understanding your dashboard?{' '}
+          <span className="text-primary underline cursor-pointer" onClick={() => navigate('/profile')}>
+            Contact Support
+          </span>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
 // Helper Components
-function SummaryCard({ title, value }: { title: string; value: string }) {
+function SummaryCard({ title, value, tooltip }: { title: string; value: string; tooltip?: string }) {
   return (
     <Card>
       <CardContent className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">{title}</p>
+        <div className="flex items-center gap-1.5 mb-1">
+          <p className="text-sm text-muted-foreground">{title}</p>
+          {tooltip && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">{tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <p className="text-xl font-semibold">{value}</p>
       </CardContent>
     </Card>
   );
 }
 
-function AnalyticsCard({ title, value }: { title: string; value: string }) {
+function AnalyticsCard({ title, value, tooltip }: { title: string; value: string; tooltip?: string }) {
   return (
     <Card>
       <CardContent className="p-4">
-        <h3 className="text-sm text-muted-foreground">{title}</h3>
+        <div className="flex items-center gap-1.5 mb-1">
+          <h3 className="text-sm text-muted-foreground">{title}</h3>
+          {tooltip && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">{tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <p className="text-xl font-semibold">{value}</p>
       </CardContent>
     </Card>
