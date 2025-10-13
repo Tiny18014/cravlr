@@ -32,6 +32,8 @@ import Profile from "./pages/Profile";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import SubscriptionSelection from "./pages/SubscriptionSelection";
+import GuruLounge from "./pages/GuruLounge";
+import GuruMapDetail from "./pages/GuruMapDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -72,6 +74,8 @@ const App = () => (
               <Route path="/sample-accounts" element={<RouteGuard requiresAuth={false}><SampleAccounts /></RouteGuard>} />
               <Route path="/terms-of-service" element={<RouteGuard requiresAuth={false}><TermsOfService /></RouteGuard>} />
               <Route path="/privacy-policy" element={<RouteGuard requiresAuth={false}><PrivacyPolicy /></RouteGuard>} />
+              <Route path="/guru-lounge" element={<RouteGuard><GuruLounge /></RouteGuard>} />
+              <Route path="/guru-lounge/map/:mapId" element={<RouteGuard><GuruMapDetail /></RouteGuard>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Star, User, LogOut, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Star, User, LogOut, Bell, BellOff, Sparkles } from 'lucide-react';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import { Switch } from '@/components/ui/switch';
@@ -83,6 +83,7 @@ const Dashboard = () => {
     is_admin: false
   });
   const [loading, setLoading] = useState(true);
+  const [isGuru, setIsGuru] = useState(false);
   
   // Get the default tab from URL parameter
   const defaultTab = searchParams.get('tab') || 'requests';
@@ -176,7 +177,7 @@ const Dashboard = () => {
       // Fetch user points
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks, is_admin')
+        .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks, is_admin, guru_level')
         .eq('user_id', user?.id)
         .single();
 
@@ -192,6 +193,7 @@ const Dashboard = () => {
           positive_feedbacks: profile.positive_feedbacks || 0,
           is_admin: profile.is_admin || false
         });
+        setIsGuru(profile.guru_level || false);
       }
 
     } catch (error) {
@@ -250,6 +252,17 @@ const Dashboard = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Home
             </Button>
+            {isGuru && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => navigate('/guru-lounge')}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Guru Lounge
+              </Button>
+            )}
             <div>
               <h1 className="text-3xl font-bold">Your Food Requests 📝</h1>
               <p className="text-muted-foreground mt-1">Track responses and see recommendations.</p>

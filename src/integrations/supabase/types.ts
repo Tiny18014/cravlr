@@ -220,6 +220,143 @@ export type Database = {
           },
         ]
       }
+      guru_map_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          map_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          map_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          map_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_map_likes_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "guru_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guru_map_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      guru_map_places: {
+        Row: {
+          added_by: string | null
+          address: string | null
+          created_at: string | null
+          id: string
+          map_id: string
+          name: string
+          notes: string | null
+          photo_token: string | null
+          place_id: string
+          rating: number | null
+        }
+        Insert: {
+          added_by?: string | null
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          map_id: string
+          name: string
+          notes?: string | null
+          photo_token?: string | null
+          place_id: string
+          rating?: number | null
+        }
+        Update: {
+          added_by?: string | null
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          map_id?: string
+          name?: string
+          notes?: string | null
+          photo_token?: string | null
+          place_id?: string
+          rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_map_places_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "guru_map_places_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "guru_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guru_maps: {
+        Row: {
+          collaborators: string[] | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          likes_count: number | null
+          theme: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          collaborators?: string[] | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          theme?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          collaborators?: string[] | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          theme?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_maps_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -285,6 +422,7 @@ export type Database = {
           display_name: string | null
           do_not_disturb: boolean
           email: string
+          guru_level: boolean | null
           id: string
           is_active: boolean
           is_admin: boolean
@@ -313,6 +451,7 @@ export type Database = {
           display_name?: string | null
           do_not_disturb?: boolean
           email: string
+          guru_level?: boolean | null
           id?: string
           is_active?: boolean
           is_admin?: boolean
@@ -341,6 +480,7 @@ export type Database = {
           display_name?: string | null
           do_not_disturb?: boolean
           email?: string
+          guru_level?: boolean | null
           id?: string
           is_active?: boolean
           is_admin?: boolean
