@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, LogOut } from 'lucide-react';
 import testData from '@/data/test-dashboard-data.json';
 
 
@@ -41,7 +41,7 @@ interface BusinessAnalytics {
 }
 
 export default function BusinessDashboard() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { fetchBusinessClaims, getBusinessAnalytics } = useBusinessClaims();
   const { fetchPendingReferralClicks } = useReferralConversions();
@@ -189,16 +189,29 @@ export default function BusinessDashboard() {
             Welcome to Cravlr, {profile?.business_name || 'Business Owner'}! 🍕
           </h1>
           
-          {/* Test Mode Toggle */}
-          <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
-            <Switch 
-              id="test-mode" 
-              checked={testMode} 
-              onCheckedChange={toggleTestMode}
-            />
-            <Label htmlFor="test-mode" className="text-sm cursor-pointer">
-              Test Mode {testMode && '✅'}
-            </Label>
+          <div className="flex items-center gap-3">
+            {/* Test Mode Toggle */}
+            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+              <Switch 
+                id="test-mode" 
+                checked={testMode} 
+                onCheckedChange={toggleTestMode}
+              />
+              <Label htmlFor="test-mode" className="text-sm cursor-pointer">
+                Test Mode {testMode && '✅'}
+              </Label>
+            </div>
+            
+            {/* Sign Out Button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={signOut}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
         </div>
 
