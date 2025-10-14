@@ -220,6 +220,124 @@ export type Database = {
           },
         ]
       }
+      guru_content_reactions: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string | null
+          id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string | null
+          id?: string
+          reaction_type: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_content_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      guru_feed_posts: {
+        Row: {
+          caption: string | null
+          content_type: string
+          content_url: string
+          created_at: string | null
+          guru_id: string
+          id: string
+          location_name: string
+          place_id: string | null
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          caption?: string | null
+          content_type: string
+          content_url: string
+          created_at?: string | null
+          guru_id: string
+          id?: string
+          location_name: string
+          place_id?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          caption?: string | null
+          content_type?: string
+          content_url?: string
+          created_at?: string | null
+          guru_id?: string
+          id?: string
+          location_name?: string
+          place_id?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_feed_posts_guru_id_fkey"
+            columns: ["guru_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      guru_map_follows: {
+        Row: {
+          created_at: string | null
+          id: string
+          map_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          map_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          map_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_map_follows_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "guru_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guru_map_follows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       guru_map_likes: {
         Row: {
           created_at: string | null
@@ -322,6 +440,7 @@ export type Database = {
           theme: string | null
           title: string
           updated_at: string | null
+          view_count: number | null
         }
         Insert: {
           collaborators?: string[] | null
@@ -334,6 +453,7 @@ export type Database = {
           theme?: string | null
           title: string
           updated_at?: string | null
+          view_count?: number | null
         }
         Update: {
           collaborators?: string[] | null
@@ -346,6 +466,7 @@ export type Database = {
           theme?: string | null
           title?: string
           updated_at?: string | null
+          view_count?: number | null
         }
         Relationships: [
           {
