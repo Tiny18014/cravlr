@@ -120,66 +120,71 @@ export function GuruFeed() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {posts.map((post) => (
-        <Card key={post.id} className="overflow-hidden">
-          <div className="aspect-square relative">
+        <Card key={post.id} className="overflow-hidden rounded-xl border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="aspect-square relative bg-muted">
             <img
               src={post.content_url}
               alt={post.location_name}
               className="w-full h-full object-cover"
             />
           </div>
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="p-5 space-y-3">
+            {post.guru && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
+                  {post.guru.display_name?.charAt(0) || '?'}
+                </div>
+                <span className="text-sm font-medium">
+                  {post.guru.display_name}
+                </span>
+              </div>
+            )}
+
             <div>
-              <h3 className="font-semibold">{post.location_name}</h3>
+              <h3 className="font-bold text-lg">{post.location_name}</h3>
               {post.caption && (
-                <p className="text-sm text-muted-foreground mt-1">{post.caption}</p>
+                <p className="text-sm text-foreground/80 mt-2 leading-relaxed">{post.caption}</p>
               )}
             </div>
 
             {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-2">
                 {post.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="text-xs bg-primary/10 px-2 py-1 rounded-full"
+                    className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full"
                   >
-                    {tag}
+                    #{tag}
                   </span>
                 ))}
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-2 border-t">
+            <div className="flex items-center gap-6 pt-3 border-t border-border/50">
               <button
                 onClick={() => toggleReaction(post.id, "heart")}
-                className="flex items-center gap-1 text-sm hover:text-red-500 transition-colors"
+                className="flex items-center gap-1.5 text-sm font-medium hover:text-red-500 transition-colors group"
               >
-                <Heart className="h-4 w-4" />
-                {post.reactions?.heart || 0}
+                <Heart className="h-5 w-5 group-hover:fill-red-500" />
+                <span>{post.reactions?.heart || 0}</span>
               </button>
               <button
                 onClick={() => toggleReaction(post.id, "drool")}
-                className="flex items-center gap-1 text-sm hover:text-blue-500 transition-colors"
+                className="flex items-center gap-1.5 text-sm font-medium hover:text-blue-500 transition-colors group"
               >
-                <Droplet className="h-4 w-4" />
-                {post.reactions?.drool || 0}
+                <Droplet className="h-5 w-5 group-hover:fill-blue-500" />
+                <span>{post.reactions?.drool || 0}</span>
               </button>
               <button
                 onClick={() => toggleReaction(post.id, "fire")}
-                className="flex items-center gap-1 text-sm hover:text-orange-500 transition-colors"
+                className="flex items-center gap-1.5 text-sm font-medium hover:text-orange-500 transition-colors group"
               >
-                <Flame className="h-4 w-4" />
-                {post.reactions?.fire || 0}
+                <Flame className="h-5 w-5 group-hover:fill-orange-500" />
+                <span>{post.reactions?.fire || 0}</span>
               </button>
             </div>
-
-            {post.guru && (
-              <p className="text-xs text-muted-foreground">
-                by {post.guru.display_name}
-              </p>
-            )}
           </CardContent>
         </Card>
       ))}
