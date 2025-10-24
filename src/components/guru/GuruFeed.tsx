@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Heart, Flame, Droplet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatDistanceToNow } from "date-fns";
 
 interface FeedPost {
   id: string;
@@ -157,12 +158,17 @@ export function GuruFeed() {
             </div>
             <CardContent className="p-5 space-y-3">
               {post.guru && (
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
-                    {post.guru.display_name?.charAt(0) || '?'}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
+                      {post.guru.display_name?.charAt(0) || '?'}
+                    </div>
+                    <span className="text-sm font-medium">
+                      {post.guru.display_name}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium">
-                    {post.guru.display_name}
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                   </span>
                 </div>
               )}
