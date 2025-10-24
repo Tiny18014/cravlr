@@ -18,21 +18,21 @@ export type Database = {
         Row: {
           action_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           performed_at: string
           user_id: string
         }
         Insert: {
           action_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           performed_at?: string
           user_id: string
         }
         Update: {
           action_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           performed_at?: string
           user_id?: string
         }
@@ -478,6 +478,113 @@ export type Database = {
           },
         ]
       }
+      guru_post_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          guru_id: string
+          id: string
+          post_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          guru_id: string
+          id?: string
+          post_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          guru_id?: string
+          id?: string
+          post_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "guru_feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guru_post_saves: {
+        Row: {
+          created_at: string | null
+          id: string
+          map_id: string
+          post_id: string
+          saved_by: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          map_id: string
+          post_id: string
+          saved_by: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          map_id?: string
+          post_id?: string
+          saved_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_post_saves_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "guru_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guru_post_saves_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "guru_feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guru_weekly_themes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          emoji: string | null
+          end_date: string
+          id: string
+          is_active: boolean | null
+          start_date: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          emoji?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          start_date: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          emoji?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string
+          title?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -780,7 +887,7 @@ export type Database = {
           converted: boolean
           converted_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           notes: string | null
           place_id: string | null
           recommendation_id: string
@@ -807,7 +914,7 @@ export type Database = {
           converted?: boolean
           converted_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           notes?: string | null
           place_id?: string | null
           recommendation_id: string
@@ -834,7 +941,7 @@ export type Database = {
           converted?: boolean
           converted_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           notes?: string | null
           place_id?: string | null
           recommendation_id?: string
@@ -990,7 +1097,7 @@ export type Database = {
           converted: boolean | null
           converted_at: string | null
           id: string | null
-          ip_address: unknown | null
+          ip_address: unknown
           notes: string | null
           place_id: string | null
           recommendation_id: string | null
@@ -1038,10 +1145,7 @@ export type Database = {
         Args: { base_points: number; feedback_bonus?: number; rec_id: string }
         Returns: undefined
       }
-      can_perform_sensitive_action: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      can_perform_sensitive_action: { Args: never; Returns: boolean }
       check_rate_limit: {
         Args: {
           p_action_type: string
@@ -1050,14 +1154,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      close_expired_requests: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      generate_referral_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      close_expired_requests: { Args: never; Returns: number }
+      generate_referral_code: { Args: never; Returns: string }
       get_business_analytics: {
         Args: { business_user_id?: string }
         Returns: {
@@ -1094,14 +1192,8 @@ export type Database = {
         Args: { business_user_id: string }
         Returns: number
       }
-      is_admin: {
-        Args: { uid?: string }
-        Returns: boolean
-      }
-      is_email_verified: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: { uid?: string }; Returns: boolean }
+      is_email_verified: { Args: never; Returns: boolean }
       mark_conversion: {
         Args: {
           p_commission_rate?: number

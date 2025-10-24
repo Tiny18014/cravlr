@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Heart, Flame, Droplet, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatDistanceToNow } from "date-fns";
+import { GuruWeeklyTheme } from "./GuruWeeklyTheme";
+import { GuruFilterBar } from "./GuruFilterBar";
+import { GuruFeedCard } from "./GuruFeedCard";
+import { TopGurusWidget } from "./TopGurusWidget";
 
 interface FeedPost {
   id: string;
@@ -16,6 +19,7 @@ interface FeedPost {
   caption: string | null;
   tags: string[] | null;
   created_at: string;
+  place_id?: string | null;
   guru?: {
     display_name: string;
     avatar_url: string | null;
@@ -24,7 +28,17 @@ interface FeedPost {
     heart: number;
     drool: number;
     fire: number;
+    guru_pick: number;
   };
+  comments?: Array<{
+    id: string;
+    content: string;
+    guru_id: string;
+    created_at: string;
+    guru?: {
+      display_name: string;
+    };
+  }>;
 }
 
 export function GuruFeed() {
@@ -33,11 +47,20 @@ export function GuruFeed() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const POSTS_PER_PAGE = 12;
 
   useEffect(() => {
     loadFeed();
-  }, []);
+  }, [selectedTags]);
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  };
 
   const loadFeed = async (offset = 0) => {
     const isLoadingMore = offset > 0;
@@ -45,14 +68,20 @@ export function GuruFeed() {
       setLoadingMore(true);
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("guru_feed_posts")
       .select(`
         *,
         guru:profiles!guru_id(display_name, avatar_url)
       `)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + POSTS_PER_PAGE - 1);
+      .order("created_at", { ascending: false });
+
+    // Apply tag filters
+    if (selectedTags.length > 0) {
+      query = query.contains("tags", selectedTags);
+    }
+
+    const { data, error } = await query.range(offset, offset + POSTS_PER_PAGE - 1);
 
     if (error) {
       console.error("Error loading feed:", error);
@@ -65,30 +94,64 @@ export function GuruFeed() {
     // Check if there are more posts
     setHasMore((data || []).length === POSTS_PER_PAGE);
 
-    // Load reaction counts for each post
-    const postsWithReactions = await Promise.all(
+    // Load reaction counts and comments for each post
+    const postsWithData = await Promise.all(
       (data || []).map(async (post) => {
-        const { data: reactions } = await supabase
-          .from("guru_content_reactions")
-          .select("reaction_type")
-          .eq("content_type", "post")
-          .eq("content_id", post.id);
+        const [reactionsData, commentsData] = await Promise.all([
+          supabase
+            .from("guru_content_reactions")
+            .select("reaction_type")
+            .eq("content_type", "post")
+            .eq("content_id", post.id),
+          supabase
+            .from("guru_post_comments")
+            .select(`
+              id,
+              content,
+              guru_id,
+              created_at
+            `)
+            .eq("post_id", post.id)
+            .order("created_at", { ascending: false })
+            .limit(2)
+        ]);
 
         const reactionCounts = {
-          heart: reactions?.filter(r => r.reaction_type === "heart").length || 0,
-          drool: reactions?.filter(r => r.reaction_type === "drool").length || 0,
-          fire: reactions?.filter(r => r.reaction_type === "fire").length || 0,
+          heart: reactionsData.data?.filter(r => r.reaction_type === "heart").length || 0,
+          drool: reactionsData.data?.filter(r => r.reaction_type === "drool").length || 0,
+          fire: reactionsData.data?.filter(r => r.reaction_type === "fire").length || 0,
+          guru_pick: reactionsData.data?.filter(r => r.reaction_type === "guru_pick").length || 0,
         };
 
-        return { ...post, reactions: reactionCounts };
+        // Fetch guru info for comments
+        const commentsWithGuru = await Promise.all(
+          (commentsData.data || []).map(async (comment) => {
+            const { data: guruData } = await supabase
+              .from("profiles")
+              .select("display_name")
+              .eq("user_id", comment.guru_id)
+              .single();
+
+            return {
+              ...comment,
+              guru: guruData || undefined
+            };
+          })
+        );
+
+        return { 
+          ...post, 
+          reactions: reactionCounts,
+          comments: commentsWithGuru
+        };
       })
     );
 
     if (isLoadingMore) {
-      setPosts(prev => [...prev, ...postsWithReactions]);
+      setPosts(prev => [...prev, ...postsWithData]);
       setLoadingMore(false);
     } else {
-      setPosts(postsWithReactions);
+      setPosts(postsWithData);
       setLoading(false);
     }
   };
@@ -97,7 +160,26 @@ export function GuruFeed() {
     loadFeed(posts.length);
   };
 
-  const toggleReaction = async (postId: string, reactionType: 'heart' | 'drool' | 'fire') => {
+  const handleComment = async (postId: string, content: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("guru_post_comments")
+      .insert({
+        post_id: postId,
+        guru_id: user.id,
+        content
+      });
+
+    if (error) {
+      toast.error("Failed to post comment");
+    } else {
+      toast.success("Comment posted!");
+      loadFeed();
+    }
+  };
+
+  const toggleReaction = async (postId: string, reactionType: 'heart' | 'drool' | 'fire' | 'guru_pick') => {
     if (!user) return;
 
     const { data: existing } = await supabase
@@ -145,115 +227,54 @@ export function GuruFeed() {
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-12rem)]">
-      <div className="max-w-2xl mx-auto space-y-4 pb-6">
-        {posts.map((post) => (
-          <Card key={post.id} className="overflow-hidden rounded-lg border-border/50">
-            {/* Post Header */}
-            <CardContent className="p-4 pb-0">
-              {post.guru && (
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-base font-semibold">
-                      {post.guru.display_name?.charAt(0) || '?'}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold">
-                        {post.guru.display_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Location & Caption */}
-              <div className="mb-3">
-                <h3 className="font-bold text-base mb-1">{post.location_name}</h3>
-                {post.caption && (
-                  <p className="text-sm text-foreground/90 leading-relaxed">{post.caption}</p>
-                )}
-              </div>
-            </CardContent>
-
-            {/* Post Image */}
-            <div className="relative bg-muted">
-              <img
-                src={post.content_url}
-                alt={post.location_name}
-                className="w-full object-cover"
-                style={{ maxHeight: '600px' }}
+    <div className="flex gap-6">
+      {/* Main Feed Column */}
+      <div className="flex-1 min-w-0">
+        <ScrollArea className="h-[calc(100vh-12rem)]">
+          <GuruWeeklyTheme />
+          <GuruFilterBar
+            selectedTags={selectedTags}
+            onTagToggle={handleTagToggle}
+          />
+          
+          <div className="max-w-2xl mx-auto space-y-4 pb-6">
+            {posts.map((post) => (
+              <GuruFeedCard
+                key={post.id}
+                post={post}
+                onReaction={toggleReaction}
+                onComment={handleComment}
               />
+            ))}
+          </div>
+          
+          {hasMore && (
+            <div className="flex justify-center pb-6 max-w-2xl mx-auto">
+              <Button
+                onClick={loadMore}
+                disabled={loadingMore}
+                variant="outline"
+                size="lg"
+                className="w-full"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Load More Posts"
+                )}
+              </Button>
             </div>
-
-            {/* Reactions & Tags */}
-            <CardContent className="p-4 space-y-3">
-
-              {/* Reaction Buttons */}
-              <div className="flex items-center gap-6 py-2 border-t border-b border-border/50">
-                <button
-                  onClick={() => toggleReaction(post.id, "heart")}
-                  className="flex items-center gap-2 text-sm font-semibold hover:text-red-500 transition-colors group flex-1 justify-center py-2 rounded-md hover:bg-muted/50"
-                >
-                  <Heart className="h-5 w-5 group-hover:fill-red-500" />
-                  <span>{post.reactions?.heart || 0}</span>
-                </button>
-                <button
-                  onClick={() => toggleReaction(post.id, "drool")}
-                  className="flex items-center gap-2 text-sm font-semibold hover:text-blue-500 transition-colors group flex-1 justify-center py-2 rounded-md hover:bg-muted/50"
-                >
-                  <Droplet className="h-5 w-5 group-hover:fill-blue-500" />
-                  <span>{post.reactions?.drool || 0}</span>
-                </button>
-                <button
-                  onClick={() => toggleReaction(post.id, "fire")}
-                  className="flex items-center gap-2 text-sm font-semibold hover:text-orange-500 transition-colors group flex-1 justify-center py-2 rounded-md hover:bg-muted/50"
-                >
-                  <Flame className="h-5 w-5 group-hover:fill-orange-500" />
-                  <span>{post.reactions?.fire || 0}</span>
-                </button>
-              </div>
-
-              {/* Tags */}
-              {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {post.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+          )}
+        </ScrollArea>
       </div>
-      
-      {hasMore && (
-        <div className="flex justify-center pb-6">
-          <Button
-            onClick={loadMore}
-            disabled={loadingMore}
-            variant="outline"
-            size="lg"
-            className="w-full max-w-xs"
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              "Load More Posts"
-            )}
-          </Button>
-        </div>
-      )}
-    </ScrollArea>
+
+      {/* Right Sidebar */}
+      <div className="hidden lg:block w-80 space-y-4">
+        <TopGurusWidget />
+      </div>
+    </div>
   );
 }
