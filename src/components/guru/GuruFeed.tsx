@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Heart, Flame, Droplet, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Heart, Flame, Droplet, Loader2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow, format } from "date-fns";
@@ -161,9 +162,19 @@ export function GuruFeed() {
                       <span className="text-sm font-semibold">
                         {post.guru.display_name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })} • {format(new Date(post.created_at), 'MMM d, h:mm a')}
-                      </span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{format(new Date(post.created_at), 'MMMM d, yyyy • h:mm a')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
