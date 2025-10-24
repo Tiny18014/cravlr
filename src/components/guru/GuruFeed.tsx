@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { GuruWeeklyTheme } from "./GuruWeeklyTheme";
 import { GuruFilterBar } from "./GuruFilterBar";
 import { GuruFeedCard } from "./GuruFeedCard";
 import { TopGurusWidget } from "./TopGurusWidget";
+import { CreatePostModal } from "./CreatePostModal";
 
 interface FeedPost {
   id: string;
@@ -48,6 +49,7 @@ export function GuruFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const POSTS_PER_PAGE = 12;
 
   useEffect(() => {
@@ -227,15 +229,27 @@ export function GuruFeed() {
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Main Feed Column */}
-      <div className="flex-1 min-w-0">
-        <ScrollArea className="h-[calc(100vh-12rem)]">
-          <GuruWeeklyTheme />
-          <GuruFilterBar
-            selectedTags={selectedTags}
-            onTagToggle={handleTagToggle}
-          />
+    <>
+      <div className="flex gap-6">
+        {/* Main Feed Column */}
+        <div className="flex-1 min-w-0">
+          <ScrollArea className="h-[calc(100vh-12rem)]">
+            <GuruWeeklyTheme />
+            
+            {/* Create Post Button */}
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="w-full mb-6 h-12 text-base font-semibold"
+              size="lg"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Add New Post
+            </Button>
+
+            <GuruFilterBar
+              selectedTags={selectedTags}
+              onTagToggle={handleTagToggle}
+            />
           
           <div className="max-w-2xl mx-auto space-y-4 pb-6">
             {posts.map((post) => (
@@ -271,10 +285,17 @@ export function GuruFeed() {
         </ScrollArea>
       </div>
 
-      {/* Right Sidebar */}
-      <div className="hidden lg:block w-80 space-y-4">
-        <TopGurusWidget />
+        {/* Right Sidebar */}
+        <div className="hidden lg:block w-80 space-y-4">
+          <TopGurusWidget />
+        </div>
       </div>
-    </div>
+
+      <CreatePostModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onPostCreated={loadFeed}
+      />
+    </>
   );
 }
