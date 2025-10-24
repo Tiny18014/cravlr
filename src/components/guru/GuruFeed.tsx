@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Heart, Flame, Droplet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Heart, Flame, Droplet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -28,12 +30,20 @@ export function GuruFeed() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const POSTS_PER_PAGE = 12;
 
   useEffect(() => {
     loadFeed();
   }, []);
 
-  const loadFeed = async () => {
+  const loadFeed = async (offset = 0) => {
+    const isLoadingMore = offset > 0;
+    if (isLoadingMore) {
+      setLoadingMore(true);
+    }
+
     const { data, error } = await supabase
       .from("guru_feed_posts")
       .select(`
@@ -41,13 +51,18 @@ export function GuruFeed() {
         guru:profiles!guru_id(display_name, avatar_url)
       `)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .range(offset, offset + POSTS_PER_PAGE - 1);
 
     if (error) {
       console.error("Error loading feed:", error);
       toast.error("Failed to load feed");
+      setLoading(false);
+      setLoadingMore(false);
       return;
     }
+
+    // Check if there are more posts
+    setHasMore((data || []).length === POSTS_PER_PAGE);
 
     // Load reaction counts for each post
     const postsWithReactions = await Promise.all(
@@ -68,8 +83,17 @@ export function GuruFeed() {
       })
     );
 
-    setPosts(postsWithReactions);
-    setLoading(false);
+    if (isLoadingMore) {
+      setPosts(prev => [...prev, ...postsWithReactions]);
+      setLoadingMore(false);
+    } else {
+      setPosts(postsWithReactions);
+      setLoading(false);
+    }
+  };
+
+  const loadMore = () => {
+    loadFeed(posts.length);
   };
 
   const toggleReaction = async (postId: string, reactionType: 'heart' | 'drool' | 'fire') => {
@@ -120,74 +144,97 @@ export function GuruFeed() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {posts.map((post) => (
-        <Card key={post.id} className="overflow-hidden rounded-xl border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="aspect-square relative bg-muted">
-            <img
-              src={post.content_url}
-              alt={post.location_name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <CardContent className="p-5 space-y-3">
-            {post.guru && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
-                  {post.guru.display_name?.charAt(0) || '?'}
-                </div>
-                <span className="text-sm font-medium">
-                  {post.guru.display_name}
-                </span>
-              </div>
-            )}
-
-            <div>
-              <h3 className="font-bold text-lg">{post.location_name}</h3>
-              {post.caption && (
-                <p className="text-sm text-foreground/80 mt-2 leading-relaxed">{post.caption}</p>
-              )}
+    <ScrollArea className="h-[calc(100vh-12rem)]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
+        {posts.map((post) => (
+          <Card key={post.id} className="overflow-hidden rounded-xl border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="aspect-square relative bg-muted">
+              <img
+                src={post.content_url}
+                alt={post.location_name}
+                className="w-full h-full object-cover"
+              />
             </div>
-
-            {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {post.tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full"
-                  >
-                    #{tag}
+            <CardContent className="p-5 space-y-3">
+              {post.guru && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold">
+                    {post.guru.display_name?.charAt(0) || '?'}
+                  </div>
+                  <span className="text-sm font-medium">
+                    {post.guru.display_name}
                   </span>
-                ))}
-              </div>
-            )}
+                </div>
+              )}
 
-            <div className="flex items-center gap-6 pt-3 border-t border-border/50">
-              <button
-                onClick={() => toggleReaction(post.id, "heart")}
-                className="flex items-center gap-1.5 text-sm font-medium hover:text-red-500 transition-colors group"
-              >
-                <Heart className="h-5 w-5 group-hover:fill-red-500" />
-                <span>{post.reactions?.heart || 0}</span>
-              </button>
-              <button
-                onClick={() => toggleReaction(post.id, "drool")}
-                className="flex items-center gap-1.5 text-sm font-medium hover:text-blue-500 transition-colors group"
-              >
-                <Droplet className="h-5 w-5 group-hover:fill-blue-500" />
-                <span>{post.reactions?.drool || 0}</span>
-              </button>
-              <button
-                onClick={() => toggleReaction(post.id, "fire")}
-                className="flex items-center gap-1.5 text-sm font-medium hover:text-orange-500 transition-colors group"
-              >
-                <Flame className="h-5 w-5 group-hover:fill-orange-500" />
-                <span>{post.reactions?.fire || 0}</span>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+              <div>
+                <h3 className="font-bold text-lg">{post.location_name}</h3>
+                {post.caption && (
+                  <p className="text-sm text-foreground/80 mt-2 leading-relaxed">{post.caption}</p>
+                )}
+              </div>
+
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {post.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-6 pt-3 border-t border-border/50">
+                <button
+                  onClick={() => toggleReaction(post.id, "heart")}
+                  className="flex items-center gap-1.5 text-sm font-medium hover:text-red-500 transition-colors group"
+                >
+                  <Heart className="h-5 w-5 group-hover:fill-red-500" />
+                  <span>{post.reactions?.heart || 0}</span>
+                </button>
+                <button
+                  onClick={() => toggleReaction(post.id, "drool")}
+                  className="flex items-center gap-1.5 text-sm font-medium hover:text-blue-500 transition-colors group"
+                >
+                  <Droplet className="h-5 w-5 group-hover:fill-blue-500" />
+                  <span>{post.reactions?.drool || 0}</span>
+                </button>
+                <button
+                  onClick={() => toggleReaction(post.id, "fire")}
+                  className="flex items-center gap-1.5 text-sm font-medium hover:text-orange-500 transition-colors group"
+                >
+                  <Flame className="h-5 w-5 group-hover:fill-orange-500" />
+                  <span>{post.reactions?.fire || 0}</span>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      
+      {hasMore && (
+        <div className="flex justify-center pb-6">
+          <Button
+            onClick={loadMore}
+            disabled={loadingMore}
+            variant="outline"
+            size="lg"
+            className="w-full max-w-xs"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More Posts"
+            )}
+          </Button>
+        </div>
+      )}
+    </ScrollArea>
   );
 }
