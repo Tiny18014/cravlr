@@ -732,6 +732,51 @@ export type Database = {
         }
         Relationships: []
       }
+      public_profiles: {
+        Row: {
+          approval_rate: number | null
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          guru_level: boolean | null
+          id: string
+          location_city: string | null
+          location_state: string | null
+          points_total: number | null
+          reputation_score: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approval_rate?: number | null
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          guru_level?: boolean | null
+          id?: string
+          location_city?: string | null
+          location_state?: string | null
+          points_total?: number | null
+          reputation_score?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approval_rate?: number | null
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          guru_level?: boolean | null
+          id?: string
+          location_city?: string | null
+          location_state?: string | null
+          points_total?: number | null
+          reputation_score?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           created_at: string
@@ -1061,6 +1106,47 @@ export type Database = {
           },
         ]
       }
+      verification_codes: {
+        Row: {
+          claim_id: string
+          code_hash: string
+          code_type: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          sent_at: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          claim_id: string
+          code_hash: string
+          code_type: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          sent_at?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          claim_id?: string
+          code_hash?: string
+          code_type?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          sent_at?: string | null
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_codes_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "business_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       view_business_commissions: {
@@ -1084,7 +1170,7 @@ export type Database = {
       }
       view_referral_conversions_recent: {
         Row: {
-          awarded_points: number | null
+          business_notes: string | null
           click_source: string | null
           clicked_at: string | null
           commission_amount: number | null
@@ -1110,6 +1196,7 @@ export type Database = {
           requester_name: string | null
           restaurant_name: string | null
           user_agent: string | null
+          visit_date: string | null
         }
         Relationships: [
           {
