@@ -44,11 +44,9 @@ export type Database = {
           business_phone: string | null
           claimed_at: string | null
           created_at: string
-          email_verification_code: string | null
           email_verification_sent_at: string | null
           email_verified: boolean | null
           id: string
-          phone_verification_code: string | null
           phone_verification_sent_at: string | null
           phone_verified: boolean | null
           place_id: string | null
@@ -66,11 +64,9 @@ export type Database = {
           business_phone?: string | null
           claimed_at?: string | null
           created_at?: string
-          email_verification_code?: string | null
           email_verification_sent_at?: string | null
           email_verified?: boolean | null
           id?: string
-          phone_verification_code?: string | null
           phone_verification_sent_at?: string | null
           phone_verified?: boolean | null
           place_id?: string | null
@@ -88,11 +84,9 @@ export type Database = {
           business_phone?: string | null
           claimed_at?: string | null
           created_at?: string
-          email_verification_code?: string | null
           email_verification_sent_at?: string | null
           email_verified?: boolean | null
           id?: string
-          phone_verification_code?: string | null
           phone_verification_sent_at?: string | null
           phone_verified?: boolean | null
           place_id?: string | null
@@ -1106,6 +1100,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_codes: {
         Row: {
           claim_id: string
@@ -1279,6 +1294,13 @@ export type Database = {
         Args: { business_user_id: string }
         Returns: number
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_admin: { Args: { uid?: string }; Returns: boolean }
       is_email_verified: { Args: never; Returns: boolean }
       mark_conversion: {
@@ -1316,6 +1338,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       feedback_type: "thumbs_up" | "thumbs_down"
       persona: "requester" | "recommender" | "both"
       request_status:
@@ -1451,6 +1474,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       feedback_type: ["thumbs_up", "thumbs_down"],
       persona: ["requester", "recommender", "both"],
       request_status: ["active", "completed", "expired", "closed", "fulfilled"],
