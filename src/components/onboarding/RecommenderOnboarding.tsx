@@ -34,6 +34,8 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const { addRole } = useUserRoles();
+  const searchParams = new URLSearchParams(window.location.search);
+  const upgradeMode = isUpgrade || searchParams.get('upgrade') === 'true';
 
   const requestLocationPermission = async () => {
     if (!('geolocation' in navigator)) {
@@ -140,8 +142,11 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
       if (error) throw error;
 
       // Add recommender role if upgrading
-      if (isUpgrade) {
-        await addRole('recommender');
+      if (upgradeMode) {
+        const success = await addRole('recommender');
+        if (!success) {
+          throw new Error('Failed to add recommender role');
+        }
       }
 
       toast({

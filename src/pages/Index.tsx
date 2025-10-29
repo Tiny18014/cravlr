@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNotifications } from "@/contexts/UnifiedNotificationContext";
 import { Switch } from "@/components/ui/switch";
 import Footer from "@/components/Footer";
+import { BecomeRecommenderModal } from "@/components/onboarding/BecomeRecommenderModal";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -72,7 +74,7 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
   );
 }
 
-function HeroCard() {
+function HeroCard({ onRecommendClick }: { onRecommendClick: () => void }) {
   return (
     <section className="px-4">
       <div className="relative rounded-3xl bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] p-12 shadow-lg overflow-hidden">
@@ -92,12 +94,12 @@ function HeroCard() {
               Request Food
             </Link>
 
-            <Link
-              to="/browse-requests"
+            <button
+              onClick={onRecommendClick}
               className="block w-full rounded-2xl border-2 border-[#9DBF70] bg-white py-4 text-center text-base font-semibold text-[#3E2F25] hover:bg-[#9DBF70]/10 transition-all hover:scale-[1.02] active:scale-[0.98] font-poppins"
             >
               Recommend Food
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -203,6 +205,8 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<{ display_name: string; persona?: string; is_admin?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRecommenderModal, setShowRecommenderModal] = useState(false);
+  const { roles, hasRole, refetch: refetchRoles } = useUserRoles();
 
   // Fetch user profile data
   useEffect(() => {
@@ -266,6 +270,20 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
 
   const userName = userProfile?.display_name || user?.email?.split('@')[0] || 'foodie';
 
+  const handleRecommendClick = async () => {
+    await refetchRoles();
+    if (hasRole('recommender')) {
+      navigate('/browse-requests');
+    } else {
+      setShowRecommenderModal(true);
+    }
+  };
+
+  const handleRecommenderContinue = () => {
+    setShowRecommenderModal(false);
+    navigate('/onboarding/recommender?upgrade=true');
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -273,11 +291,17 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   return (
     <main className="mx-auto max-w-md pb-28">
       <Header onSignOut={onSignOut} userName={userName} />
-      <HeroCard />
+      <HeroCard onRecommendClick={handleRecommendClick} />
       <HowItWorks />
       <RewardsSection pointsThisMonth={pointsThisMonth} goalThisMonth={goalThisMonth} progress={progress} />
       <BottomNav />
       <Footer />
+      
+      <BecomeRecommenderModal
+        open={showRecommenderModal}
+        onOpenChange={setShowRecommenderModal}
+        onContinue={handleRecommenderContinue}
+      />
     </main>
   );
 }

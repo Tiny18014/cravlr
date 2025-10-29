@@ -11,6 +11,8 @@ import { ArrowLeft, MapPin, Clock, Star, User, LogOut, Bell, BellOff, Sparkles }
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import { Switch } from '@/components/ui/switch';
+import { BecomeRecommenderModal } from '@/components/onboarding/BecomeRecommenderModal';
+import { useUserRoles } from '@/hooks/useUserRoles';
 // Timer is now handled globally via UnifiedRequestManager
 
 interface FoodRequest {
@@ -84,6 +86,8 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [isGuru, setIsGuru] = useState(false);
+  const [showRecommenderModal, setShowRecommenderModal] = useState(false);
+  const { roles, hasRole, refetch: refetchRoles } = useUserRoles();
   
   // Get the default tab from URL parameter
   const defaultTab = searchParams.get('tab') || 'requests';
@@ -208,6 +212,20 @@ const Dashboard = () => {
     }
   };
 
+  const handleBrowseRequestsClick = async () => {
+    await refetchRoles();
+    if (hasRole('recommender')) {
+      navigate('/browse-requests');
+    } else {
+      setShowRecommenderModal(true);
+    }
+  };
+
+  const handleRecommenderContinue = () => {
+    setShowRecommenderModal(false);
+    navigate('/onboarding/recommender?upgrade=true');
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -330,7 +348,7 @@ const Dashboard = () => {
           <Button onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
             Request Food
           </Button>
-          <Button variant="outline" onClick={() => navigate('/browse-requests')} className="flex-1 md:flex-none">
+          <Button variant="outline" onClick={handleBrowseRequestsClick} className="flex-1 md:flex-none">
             Browse Requests
           </Button>
           <Button variant="ghost" onClick={() => navigate('/profile')} className="flex-1 md:flex-none flex items-center gap-2">
@@ -514,6 +532,12 @@ const Dashboard = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <BecomeRecommenderModal
+        open={showRecommenderModal}
+        onOpenChange={setShowRecommenderModal}
+        onContinue={handleRecommenderContinue}
+      />
     </div>
   );
 };
