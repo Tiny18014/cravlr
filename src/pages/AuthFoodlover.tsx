@@ -11,9 +11,14 @@ import { ArrowLeft, Users, Star, Mail } from 'lucide-react';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<'requester' | 'recommender' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [cuisineExpertise, setCuisineExpertise] = useState<string[]>([]);
+  const [locationCity, setLocationCity] = useState('');
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
@@ -26,6 +31,28 @@ const AuthFoodlover = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  const handleLocationCapture = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocationLat(position.coords.latitude);
+          setLocationLng(position.coords.longitude);
+          toast({
+            title: "Location captured",
+            description: "We'll use this to find the best recommendations near you.",
+          });
+        },
+        () => {
+          toast({
+            title: "Location access denied",
+            description: "Please enter your city manually.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +78,7 @@ const AuthFoodlover = () => {
             
           if (claimsError) {
             console.error('Error checking business claims:', claimsError);
-            clearValidating(); // Clear validation state on error
+            clearValidating();
             toast({
               title: "Access Error", 
               description: "Unable to verify account type.",
@@ -62,9 +89,8 @@ const AuthFoodlover = () => {
           
           if (businessClaims && businessClaims.length > 0) {
             console.log('🚫 Business account trying to access food lover login');
-            // Sign out the user since they're on wrong platform
             await supabase.auth.signOut();
-            clearValidating(); // Clear validation state
+            clearValidating();
             toast({
               title: "Wrong Account Type",
               description: "This is a Business account. Please use the Business Owner sign-in.",
@@ -74,15 +100,25 @@ const AuthFoodlover = () => {
           }
           
           console.log('✅ Food lover account confirmed, navigating to main app');
-          clearValidating(); // Clear validation state before navigation
+          clearValidating();
           toast({
             title: "Welcome back!",
             description: "You've been logged in successfully.",
           });
-          // Redirect food lovers directly to the main app
           navigate('/');
         }
       } else {
+        // Signup flow
+        if (!selectedRole) {
+          toast({
+            title: "Please select a role",
+            description: "Choose whether you want to request or recommend food.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await signUp(email, password, displayName, 'regular');
         if (error) {
           toast({
@@ -91,12 +127,53 @@ const AuthFoodlover = () => {
             variant: "destructive",
           });
         } else {
+          // Get the newly created user
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            // Assign role to user_roles table
+            const { error: roleError } = await supabase.rpc('assign_user_role', {
+              _user_id: user.id,
+              _role: selectedRole
+            });
+
+            if (roleError) {
+              console.error('Error assigning role:', roleError);
+            }
+
+            // Update profile with additional data
+            const profileUpdates: any = {
+              display_name: displayName,
+            };
+
+            if (selectedRole === 'recommender') {
+              profileUpdates.cuisine_expertise = cuisineExpertise;
+              profileUpdates.location_city = locationCity;
+              if (locationLat) profileUpdates.location_lat = locationLat;
+              if (locationLng) profileUpdates.location_lng = locationLng;
+            }
+
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update(profileUpdates)
+              .eq('user_id', user.id);
+
+            if (profileError) {
+              console.error('Error updating profile:', profileError);
+            }
+          }
+
           toast({
             title: "Account Created!",
-            description: "Let's set up your preferences to personalize your experience.",
+            description: `Welcome to Cravlr! Your ${selectedRole} account is ready.`,
           });
-          // Redirect to onboarding after successful signup
-          navigate('/onboarding');
+
+          // Route based on role
+          if (selectedRole === 'requester') {
+            navigate('/request-food');
+          } else {
+            navigate('/browse-requests');
+          }
         }
       }
     } catch (error) {
@@ -110,12 +187,96 @@ const AuthFoodlover = () => {
     }
   };
 
+  const cuisineOptions = [
+    'African', 'Italian', 'Indian', 'Nepali', 'Mexican', 
+    'Chinese', 'Japanese', 'Thai', 'Mediterranean', 'American', 'Other'
+  ];
+
+  const toggleCuisine = (cuisine: string) => {
+    setCuisineExpertise(prev => 
+      prev.includes(cuisine) 
+        ? prev.filter(c => c !== cuisine)
+        : [...prev, cuisine]
+    );
+  };
+
+  // Show role selection if signing up and no role selected yet
+  if (!isLogin && !selectedRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/welcome')} className="absolute left-4 top-4">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center mx-auto">
+              <Users className="h-6 w-6 text-primary-foreground" />
+            </div>
+            
+            <CardTitle className="text-2xl font-bold">
+              Choose Your Role
+            </CardTitle>
+            
+            <p className="text-muted-foreground">
+              How would you like to use Cravlr?
+            </p>
+          </CardHeader>
+          
+          <CardContent className="space-y-3">
+            <Button 
+              onClick={() => setSelectedRole('requester')}
+              className="w-full h-auto py-4 flex flex-col items-start gap-2"
+              variant="outline"
+            >
+              <span className="font-semibold text-lg">Sign up as Food Requester</span>
+              <span className="text-sm text-muted-foreground font-normal">
+                Get personalized food recommendations from locals
+              </span>
+            </Button>
+            
+            <Button 
+              onClick={() => setSelectedRole('recommender')}
+              className="w-full h-auto py-4 flex flex-col items-start gap-2"
+              variant="outline"
+            >
+              <span className="font-semibold text-lg">Sign up as Food Recommender</span>
+              <span className="text-sm text-muted-foreground font-normal">
+                Share your favorite spots and earn rewards
+              </span>
+            </Button>
+
+            <div className="text-center pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setIsLogin(true)}
+                className="text-sm"
+              >
+                Already have an account? Sign in
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/welcome')} className="absolute left-4 top-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                if (!isLogin && selectedRole) {
+                  setSelectedRole(null);
+                } else {
+                  navigate('/welcome');
+                }
+              }} 
+              className="absolute left-4 top-4"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
@@ -124,23 +285,18 @@ const AuthFoodlover = () => {
           </div>
           
           <CardTitle className="text-2xl font-bold">
-            Food Lover {isLogin ? 'Sign In' : 'Sign Up'}
+            {isLogin ? 'Sign In' : `${selectedRole === 'requester' ? 'Food Requester' : 'Food Recommender'} Sign Up`}
           </CardTitle>
           
           <div className="space-y-2">
             <p className="text-muted-foreground">
               {isLogin 
                 ? 'Welcome back! Sign in to continue your foodie journey' 
-                : 'Join the community and start discovering amazing restaurants'
+                : selectedRole === 'requester'
+                  ? 'Get trusted recommendations from food lovers in your area'
+                  : 'Share your expertise and help others discover great food'
               }
             </p>
-            
-            {!isLogin && (
-              <div className="flex items-center justify-center gap-2 text-sm">
-                <Star className="h-4 w-4 text-primary" />
-                <span className="text-primary font-medium">Instant access • No verification needed</span>
-              </div>
-            )}
           </div>
         </CardHeader>
         
@@ -148,14 +304,14 @@ const AuthFoodlover = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
+                <Label htmlFor="displayName">Name</Label>
                 <Input
                   id="displayName"
                   type="text"
-                  placeholder="How should we call you?"
+                  placeholder="Your name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  required={!isLogin}
+                  required
                 />
               </div>
             )}
@@ -193,6 +349,55 @@ const AuthFoodlover = () => {
               )}
             </div>
 
+            {!isLogin && selectedRole === 'recommender' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Cuisine Expertise</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {cuisineOptions.map((cuisine) => (
+                      <Button
+                        key={cuisine}
+                        type="button"
+                        variant={cuisineExpertise.includes(cuisine) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleCuisine(cuisine)}
+                      >
+                        {cuisine}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select cuisines you're knowledgeable about
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Place or City</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="location"
+                      type="text"
+                      placeholder="Enter your city"
+                      value={locationCity}
+                      onChange={(e) => setLocationCity(e.target.value)}
+                      required
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleLocationCapture}
+                    >
+                      Use GPS
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    We'll show you requests in your area
+                  </p>
+                </div>
+              </>
+            )}
+
             <Button type="submit" className="w-full" disabled={loading} size="lg">
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
             </Button>
@@ -202,7 +407,10 @@ const AuthFoodlover = () => {
             <div className="text-center">
               <Button
                 variant="ghost"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  if (!isLogin) setSelectedRole(null);
+                }}
                 className="text-sm"
               >
                 {isLogin 

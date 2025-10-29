@@ -1245,6 +1245,13 @@ export type Database = {
       }
     }
     Functions: {
+      assign_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       award_points_for_request: {
         Args: { request_id_param: string }
         Returns: number
@@ -1344,7 +1351,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "requester" | "recommender"
       feedback_type: "thumbs_up" | "thumbs_down"
       persona: "requester" | "recommender" | "both"
       request_status:
@@ -1480,7 +1487,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "requester", "recommender"],
       feedback_type: ["thumbs_up", "thumbs_down"],
       persona: ["requester", "recommender", "both"],
       request_status: ["active", "completed", "expired", "closed", "fulfilled"],
