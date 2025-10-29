@@ -3,7 +3,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2, BellOff } from "lucide-react";
-import ActiveRequestsList from "@/components/ActiveRequestsList";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotifications } from "@/contexts/UnifiedNotificationContext";
 import { Switch } from "@/components/ui/switch";
@@ -285,16 +284,6 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
     <main className="mx-auto max-w-md pb-28">
       <Header onSignOut={onSignOut} userName={userName} />
       <HeroCard />
-      
-      {/* Active Requests Section */}
-      <section className="mt-5 px-4">
-        <ActiveRequestsList 
-          limit={3} 
-          compact={true} 
-          title="Help Others Find Food"
-        />
-      </section>
-
       <HowItWorks />
       <RewardsSection pointsThisMonth={pointsThisMonth} goalThisMonth={goalThisMonth} progress={progress} />
       <BottomNav />
