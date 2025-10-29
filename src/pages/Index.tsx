@@ -75,39 +75,23 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
 function HeroCard() {
   return (
     <section className="px-4">
-      <div className="rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-5 shadow-lg">
-        <h1 className="text-2xl font-extrabold leading-snug">Ready to find great food?</h1>
-        <p className="mt-1 text-primary-foreground/80">Create a request or help locals discover amazing restaurants.</p>
+      <div className="rounded-3xl bg-[hsl(var(--beige))] p-6 shadow-lg">
+        <h1 className="text-2xl font-extrabold leading-snug text-foreground">Craving something delicious?</h1>
+        <p className="mt-2 text-muted-foreground">Find what locals love — or share your favorite hidden gems.</p>
 
-        <div className="mt-4 flex gap-3">
+        <div className="mt-5 flex gap-3">
           <Link
             to="/request-food"
-            className="flex-1 rounded-2xl bg-background p-4 text-left text-foreground shadow-sm hover:shadow transition"
+            className="flex-1 rounded-full bg-gradient-to-r from-[hsl(var(--coral))] to-[hsl(var(--coral-dark))] py-3.5 text-center text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all hover:scale-105"
           >
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
-                <Plus className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold">Request Food</p>
-                <p className="text-xs text-muted-foreground">Get tailored recs fast</p>
-              </div>
-            </div>
+            Request Food
           </Link>
 
           <Link
             to="/browse-requests"
-            className="flex-1 rounded-2xl bg-background/10 p-4 text-left backdrop-blur hover:bg-background/15 transition"
+            className="flex-1 rounded-full border-2 border-[hsl(var(--mint))] bg-transparent py-3.5 text-center text-sm font-semibold text-foreground shadow-sm hover:bg-[hsl(var(--mint))]/10 transition-all hover:scale-105"
           >
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-background/15">
-                <Search className="h-5 w-5 text-primary-foreground" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-primary-foreground">Give Recommendations</p>
-                <p className="text-xs text-primary-foreground/70">Help people nearby</p>
-              </div>
-            </div>
+            Share Recommendations
           </Link>
         </div>
       </div>

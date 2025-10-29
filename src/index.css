@@ -53,6 +53,12 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Cozy cafe theme colors */
+    --beige: 42 47% 93%;
+    --coral: 14 100% 68%;
+    --coral-dark: 14 100% 58%;
+    --mint: 156 73% 74%;
   }
 
   .dark {
