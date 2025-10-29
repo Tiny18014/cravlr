@@ -16,6 +16,7 @@ import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
 import AuthFoodlover from "./pages/AuthFoodlover";
 import AuthBusiness from "./pages/AuthBusiness";
+import UserOnboarding from "./pages/UserOnboarding";
 import RequestFood from "./pages/RequestFood";
 import BrowseRequests from "./pages/BrowseRequests";
 import SendRecommendation from "./pages/SendRecommendation";
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/auth" element={<RouteGuard requiresAuth={false}><Auth /></RouteGuard>} />
               <Route path="/auth/foodlover" element={<RouteGuard requiresAuth={false}><AuthFoodlover /></RouteGuard>} />
               <Route path="/auth/business" element={<RouteGuard requiresAuth={false}><AuthBusiness /></RouteGuard>} />
+              <Route path="/onboarding" element={<RouteGuard requiresAuth={true}><UserOnboarding /></RouteGuard>} />
               <Route path="/request-food" element={<RouteGuard regularUserOnly={true}><RequestFood /></RouteGuard>} />
               <Route path="/browse-requests" element={<RouteGuard regularUserOnly={true}><BrowseRequests /></RouteGuard>} />
               <Route path="/recommend/:requestId" element={<RouteGuard regularUserOnly={true}><SendRecommendation /></RouteGuard>} />

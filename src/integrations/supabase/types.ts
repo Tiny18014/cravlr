@@ -641,6 +641,7 @@ export type Database = {
           approval_rate: number | null
           avatar_url: string | null
           created_at: string
+          cuisine_expertise: string[] | null
           display_name: string | null
           do_not_disturb: boolean
           email: string
@@ -661,6 +662,7 @@ export type Database = {
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           reputation_score: number | null
+          search_range: string | null
           timezone: string | null
           total_feedbacks: number | null
           updated_at: string
@@ -670,6 +672,7 @@ export type Database = {
           approval_rate?: number | null
           avatar_url?: string | null
           created_at?: string
+          cuisine_expertise?: string[] | null
           display_name?: string | null
           do_not_disturb?: boolean
           email: string
@@ -690,6 +693,7 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           reputation_score?: number | null
+          search_range?: string | null
           timezone?: string | null
           total_feedbacks?: number | null
           updated_at?: string
@@ -699,6 +703,7 @@ export type Database = {
           approval_rate?: number | null
           avatar_url?: string | null
           created_at?: string
+          cuisine_expertise?: string[] | null
           display_name?: string | null
           do_not_disturb?: boolean
           email?: string
@@ -719,6 +724,7 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           reputation_score?: number | null
+          search_range?: string | null
           timezone?: string | null
           total_feedbacks?: number | null
           updated_at?: string

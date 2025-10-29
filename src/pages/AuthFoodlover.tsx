@@ -93,8 +93,10 @@ const AuthFoodlover = () => {
         } else {
           toast({
             title: "Account Created!",
-            description: "Please check your email to verify your account.",
+            description: "Let's set up your preferences to personalize your experience.",
           });
+          // Redirect to onboarding after successful signup
+          navigate('/onboarding');
         }
       }
     } catch (error) {
