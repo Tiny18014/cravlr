@@ -75,24 +75,34 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
 function HeroCard() {
   return (
     <section className="px-4">
-      <div className="rounded-3xl bg-[hsl(var(--beige))] p-6 shadow-lg">
-        <h1 className="text-2xl font-extrabold leading-snug text-foreground">Craving something delicious?</h1>
-        <p className="mt-2 text-muted-foreground">Find what locals love — or share your favorite hidden gems.</p>
+      <div className="relative rounded-3xl bg-gradient-to-br from-[hsl(var(--beige))] to-[hsl(12,100%,96%)] p-8 shadow-lg overflow-hidden">
+        {/* Decorative food icons */}
+        <div className="absolute top-4 right-4 text-2xl opacity-20">☕</div>
+        <div className="absolute bottom-4 left-4 text-2xl opacity-20">🍃</div>
+        
+        <div className="text-center relative z-10">
+          <h1 className="text-3xl font-extrabold leading-tight text-foreground">
+            Craving something delicious?
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+            Discover food you'll actually love — shared by locals who know the flavors best.
+          </p>
 
-        <div className="mt-5 flex gap-3">
-          <Link
-            to="/request-food"
-            className="flex-1 rounded-full bg-gradient-to-r from-[hsl(var(--coral))] to-[hsl(var(--coral-dark))] py-3.5 text-center text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all hover:scale-105"
-          >
-            Request Food
-          </Link>
+          <div className="mt-8 space-y-3">
+            <Link
+              to="/request-food"
+              className="block w-full rounded-full bg-gradient-to-r from-[hsl(var(--coral))] to-[hsl(var(--coral-dark))] py-4 text-center text-base font-semibold text-white shadow-md hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              🍜 Request Food
+            </Link>
 
-          <Link
-            to="/browse-requests"
-            className="flex-1 rounded-full border-2 border-[hsl(var(--mint))] bg-transparent py-3.5 text-center text-sm font-semibold text-foreground shadow-sm hover:bg-[hsl(var(--mint))]/10 transition-all hover:scale-105"
-          >
-            Share Recommendations
-          </Link>
+            <Link
+              to="/browse-requests"
+              className="block w-full rounded-full border-2 border-[hsl(var(--mint))] bg-white/50 backdrop-blur-sm py-4 text-center text-base font-semibold text-foreground shadow-sm hover:bg-[hsl(var(--mint))]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              🥗 Share Recommendations
+            </Link>
+          </div>
         </div>
       </div>
     </section>
