@@ -15,10 +15,6 @@ const AuthFoodlover = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [cuisineExpertise, setCuisineExpertise] = useState<string[]>([]);
-  const [locationCity, setLocationCity] = useState('');
-  const [locationLat, setLocationLat] = useState<number | null>(null);
-  const [locationLng, setLocationLng] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
@@ -32,27 +28,6 @@ const AuthFoodlover = () => {
     }
   }, [user, navigate]);
 
-  const handleLocationCapture = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocationLat(position.coords.latitude);
-          setLocationLng(position.coords.longitude);
-          toast({
-            title: "Location captured",
-            description: "We'll use this to find the best recommendations near you.",
-          });
-        },
-        () => {
-          toast({
-            title: "Location access denied",
-            description: "Please enter your city manually.",
-            variant: "destructive",
-          });
-        }
-      );
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,21 +116,10 @@ const AuthFoodlover = () => {
               console.error('Error assigning role:', roleError);
             }
 
-            // Update profile with additional data
-            const profileUpdates: any = {
-              display_name: displayName,
-            };
-
-            if (selectedRole === 'recommender') {
-              profileUpdates.cuisine_expertise = cuisineExpertise;
-              profileUpdates.location_city = locationCity;
-              if (locationLat) profileUpdates.location_lat = locationLat;
-              if (locationLng) profileUpdates.location_lng = locationLng;
-            }
-
+            // Update profile with display name
             const { error: profileError } = await supabase
               .from('profiles')
-              .update(profileUpdates)
+              .update({ display_name: displayName })
               .eq('user_id', user.id);
 
             if (profileError) {
@@ -165,14 +129,14 @@ const AuthFoodlover = () => {
 
           toast({
             title: "Account Created!",
-            description: `Welcome to Cravlr! Your ${selectedRole} account is ready.`,
+            description: `Welcome to Cravlr! Let's set up your ${selectedRole} profile.`,
           });
 
-          // Route based on role
+          // Route to onboarding based on role
           if (selectedRole === 'requester') {
-            navigate('/request-food');
+            navigate('/onboarding/requester');
           } else {
-            navigate('/browse-requests');
+            navigate('/onboarding/recommender');
           }
         }
       }
@@ -187,18 +151,6 @@ const AuthFoodlover = () => {
     }
   };
 
-  const cuisineOptions = [
-    'African', 'Italian', 'Indian', 'Nepali', 'Mexican', 
-    'Chinese', 'Japanese', 'Thai', 'Mediterranean', 'American', 'Other'
-  ];
-
-  const toggleCuisine = (cuisine: string) => {
-    setCuisineExpertise(prev => 
-      prev.includes(cuisine) 
-        ? prev.filter(c => c !== cuisine)
-        : [...prev, cuisine]
-    );
-  };
 
   // Show role selection if signing up and no role selected yet
   if (!isLogin && !selectedRole) {
@@ -349,54 +301,6 @@ const AuthFoodlover = () => {
               )}
             </div>
 
-            {!isLogin && selectedRole === 'recommender' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Cuisine Expertise</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {cuisineOptions.map((cuisine) => (
-                      <Button
-                        key={cuisine}
-                        type="button"
-                        variant={cuisineExpertise.includes(cuisine) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleCuisine(cuisine)}
-                      >
-                        {cuisine}
-                      </Button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Select cuisines you're knowledgeable about
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Place or City</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="location"
-                      type="text"
-                      placeholder="Enter your city"
-                      value={locationCity}
-                      onChange={(e) => setLocationCity(e.target.value)}
-                      required
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleLocationCapture}
-                    >
-                      Use GPS
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    We'll show you requests in your area
-                  </p>
-                </div>
-              </>
-            )}
 
             <Button type="submit" className="w-full" disabled={loading} size="lg">
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}

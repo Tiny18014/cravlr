@@ -662,6 +662,7 @@ export type Database = {
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           reputation_score: number | null
+          request_range: string | null
           search_range: string | null
           timezone: string | null
           total_feedbacks: number | null
@@ -693,6 +694,7 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           reputation_score?: number | null
+          request_range?: string | null
           search_range?: string | null
           timezone?: string | null
           total_feedbacks?: number | null
@@ -724,6 +726,7 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           reputation_score?: number | null
+          request_range?: string | null
           search_range?: string | null
           timezone?: string | null
           total_feedbacks?: number | null
