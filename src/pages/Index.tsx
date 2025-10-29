@@ -214,14 +214,22 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('display_name, persona, is_admin')
-          .eq('user_id', user.id)
-          .single();
+        const [profileResult, rolesResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('display_name, persona')
+            .eq('user_id', user.id)
+            .single(),
+          supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+        ]);
 
-        if (error) throw error;
-        setUserProfile(data);
+        if (profileResult.error) throw profileResult.error;
+        
+        const isAdmin = rolesResult.data?.some(r => r.role === 'admin') || false;
+        setUserProfile({ ...profileResult.data, is_admin: isAdmin });
       } catch (error) {
         console.error('Error fetching user profile:', error);
         // Fallback to email-based display name

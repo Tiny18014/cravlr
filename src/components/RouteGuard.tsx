@@ -19,7 +19,8 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
   const { user, loading: authLoading, validating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [userProfile, setUserProfile] = useState<{ persona?: string; is_admin?: boolean } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ persona?: string } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -48,11 +49,11 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
           regularUserOnly
         });
 
-        // Fetch user profile and business claims (not just business_profiles)
-        const [profileResult, businessResult] = await Promise.all([
+        // Fetch user profile, business claims, and admin status
+        const [profileResult, businessResult, rolesResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('persona, is_admin')
+            .select('persona')
             .eq('user_id', user.id)
             .single(),
           supabase
@@ -60,11 +61,16 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
             .select('id, status')
             .eq('user_id', user.id)
             .eq('status', 'verified')
-            .limit(1)
+            .limit(1),
+          supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
         ]);
 
         const profile = profileResult.data;
         const businessClaims = businessResult.data;
+        const userIsAdmin = rolesResult.data?.some(r => r.role === 'admin') || false;
         
         console.log('🔍 RouteGuard: Profile data:', {
           profile,
@@ -73,6 +79,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
         });
         
         setUserProfile(profile);
+        setIsAdmin(userIsAdmin);
         const isBusinessUser = businessClaims && businessClaims.length > 0;
         setHasBusinessProfile(isBusinessUser);
 
@@ -111,7 +118,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
         }
 
         // Food lovers should NEVER access business paths (except admin)
-        if (!isBusinessUser && location.pathname.startsWith('/business/') && !profile?.is_admin) {
+        if (!isBusinessUser && location.pathname.startsWith('/business/') && !userIsAdmin) {
           console.log('🚫 Food lover trying to access business route, redirecting to home');
           navigate('/');
           return;
@@ -119,8 +126,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
 
         // Admin routes: Check admin permissions separately
         if (location.pathname.startsWith('/admin/')) {
-          const isAdmin = profile?.is_admin === true;
-          if (!isAdmin) {
+          if (!userIsAdmin) {
             console.log('🚫 Non-admin user trying to access admin route');
             navigate(isBusinessUser ? '/business/dashboard' : '/');
             return;

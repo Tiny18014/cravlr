@@ -178,12 +178,21 @@ const Dashboard = () => {
       if (receivedError) throw receivedError;
       setReceivedRecommendations(received || []);
 
-      // Fetch user points
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks, is_admin, guru_level')
-        .eq('user_id', user?.id)
-        .single();
+      // Fetch user points and roles
+      const [profileResult, rolesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks, guru_level')
+          .eq('user_id', user?.id)
+          .single(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user?.id)
+      ]);
+
+      const { data: profile, error: profileError } = profileResult;
+      const isAdmin = rolesResult.data?.some(r => r.role === 'admin') || false;
 
       if (profileError && profileError.code !== 'PGRST116') {
         console.error('Error fetching profile:', profileError);
@@ -195,7 +204,7 @@ const Dashboard = () => {
           approval_rate: profile.approval_rate || 0,
           total_feedbacks: profile.total_feedbacks || 0,
           positive_feedbacks: profile.positive_feedbacks || 0,
-          is_admin: profile.is_admin || false
+          is_admin: isAdmin
         });
         setIsGuru(profile.guru_level || false);
       }

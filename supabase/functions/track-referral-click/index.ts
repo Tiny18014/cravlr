@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +30,21 @@ const handler = async (req: Request): Promise<Response> => {
         status: 400, 
         headers: corsHeaders 
       });
+    }
+
+    // Validate referral code format
+    const referralCodeSchema = z.string()
+      .regex(/^[A-Z0-9]{8}$/, 'Invalid referral code format')
+      .length(8, 'Referral code must be 8 characters');
+
+    try {
+      referralCodeSchema.parse(referralCode);
+    } catch (error: any) {
+      console.error('❌ Invalid referral code format:', referralCode);
+      return new Response(
+        JSON.stringify({ error: 'Invalid referral code format' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
     }
 
     console.log('📊 Tracking referral click for code:', referralCode);
@@ -82,12 +98,62 @@ const handler = async (req: Request): Promise<Response> => {
       userId = user?.id || null;
     }
 
-    // Track the click
+    // Track the click with rate limiting and duplicate detection
     const userAgent = req.headers.get('User-Agent') || '';
     const clientIP = req.headers.get('CF-Connecting-IP') || 
                      req.headers.get('X-Forwarded-For') || 
                      req.headers.get('X-Real-IP') || 
                      'unknown';
+
+    // Rate limiting: Check for recent clicks from same IP (10 per hour)
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+    const { data: recentClicks } = await supabase
+      .from('referral_clicks')
+      .select('id')
+      .eq('ip_address', clientIP)
+      .gte('clicked_at', oneHourAgo);
+
+    if (recentClicks && recentClicks.length >= 10) {
+      console.log('⚠️ Rate limit exceeded for IP:', clientIP);
+      // Still redirect but don't track
+      if (referralLink.maps_url) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            'Location': referralLink.maps_url,
+            ...corsHeaders
+          }
+        });
+      }
+      return new Response(
+        JSON.stringify({ error: 'Too many requests' }),
+        { status: 429, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Duplicate detection: Check for same IP + referral code within 24h
+    const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+    const { data: duplicateClick } = await supabase
+      .from('referral_clicks')
+      .select('id')
+      .eq('referral_link_id', referralLink.id)
+      .eq('ip_address', clientIP)
+      .gte('clicked_at', oneDayAgo)
+      .limit(1);
+
+    if (duplicateClick && duplicateClick.length > 0) {
+      console.log('⚠️ Duplicate click detected - not tracking');
+      // Redirect without tracking
+      if (referralLink.maps_url) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            'Location': referralLink.maps_url,
+            ...corsHeaders
+          }
+        });
+      }
+    }
 
     const clickData = {
       referral_link_id: referralLink.id,
@@ -96,7 +162,9 @@ const handler = async (req: Request): Promise<Response> => {
       requester_id: referralLink.food_requests?.requester_id,
       recommender_id: referralLink.recommendations?.recommender_id,
       user_agent: userAgent,
-      ip_address: clientIP
+      ip_address: clientIP,
+      restaurant_name: referralLink.restaurant_name,
+      place_id: referralLink.place_id
     };
 
     const { error: clickError } = await supabase

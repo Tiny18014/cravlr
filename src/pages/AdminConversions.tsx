@@ -65,13 +65,13 @@ const AdminConversions = () => {
   }, [user]);
 
   const fetchProfile = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('user_id', user?.id)
-      .single();
+    const { data: rolesData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user?.id);
     
-    setProfile(data);
+    const isAdmin = rolesData?.some(r => r.role === 'admin') || false;
+    setProfile({ is_admin: isAdmin });
   };
 
   const fetchData = async () => {
