@@ -77,30 +77,32 @@ function HeroCard() {
     <section className="px-4">
       <div className="relative rounded-3xl bg-gradient-to-br from-[hsl(var(--beige))] to-[hsl(12,100%,96%)] p-8 shadow-lg overflow-hidden">
         {/* Decorative food icons */}
-        <div className="absolute top-4 right-4 text-2xl opacity-20">☕</div>
-        <div className="absolute bottom-4 left-4 text-2xl opacity-20">🍃</div>
+        <div className="absolute top-3 right-3 text-3xl opacity-15">☕</div>
+        <div className="absolute bottom-3 left-3 text-3xl opacity-15">🍃</div>
+        <div className="absolute top-1/2 left-6 text-2xl opacity-10">🍜</div>
+        <div className="absolute top-1/3 right-8 text-2xl opacity-10">🥗</div>
         
         <div className="text-center relative z-10">
-          <h1 className="text-3xl font-extrabold leading-tight text-foreground">
+          <h1 className="text-3xl font-extrabold leading-tight text-foreground mb-3">
             Craving something delicious?
           </h1>
-          <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-            Discover food you'll actually love — shared by locals who know the flavors best.
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+            Discover food you'll actually love, shared by locals who know the flavors best.
           </p>
 
-          <div className="mt-8 space-y-3">
+          <div className="mt-8 space-y-4">
             <Link
               to="/request-food"
-              className="block w-full rounded-full bg-gradient-to-r from-[hsl(var(--coral))] to-[hsl(var(--coral-dark))] py-4 text-center text-base font-semibold text-white shadow-md hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="block w-full rounded-full bg-gradient-to-r from-[hsl(14,100%,68%)] to-[hsl(25,100%,60%)] py-4 text-center text-base font-semibold text-white shadow-md hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              🍜 Request Food
+              Request Food
             </Link>
 
             <Link
               to="/browse-requests"
-              className="block w-full rounded-full border-2 border-[hsl(var(--mint))] bg-white/50 backdrop-blur-sm py-4 text-center text-base font-semibold text-foreground shadow-sm hover:bg-[hsl(var(--mint))]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="block w-full rounded-full border-2 border-[hsl(145,25%,55%)] bg-white/50 backdrop-blur-sm py-4 text-center text-base font-semibold text-[hsl(25,40%,25%)] shadow-sm hover:bg-[hsl(145,25%,55%)]/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              🥗 Share Recommendations
+              Share Recommendations
             </Link>
           </div>
         </div>
