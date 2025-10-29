@@ -75,38 +75,28 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
 function HeroCard() {
   return (
     <section className="px-4">
-      <div className="relative rounded-3xl bg-gradient-to-br from-[hsl(35,45%,88%)] via-[hsl(35,40%,90%)] to-[hsl(30,38%,92%)] p-10 shadow-xl overflow-hidden">
-        {/* Decorative food icons with blur */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-4 right-4 text-4xl opacity-8 blur-[1px]">☕</div>
-          <div className="absolute bottom-4 left-4 text-4xl opacity-8 blur-[1px]">🌿</div>
-          <div className="absolute top-1/2 left-8 text-3xl opacity-6 blur-[1.5px]">🍜</div>
-          <div className="absolute top-1/3 right-10 text-3xl opacity-6 blur-[1.5px]">🥗</div>
-          <div className="absolute bottom-1/3 right-6 text-3xl opacity-5 blur-[2px]">🍅</div>
-          <div className="absolute top-2/3 left-12 text-2xl opacity-5 blur-[2px]">🫒</div>
-        </div>
-        
-        <div className="text-center relative z-10">
-          <h1 className="font-poppins text-4xl font-semibold leading-tight text-[hsl(25,50%,25%)] mb-4">
+      <div className="relative rounded-3xl bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] p-12 shadow-lg overflow-hidden">
+        <div className="text-center">
+          <h1 className="font-poppins text-4xl font-semibold leading-tight text-[#3E2F25] mb-4">
             What are you craving today?
           </h1>
-          <p className="font-nunito text-base text-[hsl(25,35%,40%)] leading-relaxed max-w-md mx-auto mb-10">
-            Get real food suggestions from locals who know what tastes amazing.
+          <p className="font-nunito text-base text-[#6B5B52] leading-relaxed max-w-md mx-auto mb-12">
+            Get trusted food suggestions from locals who know what tastes amazing.
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-4 max-w-sm mx-auto">
             <Link
               to="/request-food"
-              className="block w-full rounded-2xl bg-gradient-to-r from-[hsl(9,85%,58%)] to-[hsl(9,90%,52%)] py-5 text-center text-base font-semibold text-white shadow-lg hover:shadow-2xl transition-all hover:scale-[1.03] active:scale-[0.98] font-poppins"
+              className="block w-full rounded-2xl bg-gradient-to-r from-[#FF6A3D] to-[#FF3B30] py-4 text-center text-base font-semibold text-white shadow-[0_4px_14px_rgba(255,59,48,0.25)] hover:shadow-[0_6px_20px_rgba(255,59,48,0.35)] transition-all hover:scale-[1.02] active:scale-[0.98] font-poppins"
             >
-              Find Food Recommendations
+              Request Food
             </Link>
 
             <Link
               to="/browse-requests"
-              className="block w-full rounded-2xl border-2 border-[hsl(88,25%,45%)] bg-white/60 backdrop-blur-sm py-5 text-center text-base font-semibold text-[hsl(25,45%,30%)] shadow-md hover:bg-[hsl(88,25%,45%)]/10 hover:shadow-lg transition-all hover:scale-[1.03] active:scale-[0.98] font-poppins"
+              className="block w-full rounded-2xl border-2 border-[#9DBF70] bg-white py-4 text-center text-base font-semibold text-[#3E2F25] hover:bg-[#9DBF70]/10 transition-all hover:scale-[1.02] active:scale-[0.98] font-poppins"
             >
-              Share Your Favorites
+              Recommend Food
             </Link>
           </div>
         </div>
