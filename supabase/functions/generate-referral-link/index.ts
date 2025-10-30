@@ -1,18 +1,19 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface GenerateReferralRequest {
-  recommendationId: string;
-  requestId: string;
-  restaurantName: string;
-  placeId?: string;
-  mapsUrl?: string;
-}
+const requestSchema = z.object({
+  recommendationId: z.string().uuid({ message: 'Invalid recommendation ID format' }),
+  requestId: z.string().uuid({ message: 'Invalid request ID format' }),
+  restaurantName: z.string().min(1).max(200, { message: 'Restaurant name must be 1-200 characters' }),
+  placeId: z.string().max(500).optional(),
+  mapsUrl: z.string().url({ message: 'Invalid maps URL format' }).optional()
+});
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -27,14 +28,30 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Parse request body
+    // Parse and validate request body
+    const body = await req.json();
+    const validationResult = requestSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues.map(i => i.message) 
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
+
     const { 
       recommendationId, 
       requestId, 
       restaurantName, 
       placeId, 
       mapsUrl 
-    }: GenerateReferralRequest = await req.json();
+    } = validationResult.data;
 
     console.log('🔗 Generating referral link for recommendation:', recommendationId);
 

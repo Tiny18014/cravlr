@@ -1,10 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const requestSchema = z.object({
+  requestId: z.string().uuid({ message: 'Invalid request ID format' }),
+  action: z.enum(['accept', 'ignore'], { message: 'Action must be either "accept" or "ignore"' })
+});
 
 serve(async (req) => {
   console.log('🎯 Request Accept/Ignore endpoint called');
@@ -42,15 +48,22 @@ serve(async (req) => {
       );
     }
 
-    const { requestId, action } = await req.json();
-    console.log(`📝 User ${user.id} wants to ${action} request ${requestId}`);
-
-    if (!requestId || !action || !['accept', 'ignore'].includes(action)) {
+    // Parse and validate request body
+    const body = await req.json();
+    const validationResult = requestSchema.safeParse(body);
+    
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: 'Invalid request data' }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues.map(i => i.message) 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { requestId, action } = validationResult.data;
+    console.log(`📝 User ${user.id} wants to ${action} request ${requestId}`);
 
     // Check if the request exists and get requester info
     const { data: request, error: requestError } = await supabase

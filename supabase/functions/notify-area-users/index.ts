@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 import { Resend } from "npm:resend@2.0.0";
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabase = createClient(
@@ -13,9 +14,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface AreaNotificationRequest {
-  requestId: string;
-}
+const requestSchema = z.object({
+  requestId: z.string().uuid({ message: 'Invalid request ID format' })
+});
 
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -36,7 +37,24 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { requestId }: AreaNotificationRequest = await req.json();
+    // Parse and validate request body
+    const body = await req.json();
+    const validationResult = requestSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues.map(i => i.message) 
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const { requestId } = validationResult.data;
     
     console.log(`📍 Processing area notification for request ${requestId}`);
 
