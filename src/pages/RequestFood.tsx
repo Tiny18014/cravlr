@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
 
 
 const RequestFood = () => {
@@ -22,6 +23,7 @@ const RequestFood = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  const [showFeedbackTrigger, setShowFeedbackTrigger] = useState(false);
   
   const [formData, setFormData] = useState({
     foodType: '',
@@ -160,7 +162,13 @@ const RequestFood = () => {
           : "Your food request has been posted with city-level matching.",
       });
       
-      navigate('/');
+      // Trigger feedback popup before navigating
+      setShowFeedbackTrigger(true);
+      
+      // Navigate after a short delay to allow feedback popup to show
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
     } catch (error) {
       console.error('Error creating request:', error);
       toast({
@@ -368,6 +376,13 @@ const RequestFood = () => {
           </CardContent>
         </Card>
       </main>
+      
+      <AppFeedbackTrigger
+        role="requester"
+        sourceAction="completed_request"
+        shouldTrigger={showFeedbackTrigger}
+        onTriggered={() => setShowFeedbackTrigger(false)}
+      />
     </div>
   );
 };
