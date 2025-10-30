@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Star } from "lucide-react";
 import { useAppFeedback, type FeedbackRole } from "@/hooks/useAppFeedback";
 import { cn } from "@/lib/utils";
@@ -16,61 +15,33 @@ interface AppFeedbackSurveyProps {
 }
 
 const requesterExperienceOptions = [
-  "Easy to use",
-  "Took too long to find results",
-  "Love the recommendations flow",
-  "Had issues with login or speed",
-  "Other",
+  { label: "👍 Great", value: "Great" },
+  { label: "😐 Okay", value: "Okay" },
+  { label: "👎 Needs improvement", value: "Needs improvement" },
 ];
 
 const recommenderExperienceOptions = [
-  "Yes, I love it!",
-  "It's okay so far",
-  "I'd like it to be easier",
-  "Not really enjoying it",
-  "Other",
+  { label: "Yes, I love it!", value: "Yes, I love it!" },
+  { label: "I'd like it to be easier", value: "I'd like it to be easier" },
+  { label: "Not really enjoying it", value: "Not really enjoying it" },
 ];
 
-const planningToGoOptions = ["Yes", "Maybe", "Not sure"];
+const planningToGoOptions = [
+  { label: "Yes", value: "Yes" },
+  { label: "Maybe", value: "Maybe" },
+  { label: "Not sure", value: "Not sure" },
+];
 
 export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: AppFeedbackSurveyProps) => {
-  const [step, setStep] = useState(1);
-  const [selectedExperience, setSelectedExperience] = useState("");
-  const [otherText, setOtherText] = useState("");
+  const [experience, setExperience] = useState("");
   const [planningToGo, setPlanningToGo] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [rating, setRating] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const { submitFeedback, loading } = useAppFeedback();
 
-  const maxSteps = role === 'requester' ? 4 : 3;
-  const experienceOptions = role === 'requester' ? requesterExperienceOptions : recommenderExperienceOptions;
-
-  const handleNext = () => {
-    if (step < maxSteps) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleSkip = () => {
-    if (step < maxSteps) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  };
-
   const handleSubmit = async () => {
-    const experienceAnswer = selectedExperience === "Other" && otherText
-      ? `Other: ${otherText}`
-      : selectedExperience;
-
-    // Build tags array with experience and planning to go
-    const tags = [experienceAnswer];
+    const tags = [experience];
     if (role === 'requester' && planningToGo) {
       tags.push(`Planning to visit: ${planningToGo}`);
     }
@@ -84,15 +55,10 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
     });
 
     if (success) {
-      // Show thank you message
       setShowThankYou(true);
       
-      // Close after 3 seconds
       setTimeout(() => {
-        // Reset form
-        setStep(1);
-        setSelectedExperience("");
-        setOtherText("");
+        setExperience("");
         setPlanningToGo("");
         setFeedbackText("");
         setRating(0);
@@ -102,199 +68,133 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
     }
   };
 
-  const canProceedStep1 = selectedExperience !== "" && (selectedExperience !== "Other" || otherText.trim());
-  const canProceedStep2Requester = planningToGo !== "";
-  const canSubmit = rating > 0;
+  const canSubmit = experience !== "" && rating > 0 && (role === 'recommender' || planningToGo !== "");
+  const experienceOptions = role === 'requester' ? requesterExperienceOptions : recommenderExperienceOptions;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         {showThankYou ? (
           <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
-            <div className="text-4xl mb-4">{role === 'requester' ? '❤️🍜' : '🍽️'}</div>
-            <p className="text-lg font-semibold text-center">
-              {role === 'requester' 
-                ? "Thanks for your feedback! We're happy you're finding great places ❤️🍜"
-                : "Thanks for helping others discover great food! 🍽️ Your feedback makes Cravlr better"}
+            <div className="text-4xl mb-4">❤️🍜</div>
+            <p className="text-lg font-semibold text-center font-['Poppins']">
+              You just made Cravlr tastier! Thanks for adding your flavor! ❤️🍜
             </p>
           </div>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle className="text-center">
-                Share Your Feedback
+              <DialogTitle className="text-center text-2xl font-['Poppins']">
+                🥢 Your Move, Foodie!
               </DialogTitle>
-              <p className="text-sm text-muted-foreground text-center">
-                Step {step} of {maxSteps}
+              <p className="text-sm text-muted-foreground text-center font-['Nunito'] mt-2">
+                Tell us how Cravlr's treating your taste today 🍜
               </p>
             </DialogHeader>
 
-            <div className="space-y-4">
-          {/* Step 1: Single Choice - Experience or Enjoyment */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <Label className="text-base">
-                {role === 'requester' 
-                  ? "What best describes your experience today on Cravlr?"
-                  : "Are you enjoying recommending food on Cravlr?"}
-              </Label>
+            <div className="space-y-6 font-['Nunito']">
+              {/* Question 1: Experience */}
               <div className="space-y-3">
-                {experienceOptions.map((option) => (
-                  <div key={option} className="flex items-start space-x-3">
-                    <Checkbox
-                      id={option}
-                      checked={selectedExperience === option}
-                      onCheckedChange={() => setSelectedExperience(option)}
-                    />
-                    <label
-                      htmlFor={option}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                <Label className="text-base font-medium">
+                  {role === 'requester' 
+                    ? "How was your experience today on Cravlr?"
+                    : "Are you enjoying recommending food on Cravlr?"}
+                </Label>
+                <div className="grid gap-2">
+                  {experienceOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={experience === option.value ? "default" : "outline"}
+                      onClick={() => setExperience(option.value)}
+                      className="w-full justify-start text-left h-auto py-3"
                     >
-                      {option}
-                    </label>
-                  </div>
-                ))}
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
-              {selectedExperience === "Other" && (
+
+              {/* Question 2: Planning to go (Requester only) */}
+              {role === 'requester' && (
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">
+                    Are you planning to go to the place recommended?
+                  </Label>
+                  <div className="grid gap-2">
+                    {planningToGoOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={planningToGo === option.value ? "default" : "outline"}
+                        onClick={() => setPlanningToGo(option.value)}
+                        className="w-full justify-start text-left h-auto py-3"
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Question 3: Optional Feedback */}
+              <div className="space-y-3">
+                <Label htmlFor="feedback-text" className="text-base font-medium">
+                  {role === 'requester' 
+                    ? "Anything we could make better?"
+                    : "Anything we could make better for you?"}
+                  <span className="text-xs text-muted-foreground ml-2">(optional)</span>
+                </Label>
                 <Textarea
-                  placeholder="Please specify..."
-                  value={otherText}
-                  onChange={(e) => setOtherText(e.target.value)}
+                  id="feedback-text"
+                  placeholder="Your thoughts here..."
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
                   maxLength={200}
-                  className="mt-2"
+                  rows={3}
+                  className="resize-none"
                 />
-              )}
-            </div>
-          )}
+                <p className="text-xs text-muted-foreground text-right">
+                  {feedbackText.length}/200
+                </p>
+              </div>
 
-          {/* Step 2 for Requester: Planning to go */}
-          {step === 2 && role === 'requester' && (
-            <div className="space-y-4">
-              <Label className="text-base">
-                Are you planning to go to the place recommended?
-              </Label>
+              {/* Question 4: Star Rating */}
               <div className="space-y-3">
-                {planningToGoOptions.map((option) => (
-                  <div key={option} className="flex items-start space-x-3">
-                    <Checkbox
-                      id={`planning-${option}`}
-                      checked={planningToGo === option}
-                      onCheckedChange={() => setPlanningToGo(option)}
-                    />
-                    <label
-                      htmlFor={`planning-${option}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                <Label className="text-base font-medium">
+                  Give Cravlr a flavor score! ⭐
+                </Label>
+                <div className="flex justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="transition-transform hover:scale-110"
                     >
-                      {option}
-                    </label>
-                  </div>
-                ))}
+                      <Star
+                        className={cn(
+                          "w-10 h-10",
+                          rating >= star
+                            ? "fill-primary text-primary"
+                            : "text-muted-foreground"
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Step 2 for Recommender OR Step 3 for Requester: Optional Suggestions */}
-          {((step === 2 && role === 'recommender') || (step === 3 && role === 'requester')) && (
-            <div className="space-y-4">
-              <Label htmlFor="feedback-text" className="text-base">
-                {role === 'requester' 
-                  ? "Do you have any suggestions to improve Cravlr?"
-                  : "Anything we could make better for you?"}
-              </Label>
-              <Textarea
-                id="feedback-text"
-                placeholder="Your thoughts here..."
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                maxLength={200}
-                rows={4}
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {feedbackText.length}/200
-              </p>
-              <p className="text-xs text-muted-foreground text-center">
-                You can skip this step
-              </p>
-            </div>
-          )}
-
-          {/* Final Step: Star Rating */}
-          {((step === 3 && role === 'recommender') || (step === 4 && role === 'requester')) && (
-            <div className="space-y-4">
-              <Label className="text-base">
-                How would you rate Cravlr overall? ⭐
-              </Label>
-              <div className="flex justify-center gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    className="transition-transform hover:scale-110"
-                  >
-                    <Star
-                      className={cn(
-                        "w-10 h-10",
-                        rating >= star
-                          ? "fill-primary text-primary"
-                          : "text-muted-foreground"
-                      )}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex gap-3 mt-6">
-          {step > 1 && (
-            <Button variant="outline" onClick={handleBack} className="flex-1">
-              Back
-            </Button>
-          )}
-          {step < maxSteps ? (
-            <>
-              {/* Show Skip button on optional text input steps */}
-              {((step === 2 && role === 'recommender') || (step === 3 && role === 'requester')) && (
-                <Button variant="outline" onClick={handleSkip} className="flex-1">
-                  Skip
-                </Button>
-              )}
+            {/* Submit Button */}
+            <div className="mt-6">
               <Button
-                onClick={handleNext}
-                disabled={
-                  (step === 1 && !canProceedStep1) ||
-                  (step === 2 && role === 'requester' && !canProceedStep2Requester)
-                }
-                className="flex-1"
+                onClick={handleSubmit}
+                disabled={!canSubmit || loading}
+                className="w-full h-12 text-base font-['Poppins']"
               >
-                Next
+                {loading ? "Sending..." : "Submit Feedback"}
               </Button>
-            </>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={!canSubmit || loading}
-              className="flex-1"
-            >
-              {loading ? "Sending..." : "Send Feedback"}
-            </Button>
-          )}
-        </div>
-
-            {/* Progress Dots */}
-            <div className="flex justify-center gap-2 mt-4">
-              {Array.from({ length: maxSteps }, (_, i) => i + 1).map((dot) => (
-                <div
-                  key={dot}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-colors",
-                    step >= dot ? "bg-primary" : "bg-muted"
-                  )}
-                />
-              ))}
             </div>
           </>
         )}
