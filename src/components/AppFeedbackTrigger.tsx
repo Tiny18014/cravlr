@@ -20,18 +20,20 @@ export const AppFeedbackTrigger = ({
 }: AppFeedbackTriggerProps) => {
   const [showIntro, setShowIntro] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
+  const [hasTriggered, setHasTriggered] = useState(false);
   const { canShowFeedback } = useAppFeedback();
 
   useEffect(() => {
-    if (shouldTrigger && canShowFeedback) {
+    if (shouldTrigger && canShowFeedback && !hasTriggered) {
       // Small delay for better UX
       const timer = setTimeout(() => {
         setShowIntro(true);
+        setHasTriggered(true);
         onTriggered?.();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [shouldTrigger, canShowFeedback, onTriggered]);
+  }, [shouldTrigger, canShowFeedback, hasTriggered, onTriggered]);
 
   return (
     <>
