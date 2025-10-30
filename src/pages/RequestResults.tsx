@@ -701,20 +701,18 @@ const RequestResults = () => {
         )}
       </div>
       
-      {showFeedbackTrigger && (
-        <AppFeedbackTrigger
-          role="requester"
-          sourceAction="selected_going_option"
-          shouldTrigger={showFeedbackTrigger}
-          onTriggered={() => {
-            console.log('🎯 Feedback intro modal displayed');
-          }}
-          onComplete={() => {
-            console.log('🎯 Feedback completed, resetting state');
-            setShowFeedbackTrigger(false);
-          }}
-        />
-      )}
+      <AppFeedbackTrigger
+        role="requester"
+        sourceAction="selected_going_option"
+        shouldTrigger={showFeedbackTrigger}
+        onTriggered={() => {
+          console.log('🎯 Feedback intro modal displayed');
+          setShowFeedbackTrigger(false); // Reset immediately to prevent re-triggers
+        }}
+        onComplete={() => {
+          console.log('🎯 Feedback completed, resetting state');
+        }}
+      />
     </div>
   );
 };
