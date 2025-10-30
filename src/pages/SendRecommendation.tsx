@@ -142,10 +142,10 @@ const SendRecommendation = () => {
       // Trigger app feedback after successful recommendation
       setTriggerAppFeedback(true);
       
-      // Navigate after a short delay to allow feedback trigger
+      // Navigate after a longer delay to allow feedback popup to show
       setTimeout(() => {
         navigate('/browse-requests');
-      }, 2000);
+      }, 5000);
     } catch (error: any) {
       console.error('Error sending recommendation:', error);
       toast({
