@@ -15,7 +15,7 @@ interface AppFeedbackSurveyProps {
   sourceAction: string;
 }
 
-const experienceOptions = [
+const requesterExperienceOptions = [
   "Easy to use",
   "Took too long to find results",
   "Love the recommendations flow",
@@ -23,14 +23,28 @@ const experienceOptions = [
   "Other",
 ];
 
+const recommenderExperienceOptions = [
+  "Yes, I love it!",
+  "It's okay so far",
+  "I'd like it to be easier",
+  "Not really enjoying it",
+  "Other",
+];
+
+const planningToGoOptions = ["Yes", "Maybe", "Not sure"];
+
 export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: AppFeedbackSurveyProps) => {
   const [step, setStep] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [otherText, setOtherText] = useState("");
+  const [planningToGo, setPlanningToGo] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [rating, setRating] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const { submitFeedback, loading } = useAppFeedback();
+
+  const maxSteps = role === 'requester' ? 4 : 3;
+  const experienceOptions = role === 'requester' ? requesterExperienceOptions : recommenderExperienceOptions;
 
   const handleTagToggle = (tag: string) => {
     setSelectedTags((prev) =>
@@ -39,7 +53,13 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
   };
 
   const handleNext = () => {
-    if (step < 3) {
+    if (step < maxSteps) {
+      setStep(step + 1);
+    }
+  };
+
+  const handleSkip = () => {
+    if (step < maxSteps) {
       setStep(step + 1);
     }
   };
@@ -55,9 +75,14 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
       ? [...selectedTags.filter((t) => t !== "Other"), `Other: ${otherText}`]
       : selectedTags;
 
+    // Add planning to go answer for requesters
+    const finalTags = role === 'requester' && planningToGo 
+      ? [...tags, `Planning to visit: ${planningToGo}`]
+      : tags;
+
     const success = await submitFeedback({
       role,
-      experienceTags: tags,
+      experienceTags: finalTags,
       feedbackText,
       rating,
       sourceAction,
@@ -73,6 +98,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
         setStep(1);
         setSelectedTags([]);
         setOtherText("");
+        setPlanningToGo("");
         setFeedbackText("");
         setRating(0);
         setShowThankYou(false);
@@ -82,16 +108,19 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
   };
 
   const canProceedStep1 = selectedTags.length > 0 && (!selectedTags.includes("Other") || otherText.trim());
-  const canProceedStep3 = rating > 0;
+  const canProceedStep2Requester = planningToGo !== "";
+  const canSubmit = rating > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         {showThankYou ? (
           <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
-            <div className="text-4xl mb-4">❤️🍜</div>
+            <div className="text-4xl mb-4">{role === 'requester' ? '❤️🍜' : '🍽️'}</div>
             <p className="text-lg font-semibold text-center">
-              Thanks! Your feedback helps make Cravlr even better
+              {role === 'requester' 
+                ? "Thanks for your feedback! We're happy you're finding great places ❤️🍜"
+                : "Thanks for helping others discover great food! 🍽️ Your feedback makes Cravlr better"}
             </p>
           </div>
         ) : (
@@ -101,16 +130,18 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
                 Share Your Feedback
               </DialogTitle>
               <p className="text-sm text-muted-foreground text-center">
-                Step {step} of 3
+                Step {step} of {maxSteps}
               </p>
             </DialogHeader>
 
             <div className="space-y-4">
-          {/* Step 1: Multiple Choice */}
+          {/* Step 1: Multiple Choice - Experience or Enjoyment */}
           {step === 1 && (
             <div className="space-y-4">
               <Label className="text-base">
-                What best describes your experience today on Cravlr?
+                {role === 'requester' 
+                  ? "What best describes your experience today on Cravlr?"
+                  : "Are you enjoying recommending food on Cravlr?"}
               </Label>
               <div className="space-y-3">
                 {experienceOptions.map((option) => (
@@ -141,11 +172,39 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
             </div>
           )}
 
-          {/* Step 2: Text Input */}
-          {step === 2 && (
+          {/* Step 2 for Requester: Planning to go */}
+          {step === 2 && role === 'requester' && (
+            <div className="space-y-4">
+              <Label className="text-base">
+                Are you planning to go to the place recommended?
+              </Label>
+              <div className="space-y-3">
+                {planningToGoOptions.map((option) => (
+                  <div key={option} className="flex items-start space-x-3">
+                    <Checkbox
+                      id={`planning-${option}`}
+                      checked={planningToGo === option}
+                      onCheckedChange={() => setPlanningToGo(option)}
+                    />
+                    <label
+                      htmlFor={`planning-${option}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {option}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 for Recommender OR Step 3 for Requester: Optional Suggestions */}
+          {((step === 2 && role === 'recommender') || (step === 3 && role === 'requester')) && (
             <div className="space-y-4">
               <Label htmlFor="feedback-text" className="text-base">
-                Anything we could make easier for you?
+                {role === 'requester' 
+                  ? "Do you have any suggestions to improve Cravlr?"
+                  : "Anything we could make better for you?"}
               </Label>
               <Textarea
                 id="feedback-text"
@@ -158,11 +217,14 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
               <p className="text-xs text-muted-foreground text-right">
                 {feedbackText.length}/200
               </p>
+              <p className="text-xs text-muted-foreground text-center">
+                You can skip this step
+              </p>
             </div>
           )}
 
-          {/* Step 3: Star Rating */}
-          {step === 3 && (
+          {/* Final Step: Star Rating */}
+          {((step === 3 && role === 'recommender') || (step === 4 && role === 'requester')) && (
             <div className="space-y-4">
               <Label className="text-base">
                 How would you rate Cravlr overall?
@@ -197,18 +259,29 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
               Back
             </Button>
           )}
-          {step < 3 ? (
-            <Button
-              onClick={handleNext}
-              disabled={step === 1 && !canProceedStep1}
-              className="flex-1"
-            >
-              Next
-            </Button>
+          {step < maxSteps ? (
+            <>
+              {/* Show Skip button on optional text input steps */}
+              {((step === 2 && role === 'recommender') || (step === 3 && role === 'requester')) && (
+                <Button variant="outline" onClick={handleSkip} className="flex-1">
+                  Skip
+                </Button>
+              )}
+              <Button
+                onClick={handleNext}
+                disabled={
+                  (step === 1 && !canProceedStep1) ||
+                  (step === 2 && role === 'requester' && !canProceedStep2Requester)
+                }
+                className="flex-1"
+              >
+                Next
+              </Button>
+            </>
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={!canProceedStep3 || loading}
+              disabled={!canSubmit || loading}
               className="flex-1"
             >
               {loading ? "Sending..." : "Send Feedback"}
@@ -218,7 +291,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
 
             {/* Progress Dots */}
             <div className="flex justify-center gap-2 mt-4">
-              {[1, 2, 3].map((dot) => (
+              {Array.from({ length: maxSteps }, (_, i) => i + 1).map((dot) => (
                 <div
                   key={dot}
                   className={cn(
