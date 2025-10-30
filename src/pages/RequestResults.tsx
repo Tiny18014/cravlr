@@ -698,8 +698,7 @@ const RequestResults = () => {
           sourceAction="selected_going_option"
           shouldTrigger={showFeedbackTrigger}
           onTriggered={() => {
-            console.log('🎯 Feedback triggered, resetting state');
-            setShowFeedbackTrigger(false);
+            console.log('🎯 Feedback intro modal displayed');
           }}
           onComplete={() => {
             console.log('🎯 Feedback completed, resetting state');
