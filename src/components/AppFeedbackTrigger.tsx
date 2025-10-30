@@ -25,13 +25,10 @@ export const AppFeedbackTrigger = ({
 
   useEffect(() => {
     if (shouldTrigger && canShowFeedback && !hasTriggered) {
-      // Small delay for better UX
-      const timer = setTimeout(() => {
-        setShowIntro(true);
-        setHasTriggered(true);
-        onTriggered?.();
-      }, 1000);
-      return () => clearTimeout(timer);
+      // Show immediately
+      setShowIntro(true);
+      setHasTriggered(true);
+      onTriggered?.();
     }
   }, [shouldTrigger, canShowFeedback, hasTriggered, onTriggered]);
 
