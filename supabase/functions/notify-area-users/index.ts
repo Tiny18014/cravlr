@@ -73,7 +73,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (requestError || !request) {
       console.error('Error fetching request:', requestError);
-      throw new Error('Request not found');
+      return new Response(
+        JSON.stringify({ error: 'Request not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the authenticated user owns this request
+    if (request.requester_id !== user.id) {
+      console.error('❌ User does not own this request');
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: You can only send notifications for your own requests' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Find users in the same geographic area who are eligible for notifications

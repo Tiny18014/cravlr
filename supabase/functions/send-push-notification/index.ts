@@ -26,6 +26,28 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      console.error('❌ Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { requestId, foodType, locationCity, locationState, urgency }: PushNotificationRequest = await req.json();
 
     // Get the food request details
@@ -36,7 +58,19 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (requestError || !request) {
-      throw new Error('Request not found');
+      return new Response(
+        JSON.stringify({ error: 'Request not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the authenticated user owns this request
+    if (request.requester_id !== user.id) {
+      console.error('❌ User does not own this request');
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: You can only send push notifications for your own requests' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get eligible users for push notifications

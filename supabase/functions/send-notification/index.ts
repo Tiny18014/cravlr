@@ -24,6 +24,28 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      console.error('❌ Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { requestId, recommendationId }: NotificationRequest = await req.json();
     
     console.log(`Processing notification for request ${requestId}, recommendation ${recommendationId}`);
@@ -44,7 +66,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (requestError || !request) {
       console.error('Error fetching request:', requestError);
-      throw new Error('Request not found');
+      return new Response(
+        JSON.stringify({ error: 'Request not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get recommendation details
@@ -62,7 +87,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (recError || !recommendation) {
       console.error('Error fetching recommendation:', recError);
-      throw new Error('Recommendation not found');
+      return new Response(
+        JSON.stringify({ error: 'Recommendation not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the authenticated user is involved in this request or recommendation
+    if (request.requester_id !== user.id && recommendation.recommender_id !== user.id) {
+      console.error('❌ User not involved in this request/recommendation');
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: You must be the requester or recommender' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const requesterProfile = request.profiles;
