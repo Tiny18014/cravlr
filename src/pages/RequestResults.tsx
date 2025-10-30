@@ -10,6 +10,7 @@ import { useReferralLinks } from "@/hooks/useReferralLinks";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { AppFeedbackTrigger } from "@/components/AppFeedbackTrigger";
 
 interface Note {
   by: string;
@@ -64,6 +65,7 @@ const RequestResults = () => {
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [goingIntents, setGoingIntents] = useState<Set<string>>(new Set());
+  const [showFeedbackTrigger, setShowFeedbackTrigger] = useState(false);
   const { generateReferralLink } = useReferralLinks();
 
   const fetchResults = async () => {
@@ -402,6 +404,9 @@ const RequestResults = () => {
       
       // Show success message
       toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
+      
+      // Trigger feedback popup after user selects going option
+      setShowFeedbackTrigger(true);
 
     } catch (error) {
       console.error('Error handling going click:', error);
@@ -664,6 +669,14 @@ const RequestResults = () => {
           </div>
         )}
       </div>
+      
+      <AppFeedbackTrigger
+        role="requester"
+        sourceAction="selected_going_option"
+        shouldTrigger={showFeedbackTrigger}
+        onTriggered={() => setShowFeedbackTrigger(false)}
+        onComplete={() => setShowFeedbackTrigger(false)}
+      />
     </div>
   );
 };
