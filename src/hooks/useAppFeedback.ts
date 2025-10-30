@@ -87,10 +87,6 @@ export const useAppFeedback = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Thanks! Your feedback helps make Cravlr even better ❤️🍜",
-      });
-
       await checkFeedbackCooldown();
       return true;
     } catch (err) {

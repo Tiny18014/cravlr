@@ -29,6 +29,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
   const [otherText, setOtherText] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [rating, setRating] = useState(0);
+  const [showThankYou, setShowThankYou] = useState(false);
   const { submitFeedback, loading } = useAppFeedback();
 
   const handleTagToggle = (tag: string) => {
@@ -63,13 +64,20 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
     });
 
     if (success) {
-      // Reset form
-      setStep(1);
-      setSelectedTags([]);
-      setOtherText("");
-      setFeedbackText("");
-      setRating(0);
-      onOpenChange(false);
+      // Show thank you message
+      setShowThankYou(true);
+      
+      // Close after 3 seconds
+      setTimeout(() => {
+        // Reset form
+        setStep(1);
+        setSelectedTags([]);
+        setOtherText("");
+        setFeedbackText("");
+        setRating(0);
+        setShowThankYou(false);
+        onOpenChange(false);
+      }, 3000);
     }
   };
 
@@ -79,16 +87,25 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-center">
-            Share Your Feedback
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground text-center">
-            Step {step} of 3
-          </p>
-        </DialogHeader>
+        {showThankYou ? (
+          <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
+            <div className="text-4xl mb-4">❤️🍜</div>
+            <p className="text-lg font-semibold text-center">
+              Thanks! Your feedback helps make Cravlr even better
+            </p>
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-center">
+                Share Your Feedback
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground text-center">
+                Step {step} of 3
+              </p>
+            </DialogHeader>
 
-        <div className="space-y-4">
+            <div className="space-y-4">
           {/* Step 1: Multiple Choice */}
           {step === 1 && (
             <div className="space-y-4">
@@ -199,18 +216,20 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
           )}
         </div>
 
-        {/* Progress Dots */}
-        <div className="flex justify-center gap-2 mt-4">
-          {[1, 2, 3].map((dot) => (
-            <div
-              key={dot}
-              className={cn(
-                "w-2 h-2 rounded-full transition-colors",
-                step >= dot ? "bg-primary" : "bg-muted"
-              )}
-            />
-          ))}
-        </div>
+            {/* Progress Dots */}
+            <div className="flex justify-center gap-2 mt-4">
+              {[1, 2, 3].map((dot) => (
+                <div
+                  key={dot}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-colors",
+                    step >= dot ? "bg-primary" : "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
