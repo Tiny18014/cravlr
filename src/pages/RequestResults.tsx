@@ -406,7 +406,9 @@ const RequestResults = () => {
       toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
       
       // Trigger feedback popup after 5-second delay
+      console.log('🎯 Will show feedback popup in 5 seconds...');
       setTimeout(() => {
+        console.log('🎯 Showing feedback popup now!');
         setShowFeedbackTrigger(true);
       }, 5000);
 
@@ -672,13 +674,21 @@ const RequestResults = () => {
         )}
       </div>
       
-      <AppFeedbackTrigger
-        role="requester"
-        sourceAction="selected_going_option"
-        shouldTrigger={showFeedbackTrigger}
-        onTriggered={() => setShowFeedbackTrigger(false)}
-        onComplete={() => setShowFeedbackTrigger(false)}
-      />
+      {showFeedbackTrigger && (
+        <AppFeedbackTrigger
+          role="requester"
+          sourceAction="selected_going_option"
+          shouldTrigger={showFeedbackTrigger}
+          onTriggered={() => {
+            console.log('🎯 Feedback triggered, resetting state');
+            setShowFeedbackTrigger(false);
+          }}
+          onComplete={() => {
+            console.log('🎯 Feedback completed, resetting state');
+            setShowFeedbackTrigger(false);
+          }}
+        />
+      )}
     </div>
   );
 };
