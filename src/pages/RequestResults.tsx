@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,6 +67,7 @@ const RequestResults = () => {
   const [goingIntents, setGoingIntents] = useState<Set<string>>(new Set());
   const [showFeedbackTrigger, setShowFeedbackTrigger] = useState(false);
   const { generateReferralLink } = useReferralLinks();
+  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchResults = async () => {
     if (!requestId) {
@@ -307,6 +308,17 @@ const RequestResults = () => {
     return () => clearInterval(interval);
   }, [requestId]);
 
+  // Cleanup feedback timer on unmount or navigation
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        console.log('🧹 Cleaning up feedback timer on unmount/navigation');
+        clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const toggleNotes = (groupKey: string) => {
     const newExpanded = new Set(expandedNotes);
     if (newExpanded.has(groupKey)) {
@@ -405,11 +417,17 @@ const RequestResults = () => {
       // Show success message
       toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
       
+      // Clear any existing feedback timer
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+      
       // Trigger feedback popup after 5-second delay
       console.log('🎯 Will show feedback popup in 5 seconds...');
-      setTimeout(() => {
+      feedbackTimerRef.current = setTimeout(() => {
         console.log('🎯 Showing feedback popup now!');
         setShowFeedbackTrigger(true);
+        feedbackTimerRef.current = null;
       }, 5000);
 
     } catch (error) {
