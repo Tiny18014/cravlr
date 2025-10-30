@@ -161,7 +161,7 @@ const RequestFood = () => {
       });
       
       // Navigate to the results page
-      navigate(`/request/${data.id}`);
+      navigate(`/requests/${data.id}/results`);
     } catch (error) {
       console.error('Error creating request:', error);
       toast({
