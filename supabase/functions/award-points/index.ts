@@ -42,34 +42,41 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify admin role
-    const { data: isAdmin, error: roleError } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
-
-    if (roleError || !isAdmin) {
-      console.error('Authorization failed:', roleError);
-      return new Response(
-        JSON.stringify({ error: 'Admin privileges required' }),
-        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
     const { recommendationId, points }: AwardPointsRequest = await req.json();
     
-    console.log(`Awarding ${points} points for recommendation ${recommendationId}`);
+    console.log(`User ${user.id} awarding ${points} points for recommendation ${recommendationId}`);
 
-    // Get recommendation details
+    // Get recommendation details and verify the request
     const { data: recommendation, error: recError } = await supabase
       .from('recommendations')
-      .select('*')
+      .select(`
+        *,
+        food_requests!inner(requester_id)
+      `)
       .eq('id', recommendationId)
       .single();
 
     if (recError || !recommendation) {
       console.error('Error fetching recommendation:', recError);
       throw new Error('Recommendation not found');
+    }
+
+    // Verify the user is the requester (only requesters can award points through feedback)
+    if (recommendation.food_requests.requester_id !== user.id) {
+      console.error('Unauthorized: User is not the requester');
+      return new Response(
+        JSON.stringify({ error: 'Only the requester can award points for this recommendation' }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Verify they're not awarding points to themselves
+    if (recommendation.recommender_id === user.id) {
+      console.error('Unauthorized: Cannot award points to yourself');
+      return new Response(
+        JSON.stringify({ error: 'Cannot award points to yourself' }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // Update recommendation with awarded points
