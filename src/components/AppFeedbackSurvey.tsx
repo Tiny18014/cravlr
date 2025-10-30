@@ -35,7 +35,7 @@ const planningToGoOptions = ["Yes", "Maybe", "Not sure"];
 
 export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: AppFeedbackSurveyProps) => {
   const [step, setStep] = useState(1);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedExperience, setSelectedExperience] = useState("");
   const [otherText, setOtherText] = useState("");
   const [planningToGo, setPlanningToGo] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
@@ -45,12 +45,6 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
 
   const maxSteps = role === 'requester' ? 4 : 3;
   const experienceOptions = role === 'requester' ? requesterExperienceOptions : recommenderExperienceOptions;
-
-  const handleTagToggle = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
-  };
 
   const handleNext = () => {
     if (step < maxSteps) {
@@ -71,18 +65,19 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
   };
 
   const handleSubmit = async () => {
-    const tags = selectedTags.includes("Other") && otherText
-      ? [...selectedTags.filter((t) => t !== "Other"), `Other: ${otherText}`]
-      : selectedTags;
+    const experienceAnswer = selectedExperience === "Other" && otherText
+      ? `Other: ${otherText}`
+      : selectedExperience;
 
-    // Add planning to go answer for requesters
-    const finalTags = role === 'requester' && planningToGo 
-      ? [...tags, `Planning to visit: ${planningToGo}`]
-      : tags;
+    // Build tags array with experience and planning to go
+    const tags = [experienceAnswer];
+    if (role === 'requester' && planningToGo) {
+      tags.push(`Planning to visit: ${planningToGo}`);
+    }
 
     const success = await submitFeedback({
       role,
-      experienceTags: finalTags,
+      experienceTags: tags,
       feedbackText,
       rating,
       sourceAction,
@@ -96,7 +91,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
       setTimeout(() => {
         // Reset form
         setStep(1);
-        setSelectedTags([]);
+        setSelectedExperience("");
         setOtherText("");
         setPlanningToGo("");
         setFeedbackText("");
@@ -107,7 +102,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
     }
   };
 
-  const canProceedStep1 = selectedTags.length > 0 && (!selectedTags.includes("Other") || otherText.trim());
+  const canProceedStep1 = selectedExperience !== "" && (selectedExperience !== "Other" || otherText.trim());
   const canProceedStep2Requester = planningToGo !== "";
   const canSubmit = rating > 0;
 
@@ -135,7 +130,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
             </DialogHeader>
 
             <div className="space-y-4">
-          {/* Step 1: Multiple Choice - Experience or Enjoyment */}
+          {/* Step 1: Single Choice - Experience or Enjoyment */}
           {step === 1 && (
             <div className="space-y-4">
               <Label className="text-base">
@@ -148,8 +143,8 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
                   <div key={option} className="flex items-start space-x-3">
                     <Checkbox
                       id={option}
-                      checked={selectedTags.includes(option)}
-                      onCheckedChange={() => handleTagToggle(option)}
+                      checked={selectedExperience === option}
+                      onCheckedChange={() => setSelectedExperience(option)}
                     />
                     <label
                       htmlFor={option}
@@ -160,7 +155,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
                   </div>
                 ))}
               </div>
-              {selectedTags.includes("Other") && (
+              {selectedExperience === "Other" && (
                 <Textarea
                   placeholder="Please specify..."
                   value={otherText}
