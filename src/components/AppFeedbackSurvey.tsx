@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -83,7 +83,16 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
           </div>
         ) : (
           <>
-            <div className="space-y-6 font-['Nunito']">{/* Removed DialogHeader with title and subtitle */}
+            <DialogHeader>
+              <DialogTitle className="text-center text-2xl font-['Poppins']">
+                Hey Food Lover 💛
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground text-center font-['Nunito'] mt-2">
+                Tell us how your Cravlr journey tasted today!
+              </p>
+            </DialogHeader>
+
+            <div className="space-y-6 font-['Nunito']">
               {/* Question 1: Experience */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">
