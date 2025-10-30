@@ -68,6 +68,7 @@ const RequestResults = () => {
   const [showFeedbackTrigger, setShowFeedbackTrigger] = useState(false);
   const { generateReferralLink } = useReferralLinks();
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackShownRef = useRef<boolean>(false);
 
   const fetchResults = async () => {
     if (!requestId) {
@@ -292,6 +293,8 @@ const RequestResults = () => {
 
   useEffect(() => {
     fetchResults();
+    // Reset feedback flag when requestId changes (new request)
+    feedbackShownRef.current = false;
   }, [requestId]);
 
   useEffect(() => {
@@ -422,13 +425,19 @@ const RequestResults = () => {
         clearTimeout(feedbackTimerRef.current);
       }
       
-      // Trigger feedback popup after 3-second delay
-      console.log('🎯 Will show feedback popup in 3 seconds...');
-      feedbackTimerRef.current = setTimeout(() => {
-        console.log('🎯 Showing feedback popup now!');
-        setShowFeedbackTrigger(true);
-        feedbackTimerRef.current = null;
-      }, 3000);
+      // Only trigger feedback if it hasn't been shown yet for this request
+      if (!feedbackShownRef.current) {
+        // Trigger feedback popup after 2-second delay
+        console.log('🎯 Will show feedback popup in 2 seconds...');
+        feedbackTimerRef.current = setTimeout(() => {
+          console.log('🎯 Showing feedback popup now!');
+          setShowFeedbackTrigger(true);
+          feedbackShownRef.current = true; // Mark feedback as shown
+          feedbackTimerRef.current = null;
+        }, 2000);
+      } else {
+        console.log('🎯 Feedback already shown for this request, skipping');
+      }
 
     } catch (error) {
       console.error('Error handling going click:', error);
