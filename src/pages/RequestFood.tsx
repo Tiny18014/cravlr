@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 
 
 const RequestFood = () => {
@@ -159,6 +160,9 @@ const RequestFood = () => {
           ? "Your food request has been posted with precise location matching."
           : "Your food request has been posted with city-level matching.",
       });
+      
+      // Reset feedback flags for new request flow
+      feedbackSessionManager.onNewRequestCreated();
       
       // Navigate to the results page
       navigate(`/requests/${data.id}/results`);

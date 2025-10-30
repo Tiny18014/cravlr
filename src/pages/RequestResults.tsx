@@ -11,6 +11,8 @@ import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { AppFeedbackTrigger } from "@/components/AppFeedbackTrigger";
+import { ExitIntentFeedbackTrigger } from "@/components/ExitIntentFeedbackTrigger";
+import { feedbackSessionManager } from "@/utils/feedbackSessionManager";
 
 interface Note {
   by: string;
@@ -292,9 +294,13 @@ const RequestResults = () => {
   };
 
   useEffect(() => {
-    fetchResults();
-    // Reset feedback flag when requestId changes (new request)
-    feedbackShownRef.current = false;
+    if (requestId) {
+      // Track request view and reset feedback flags if this is a new request
+      feedbackSessionManager.trackRequestView(requestId);
+      fetchResults();
+      // Reset feedback flag when requestId changes (new request)
+      feedbackShownRef.current = false;
+    }
   }, [requestId]);
 
   useEffect(() => {
@@ -708,10 +714,16 @@ const RequestResults = () => {
         onTriggered={() => {
           console.log('🎯 Feedback intro modal displayed');
           setShowFeedbackTrigger(false); // Reset immediately to prevent re-triggers
+          feedbackSessionManager.markFeedbackSubmitted();
         }}
         onComplete={() => {
           console.log('🎯 Feedback completed, resetting state');
         }}
+      />
+      
+      <ExitIntentFeedbackTrigger
+        role="requester"
+        sourceAction="exit_intent_requester"
       />
     </div>
   );

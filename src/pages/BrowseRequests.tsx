@@ -10,6 +10,7 @@ import CountdownTimer from '@/components/CountdownTimer';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import { Switch } from '@/components/ui/switch';
+import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
 
 interface FoodRequest {
   id: string;
@@ -417,6 +418,11 @@ const BrowseRequests = () => {
           )}
         </div>
       </main>
+      
+      <ExitIntentFeedbackTrigger
+        role="recommender"
+        sourceAction="exit_intent_recommender"
+      />
     </div>
   );
 };
