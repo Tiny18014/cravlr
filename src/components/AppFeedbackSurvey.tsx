@@ -227,7 +227,7 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
           {((step === 3 && role === 'recommender') || (step === 4 && role === 'requester')) && (
             <div className="space-y-4">
               <Label className="text-base">
-                How would you rate Cravlr overall?
+                How would you rate Cravlr overall? ⭐
               </Label>
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
