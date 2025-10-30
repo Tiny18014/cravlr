@@ -405,8 +405,10 @@ const RequestResults = () => {
       // Show success message
       toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
       
-      // Trigger feedback popup after user selects going option
-      setShowFeedbackTrigger(true);
+      // Trigger feedback popup after 5-second delay
+      setTimeout(() => {
+        setShowFeedbackTrigger(true);
+      }, 5000);
 
     } catch (error) {
       console.error('Error handling going click:', error);
