@@ -43,15 +43,10 @@ export const useAppFeedback = () => {
       if (data) {
         const lastFeedback = new Date(data.created_at);
         setLastFeedbackTime(lastFeedback);
-        
-        const daysSinceLastFeedback = Math.floor(
-          (Date.now() - lastFeedback.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        
-        setCanShowFeedback(daysSinceLastFeedback >= 7);
-      } else {
-        setCanShowFeedback(true);
       }
+      
+      // Always allow feedback for testing
+      setCanShowFeedback(true);
     } catch (err) {
       console.error('Error checking feedback cooldown:', err);
       setCanShowFeedback(true);
