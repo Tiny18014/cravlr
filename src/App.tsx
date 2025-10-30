@@ -25,6 +25,7 @@ import SendRecommendation from "./pages/SendRecommendation";
 import Dashboard from "./pages/Dashboard";
 import RequestResults from "./pages/RequestResults";
 import AdminConversions from "./pages/AdminConversions";
+import AdminFeedback from "./pages/AdminFeedback";
 import BusinessClaim from "./pages/BusinessClaim";
 import BusinessOnboarding from "./pages/BusinessOnboarding";
 import BusinessDashboard from "./pages/BusinessDashboard";
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/profile" element={<RouteGuard><Profile /></RouteGuard>} />
               <Route path="/requests/:requestId/results" element={<RouteGuard regularUserOnly={true}><RequestResults /></RouteGuard>} />
               <Route path="/admin/conversions" element={<RouteGuard><AdminConversions /></RouteGuard>} />
+              <Route path="/admin/feedback" element={<RouteGuard><AdminFeedback /></RouteGuard>} />
               <Route path="/admin/business-claims" element={<RouteGuard><AdminBusinessClaims /></RouteGuard>} />
               <Route path="/business/claim" element={<RouteGuard businessOnly={true}><BusinessClaim /></RouteGuard>} />
               <Route path="/business/onboarding" element={<RouteGuard businessOnly={true}><BusinessOnboarding /></RouteGuard>} />
