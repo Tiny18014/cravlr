@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, MapPin, Bell, Save } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Bell, Save, MessageSquareHeart } from 'lucide-react';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +16,8 @@ import * as z from 'zod';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import AccountDeletion from '@/components/AccountDeletion';
+import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -38,9 +40,11 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { dnd, setDnd } = useNotifications();
+  const { hasRole } = useUserRoles();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  const [showFeedbackSurvey, setShowFeedbackSurvey] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -303,6 +307,28 @@ const Profile = () => {
               </CardContent>
             </Card>
 
+            {/* App Feedback Button */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquareHeart className="h-5 w-5" />
+                  Share Your Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Help us improve Cravlr by sharing your thoughts about the app experience.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFeedbackSurvey(true)}
+                  className="w-full"
+                >
+                  Give Feedback
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Account Deletion Section */}
             <AccountDeletion />
 
@@ -327,6 +353,13 @@ const Profile = () => {
           </form>
         </Form>
       </main>
+      
+      <AppFeedbackSurvey
+        open={showFeedbackSurvey}
+        onOpenChange={setShowFeedbackSurvey}
+        role={hasRole('recommender') ? 'recommender' : 'requester'}
+        sourceAction="manual_from_profile"
+      />
     </div>
   );
 };

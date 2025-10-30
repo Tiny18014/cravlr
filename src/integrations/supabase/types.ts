@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_feedback: {
+        Row: {
+          created_at: string
+          experience_tags: string[] | null
+          feedback_text: string | null
+          id: string
+          rating: number | null
+          role: string
+          source_action: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          experience_tags?: string[] | null
+          feedback_text?: string | null
+          id?: string
+          rating?: number | null
+          role: string
+          source_action?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          experience_tags?: string[] | null
+          feedback_text?: string | null
+          id?: string
+          rating?: number | null
+          role?: string
+          source_action?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_claims: {
         Row: {
           business_email: string

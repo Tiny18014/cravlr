@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Star } from 'lucide-react';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
+import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
 
 interface FoodRequest {
   id: string;
@@ -35,6 +36,7 @@ const SendRecommendation = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [triggerAppFeedback, setTriggerAppFeedback] = useState(false);
   
   const [formData, setFormData] = useState({
     restaurantName: '',
@@ -137,7 +139,13 @@ const SendRecommendation = () => {
         description: "Your recommendation has been shared with the requester.",
       });
       
-      navigate('/browse-requests');
+      // Trigger app feedback after successful recommendation
+      setTriggerAppFeedback(true);
+      
+      // Navigate after a short delay to allow feedback trigger
+      setTimeout(() => {
+        navigate('/browse-requests');
+      }, 2000);
     } catch (error: any) {
       console.error('Error sending recommendation:', error);
       toast({
@@ -337,6 +345,13 @@ const SendRecommendation = () => {
             </Card>
         </div>
       </main>
+      
+      <AppFeedbackTrigger
+        role="recommender"
+        sourceAction="submitted_recommendation"
+        shouldTrigger={triggerAppFeedback}
+        onTriggered={() => setTriggerAppFeedback(false)}
+      />
     </div>
   );
 };
