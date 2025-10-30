@@ -8,6 +8,7 @@ interface AppFeedbackTriggerProps {
   sourceAction: string;
   shouldTrigger: boolean;
   onTriggered?: () => void;
+  onComplete?: () => void;
 }
 
 export const AppFeedbackTrigger = ({
@@ -15,6 +16,7 @@ export const AppFeedbackTrigger = ({
   sourceAction,
   shouldTrigger,
   onTriggered,
+  onComplete,
 }: AppFeedbackTriggerProps) => {
   const [showIntro, setShowIntro] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -37,10 +39,16 @@ export const AppFeedbackTrigger = ({
         open={showIntro}
         onOpenChange={setShowIntro}
         onYes={() => setShowSurvey(true)}
+        onDismiss={onComplete}
       />
       <AppFeedbackSurvey
         open={showSurvey}
-        onOpenChange={setShowSurvey}
+        onOpenChange={(open) => {
+          setShowSurvey(open);
+          if (!open) {
+            onComplete?.();
+          }
+        }}
         role={role}
         sourceAction={sourceAction}
       />

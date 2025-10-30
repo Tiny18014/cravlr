@@ -141,11 +141,6 @@ const SendRecommendation = () => {
       
       // Trigger app feedback after successful recommendation
       setTriggerAppFeedback(true);
-      
-      // Navigate after a longer delay to allow feedback popup to show
-      setTimeout(() => {
-        navigate('/browse-requests');
-      }, 5000);
     } catch (error: any) {
       console.error('Error sending recommendation:', error);
       toast({
@@ -351,6 +346,7 @@ const SendRecommendation = () => {
         sourceAction="submitted_recommendation"
         shouldTrigger={triggerAppFeedback}
         onTriggered={() => setTriggerAppFeedback(false)}
+        onComplete={() => navigate('/browse-requests')}
       />
     </div>
   );

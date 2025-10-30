@@ -6,9 +6,10 @@ interface AppFeedbackIntroModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onYes: () => void;
+  onDismiss?: () => void;
 }
 
-export const AppFeedbackIntroModal = ({ open, onOpenChange, onYes }: AppFeedbackIntroModalProps) => {
+export const AppFeedbackIntroModal = ({ open, onOpenChange, onYes, onDismiss }: AppFeedbackIntroModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -36,7 +37,10 @@ export const AppFeedbackIntroModal = ({ open, onOpenChange, onYes }: AppFeedback
           </Button>
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              onOpenChange(false);
+              onDismiss?.();
+            }}
             className="w-full"
           >
             Maybe later

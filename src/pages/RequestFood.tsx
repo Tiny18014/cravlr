@@ -162,13 +162,8 @@ const RequestFood = () => {
           : "Your food request has been posted with city-level matching.",
       });
       
-      // Trigger feedback popup before navigating
+      // Trigger feedback popup
       setShowFeedbackTrigger(true);
-      
-      // Navigate after a short delay to allow feedback popup to show
-      setTimeout(() => {
-        navigate('/');
-      }, 500);
     } catch (error) {
       console.error('Error creating request:', error);
       toast({
@@ -382,6 +377,7 @@ const RequestFood = () => {
         sourceAction="completed_request"
         shouldTrigger={showFeedbackTrigger}
         onTriggered={() => setShowFeedbackTrigger(false)}
+        onComplete={() => navigate('/')}
       />
     </div>
   );
