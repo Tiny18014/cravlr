@@ -17,11 +17,11 @@ export const AppFeedbackIntroModal = ({ open, onOpenChange, onYes, onDismiss }: 
           <div className="flex justify-center mb-4">
             <MessageSquareHeart className="w-12 h-12 text-primary" />
           </div>
-          <DialogTitle className="text-center text-xl">
-            Do you have a few seconds to share your feedback?
+          <DialogTitle className="text-center text-xl font-['Poppins']">
+            🥢 Your Move, Foodie!
           </DialogTitle>
-          <DialogDescription className="text-center text-base">
-            Your thoughts help us make Cravlr even better!
+          <DialogDescription className="text-center text-base font-['Nunito']">
+            Tell us how Cravlr's treating your taste today 🍜
           </DialogDescription>
         </DialogHeader>
         
