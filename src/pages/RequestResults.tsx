@@ -422,13 +422,13 @@ const RequestResults = () => {
         clearTimeout(feedbackTimerRef.current);
       }
       
-      // Trigger feedback popup after 5-second delay
-      console.log('🎯 Will show feedback popup in 5 seconds...');
+      // Trigger feedback popup after 3-second delay
+      console.log('🎯 Will show feedback popup in 3 seconds...');
       feedbackTimerRef.current = setTimeout(() => {
         console.log('🎯 Showing feedback popup now!');
         setShowFeedbackTrigger(true);
         feedbackTimerRef.current = null;
-      }, 5000);
+      }, 3000);
 
     } catch (error) {
       console.error('Error handling going click:', error);
