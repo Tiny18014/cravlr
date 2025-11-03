@@ -93,81 +93,11 @@ const AccountDeletion = () => {
     setIsDeleting(true);
     
     try {
-      // Delete user data in order (due to foreign key constraints)
+      // Call the server-side delete-account edge function
+      const { error } = await supabase.functions.invoke('delete-account');
       
-      // 1. Delete recommendation feedback
-      await supabase
-        .from('recommendation_feedback')
-        .delete()
-        .eq('requester_id', user.id);
-
-      // 2. Delete notifications
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('requester_id', user.id);
-
-      // 3. Delete points events
-      await supabase
-        .from('points_events')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 4. Delete referral clicks
-      await supabase
-        .from('referral_clicks')
-        .delete()
-        .or(`requester_id.eq.${user.id},recommender_id.eq.${user.id}`);
-
-      // 5. Delete push subscriptions
-      await supabase
-        .from('push_subscriptions')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 6. Delete request user state
-      await supabase
-        .from('request_user_state')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 7. Delete business profiles
-      await supabase
-        .from('business_profiles')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 8. Delete business claims
-      await supabase
-        .from('business_claims')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 9. Delete recommendations
-      await supabase
-        .from('recommendations')
-        .delete()
-        .eq('recommender_id', user.id);
-
-      // 10. Delete food requests
-      await supabase
-        .from('food_requests')
-        .delete()
-        .eq('requester_id', user.id);
-
-      // 11. Delete profile
-      await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', user.id);
-
-      // 12. Finally, delete the auth user
-      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
-      
-      if (authError) {
-        // If admin delete fails, just sign out the user
-        console.error('Admin delete failed:', authError);
-        await signOut();
+      if (error) {
+        throw error;
       }
 
       toast({
@@ -175,6 +105,8 @@ const AccountDeletion = () => {
         description: "Your account and all associated data have been permanently deleted.",
       });
 
+      // Sign out after successful deletion
+      await signOut();
       navigate('/welcome');
     } catch (error) {
       console.error('Error deleting account:', error);

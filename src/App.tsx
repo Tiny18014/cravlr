@@ -9,7 +9,10 @@ import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisp
 import { OneSignalInit } from "@/components/OneSignalInit";
 import { UnifiedRequestManager } from "@/providers/UnifiedRequestManager";
 import { PopupDebugBinder } from "@/components/PopupDebugBinder";
+import DebugDBRealtime from "@/components/DebugDBRealtime";
+import MobileDebugConsole from "@/components/MobileDebugConsole";
 import CookieConsent from "@/components/CookieConsent";
+import { useAuth } from "@/contexts/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
@@ -42,19 +45,37 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
+
+const AppContent = () => {
+  const { user } = useAuth();
+  const isDevelopment = import.meta.env.DEV;
+  
+  return (
     <UnifiedNotificationProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <OneSignalInit />
-          <BrowserRouter>
-            <UnifiedRequestManager />
-            <UnifiedNotificationDisplay />
-            <PopupDebugBinder />
-            <CookieConsent />
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <OneSignalInit />
+        <BrowserRouter>
+          <UnifiedRequestManager />
+          <UnifiedNotificationDisplay />
+          {isDevelopment && (
+            <>
+              <PopupDebugBinder />
+              <DebugDBRealtime user={user} />
+              <MobileDebugConsole />
+            </>
+          )}
+          <CookieConsent />
             {/* <TestNotificationButton /> */}
             <Routes>
               <Route path="/" element={<RouteGuard><Index /></RouteGuard>} />
@@ -90,8 +111,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </UnifiedNotificationProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+  );
+};
 
 export default App;

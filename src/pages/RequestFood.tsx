@@ -14,12 +14,51 @@ import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-reac
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
+import { useRateLimit } from '@/hooks/useRateLimit';
+import { z } from 'zod';
+
+const requestSchema = z.object({
+  foodType: z.string()
+    .trim()
+    .min(1, 'Food type is required')
+    .max(100, 'Food type must be less than 100 characters')
+    .regex(/^[a-zA-Z0-9\s,\-'&]+$/, 'Food type contains invalid characters'),
+  locationCity: z.string()
+    .trim()
+    .min(1, 'City is required')
+    .max(100, 'City name is too long'),
+  locationState: z.string()
+    .trim()
+    .length(2, 'State must be a 2-letter code')
+    .regex(/^[A-Z]{2}$/, 'Invalid state code'),
+  locationAddress: z.string()
+    .trim()
+    .max(200, 'Address is too long')
+    .optional(),
+  additionalNotes: z.string()
+    .trim()
+    .max(500, 'Additional notes must be less than 500 characters')
+    .optional(),
+  responseWindow: z.number()
+    .int()
+    .min(1, 'Response window must be at least 1 minute')
+    .max(120, 'Response window cannot exceed 120 minutes'),
+  lat: z.number()
+    .min(-90)
+    .max(90)
+    .nullable(),
+  lng: z.number()
+    .min(-180)
+    .max(180)
+    .nullable()
+});
 
 
 const RequestFood = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { checkRateLimit, checking: checkingRateLimit } = useRateLimit();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [locationInput, setLocationInput] = useState('');
@@ -97,16 +136,52 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
-      let lat = formData.lat;
-      let lng = formData.lng;
+      // Check rate limit first
+      const canCreate = await checkRateLimit('create_request', 5, 60);
+      if (!canCreate) {
+        toast({
+          title: "Too many requests",
+          description: "Please wait an hour before creating another request.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate input with zod schema
+      const validationResult = requestSchema.safeParse({
+        foodType: formData.foodType,
+        locationCity: formData.locationCity,
+        locationState: formData.locationState,
+        locationAddress: formData.locationAddress || undefined,
+        additionalNotes: formData.additionalNotes || undefined,
+        responseWindow: formData.responseWindow,
+        lat: formData.lat,
+        lng: formData.lng
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast({
+          title: "Invalid input",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const validated = validationResult.data;
+      let lat = validated.lat;
+      let lng = validated.lng;
 
       // If we don't have GPS coordinates, try to geocode the address
       if (!lat || !lng) {
         console.log('🗺️ No GPS coordinates, attempting geocoding...');
         const geocodeResult = await geocodeAddress(
-          formData.locationCity,
-          formData.locationState,
-          formData.locationAddress
+          validated.locationCity,
+          validated.locationState,
+          validated.locationAddress
         );
 
         if (geocodeResult) {
@@ -122,15 +197,15 @@ const RequestFood = () => {
         .from('food_requests')
         .insert({
           requester_id: user.id,
-          food_type: formData.foodType,
-          location_city: formData.locationCity,
-          location_state: formData.locationState,
-          location_address: formData.locationAddress || null,
-          additional_notes: formData.additionalNotes || null,
-          response_window: formData.responseWindow,
+          food_type: validated.foodType,
+          location_city: validated.locationCity,
+          location_state: validated.locationState,
+          location_address: validated.locationAddress || null,
+          additional_notes: validated.additionalNotes || null,
+          response_window: validated.responseWindow,
           location_lat: lat,
           location_lng: lng,
-          status: 'active'  // 🔥 CRITICAL: Explicitly set to make visible to others
+          status: 'active'
         })
         .select()
         .single();
@@ -363,10 +438,10 @@ const RequestFood = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !formData.foodType || !formData.locationCity || !formData.locationState}
+                  disabled={isSubmitting || checkingRateLimit || !formData.foodType || !formData.locationCity || !formData.locationState}
                   className="flex-1"
                 >
-                  {isSubmitting ? 'Creating...' : 'Post Request'}
+                  {isSubmitting || checkingRateLimit ? 'Creating...' : 'Post Request'}
                 </Button>
               </div>
             </form>
