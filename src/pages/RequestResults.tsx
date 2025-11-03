@@ -361,9 +361,24 @@ const RequestResults = () => {
   const handleGoingClick = async (group: RecommendationGroup) => {
     if (!user || !request) return;
     
+    console.log('🎯 handleGoingClick called for:', group.name);
+    console.log('🔍 Group data:', {
+      recommendationId: group.recommendationId,
+      requestId: request.id,
+      restaurantName: group.name,
+      placeId: group.placeId
+    });
+    
+    // Check if recommendationId exists
+    if (!group.recommendationId) {
+      console.error('❌ No recommendationId for this recommendation');
+      toast.error('Unable to log intent - missing recommendation data');
+      return;
+    }
+    
     try {
       // Generate or get existing referral link first
-      if (group.recommendationId && group.mapsUrl) {
+      if (group.mapsUrl) {
         await generateReferralLink({
           recommendationId: group.recommendationId,
           requestId: request.id,
@@ -373,6 +388,8 @@ const RequestResults = () => {
         });
       }
 
+      console.log('📞 Calling log-visit-intent edge function...');
+      
       // Call edge function to securely log the visit intent
       const { data, error } = await supabase.functions.invoke('log-visit-intent', {
         body: {
@@ -383,8 +400,10 @@ const RequestResults = () => {
         }
       });
 
+      console.log('📥 Edge function response:', { data, error });
+
       if (error) {
-        console.error('Error logging going intent:', error);
+        console.error('❌ Error logging going intent:', error);
         toast.error('Failed to log your intent');
         return;
       }
