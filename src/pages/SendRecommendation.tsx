@@ -13,6 +13,8 @@ import { ArrowLeft, MapPin, Star } from 'lucide-react';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
+import { useRateLimit } from '@/hooks/useRateLimit';
+import { z } from 'zod';
 
 interface FoodRequest {
   id: string;
@@ -26,11 +28,39 @@ interface FoodRequest {
   };
 }
 
+const recommendationSchema = z.object({
+  restaurantName: z.string()
+    .trim()
+    .min(1, 'Restaurant name is required')
+    .max(200, 'Restaurant name must be less than 200 characters'),
+  restaurantAddress: z.string()
+    .trim()
+    .max(300, 'Address must be less than 300 characters')
+    .optional(),
+  notes: z.string()
+    .trim()
+    .max(1000, 'Notes must be less than 1,000 characters')
+    .optional(),
+  confidenceScore: z.number()
+    .int()
+    .min(1, 'Confidence score must be at least 1')
+    .max(5, 'Confidence score cannot exceed 5'),
+  placeId: z.string()
+    .max(200, 'Place ID too long')
+    .optional(),
+  mapsUrl: z.string()
+    .url('Invalid URL format')
+    .max(500, 'URL too long')
+    .optional()
+    .or(z.literal(''))
+});
+
 const SendRecommendation = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { checkRateLimit, checking: rateLimitChecking } = useRateLimit();
   
   const [request, setRequest] = useState<FoodRequest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,25 +138,46 @@ const SendRecommendation = () => {
     setIsSubmitting(true);
     
     try {
-        const { error } = await supabase
-          .from('recommendations')
-          .insert({
-            request_id: requestId,
-            recommender_id: user.id,
-            restaurant_name: formData.restaurantName,
-            restaurant_address: formData.restaurantAddress || null,
-            notes: formData.notes || null,
-            confidence_score: formData.confidenceScore[0],
-            ...(formData.placeId && { place_id: formData.placeId }),
-            ...(formData.mapsUrl && { maps_url: formData.mapsUrl })
-          });
+      // Validate input
+      const validatedData = recommendationSchema.parse({
+        restaurantName: formData.restaurantName,
+        restaurantAddress: formData.restaurantAddress,
+        notes: formData.notes,
+        confidenceScore: formData.confidenceScore[0],
+        placeId: formData.placeId,
+        mapsUrl: formData.mapsUrl
+      });
+
+      // Check rate limit
+      const canRecommend = await checkRateLimit('create_recommendation', 10, 60);
+      if (!canRecommend) {
+        toast({
+          title: "Too many recommendations",
+          description: "Please wait before submitting more recommendations.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('recommendations')
+        .insert({
+          request_id: requestId,
+          recommender_id: user.id,
+          restaurant_name: validatedData.restaurantName,
+          restaurant_address: validatedData.restaurantAddress || null,
+          notes: validatedData.notes || null,
+          confidence_score: validatedData.confidenceScore,
+          ...(validatedData.placeId && { place_id: validatedData.placeId }),
+          ...(validatedData.mapsUrl && { maps_url: validatedData.mapsUrl })
+        });
 
       if (error) {
         // Handle duplicate recommendation error specifically
         if (error.code === '23505' && error.message.includes('recommendations_request_id_recommender_id_restaurant_name_key')) {
           toast({
             title: "Already recommended",
-            description: `You've already recommended "${formData.restaurantName}" for this request. Try a different restaurant.`,
+            description: `You've already recommended "${validatedData.restaurantName}" for this request. Try a different restaurant.`,
             variant: "destructive",
           });
           return;
@@ -142,12 +193,20 @@ const SendRecommendation = () => {
       // Trigger app feedback after successful recommendation
       setTriggerAppFeedback(true);
     } catch (error: any) {
-      console.error('Error sending recommendation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send your recommendation. Please try again.",
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Invalid input",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        console.error('Error sending recommendation:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send your recommendation. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -329,10 +388,10 @@ const SendRecommendation = () => {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || !formData.restaurantName}
+                      disabled={isSubmitting || rateLimitChecking || !formData.restaurantName}
                       className="flex-1"
                     >
-                      {isSubmitting ? 'Sending...' : 'Send Recommendation'}
+                      {isSubmitting || rateLimitChecking ? 'Sending...' : 'Send Recommendation'}
                     </Button>
                   </div>
                 </form>
