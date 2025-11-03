@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Building2, Star, TrendingUp, Shield, Award } from 'lucide-react';
 import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
+import { FeedbackButton } from '@/components/FeedbackButton';
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -11,6 +12,11 @@ const Welcome = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center p-6">
       <div className="max-w-4xl w-full space-y-8">
+        {/* Feedback Button */}
+        <div className="absolute top-4 right-4">
+          <FeedbackButton />
+        </div>
+
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="h-20 w-20 rounded-3xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-3xl mx-auto shadow-lg">
