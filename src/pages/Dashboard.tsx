@@ -13,7 +13,6 @@ import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import { Switch } from '@/components/ui/switch';
 import { BecomeRecommenderModal } from '@/components/onboarding/BecomeRecommenderModal';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { FeedbackButton } from '@/components/FeedbackButton';
 // Timer is now handled globally via UnifiedRequestManager
 
 interface FoodRequest {
@@ -297,7 +296,6 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <FeedbackButton />
             <Button variant="outline" onClick={async () => {
             console.log('🔘 Sign out button clicked');
             try {

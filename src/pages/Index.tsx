@@ -9,7 +9,6 @@ import { Switch } from "@/components/ui/switch";
 import Footer from "@/components/Footer";
 import { BecomeRecommenderModal } from "@/components/onboarding/BecomeRecommenderModal";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { FeedbackButton } from "@/components/FeedbackButton";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -51,7 +50,6 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <FeedbackButton />
         {/* Do Not Disturb Toggle */}
         <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
           <div className="flex items-center gap-1.5">

@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Building2, Star, TrendingUp, Shield, Award } from 'lucide-react';
 import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
-import { FeedbackButtonWithRoleChoice } from '@/components/FeedbackButtonWithRoleChoice';
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -69,8 +68,6 @@ const Welcome = () => {
                 <Button className="w-full group-hover:bg-primary/90 transition-colors" size="lg">
                   Continue as Food Lover
                 </Button>
-
-                <FeedbackButtonWithRoleChoice />
 
                 <div className="text-xs text-muted-foreground">
                   Quick signup • Instant access • Start exploring
