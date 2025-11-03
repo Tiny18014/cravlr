@@ -23,6 +23,9 @@ export const useAppFeedback = () => {
   useEffect(() => {
     if (user) {
       checkFeedbackCooldown();
+    } else {
+      // Allow feedback for anonymous users too
+      setCanShowFeedback(true);
     }
   }, [user]);
 
@@ -60,29 +63,30 @@ export const useAppFeedback = () => {
     rating,
     sourceAction,
   }: SubmitAppFeedbackParams) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to submit feedback.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
     setLoading(true);
     try {
-      const { error } = await supabase.from('app_feedback').insert({
-        user_id: user.id,
+      const feedbackData = {
+        user_id: user?.id || null, // Allow null for anonymous feedback
         role,
         experience_tags: experienceTags,
         feedback_text: feedbackText,
         rating,
         source_action: sourceAction,
-      });
+      };
+
+      const { error } = await supabase.from('app_feedback').insert(feedbackData);
 
       if (error) throw error;
 
-      await checkFeedbackCooldown();
+      if (user) {
+        await checkFeedbackCooldown();
+      }
+      
+      toast({
+        title: "Thanks for your feedback! 🙏",
+        description: "Your input helps make Cravlr better.",
+      });
+      
       return true;
     } catch (err) {
       console.error('Error submitting feedback:', err);

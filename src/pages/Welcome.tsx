@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Building2, Star, TrendingUp, Shield, Award } from 'lucide-react';
+import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -155,6 +156,11 @@ const Welcome = () => {
           </div>
         </div>
       </div>
+      
+      <ExitIntentFeedbackTrigger
+        role="requester"
+        sourceAction="exit_intent_welcome"
+      />
     </div>
   );
 };
