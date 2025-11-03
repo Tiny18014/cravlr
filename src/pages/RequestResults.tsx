@@ -362,57 +362,26 @@ const RequestResults = () => {
     if (!user || !request) return;
     
     try {
-      // Get the recommender ID from the recommendation
-      const { data: recommendationData, error: recError } = await supabase
-        .from('recommendations')
-        .select('recommender_id')
-        .eq('id', group.recommendationId)
-        .single();
-
-      if (recError || !recommendationData) {
-        console.error('Error fetching recommendation data:', recError);
-        toast.error('Failed to log intent');
-        return;
-      }
-
-      // Generate or get existing referral link
-      let referralLinkId = null;
-      
+      // Generate or get existing referral link first
       if (group.recommendationId && group.mapsUrl) {
-        const referralData = await generateReferralLink({
+        await generateReferralLink({
           recommendationId: group.recommendationId,
           requestId: request.id,
           restaurantName: group.name,
           placeId: group.placeId,
           mapsUrl: group.mapsUrl
         });
-        
-        if (referralData) {
-          // Get the actual referral link ID from the database
-          const { data: referralLinkData } = await supabase
-            .from('referral_links')
-            .select('id')
-            .eq('recommendation_id', group.recommendationId)
-            .single();
-          
-          referralLinkId = referralLinkData?.id;
-        }
       }
 
-      // Log the intent to visit (referral_link_id can be null for now)
-      const { error } = await supabase
-        .from('referral_clicks')
-        .insert({
-          recommendation_id: group.recommendationId,
-          request_id: request.id,
-          requester_id: user.id,
-          recommender_id: recommendationData.recommender_id,
-          referral_link_id: referralLinkId, // This can be null
-          restaurant_name: group.name,
-          place_id: group.placeId,
-          click_source: 'going_button',
-          clicked_at: new Date().toISOString()
-        });
+      // Call edge function to securely log the visit intent
+      const { data, error } = await supabase.functions.invoke('log-visit-intent', {
+        body: {
+          recommendationId: group.recommendationId,
+          requestId: request.id,
+          restaurantName: group.name,
+          placeId: group.placeId
+        }
+      });
 
       if (error) {
         console.error('Error logging going intent:', error);
