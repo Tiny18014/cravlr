@@ -12,8 +12,13 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🔍 log-visit-intent called');
+    
     const authHeader = req.headers.get('Authorization');
+    console.log('🔍 Auth header present:', !!authHeader);
+    
     if (!authHeader) {
+      console.error('❌ No auth header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -41,9 +46,12 @@ serve(async (req) => {
       restaurantName, 
       placeId 
     } = await req.json();
+    
+    console.log('🔍 Request body:', { recommendationId, requestId, restaurantName, placeId });
 
     // Validate required fields
     if (!recommendationId || !requestId || !restaurantName) {
+      console.error('❌ Missing required fields:', { recommendationId, requestId, restaurantName });
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
