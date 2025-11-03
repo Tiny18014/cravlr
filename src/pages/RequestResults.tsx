@@ -359,7 +359,16 @@ const RequestResults = () => {
   };
 
   const handleGoingClick = async (group: RecommendationGroup) => {
-    if (!user || !request) return;
+    console.log('🎯🎯🎯 handleGoingClick CALLED');
+    console.log('User:', user);
+    console.log('Request:', request);
+    console.log('Group:', group);
+    
+    if (!user || !request) {
+      console.error('❌ Missing user or request:', { user: !!user, request: !!request });
+      toast.error('Not logged in or request not loaded');
+      return;
+    }
     
     console.log('🎯 handleGoingClick called for:', group.name);
     console.log('🔍 Group data:', {
