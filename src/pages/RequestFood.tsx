@@ -136,12 +136,12 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
-      // Check rate limit first
-      const canCreate = await checkRateLimit('create_request', 5, 60);
+      // Check rate limit first - allow 3 requests per hour
+      const canCreate = await checkRateLimit('create_request', 3, 60);
       if (!canCreate) {
         toast({
           title: "Too many requests",
-          description: "Please wait an hour before creating another request.",
+          description: "Please wait before creating another request. Limit: 3 per hour.",
           variant: "destructive",
         });
         setIsSubmitting(false);
