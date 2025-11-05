@@ -14,7 +14,6 @@ import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-reac
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
-import { useRateLimit } from '@/hooks/useRateLimit';
 import { z } from 'zod';
 
 const requestSchema = z.object({
@@ -58,7 +57,6 @@ const RequestFood = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { checkRateLimit, checking: checkingRateLimit } = useRateLimit();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [locationInput, setLocationInput] = useState('');
@@ -136,17 +134,6 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
-      // Check rate limit first - allow 3 requests per hour
-      const canCreate = await checkRateLimit('create_request', 3, 60);
-      if (!canCreate) {
-        toast({
-          title: "Too many requests",
-          description: "Please wait before creating another request. Limit: 3 per hour.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
 
       // Validate input with zod schema
       const validationResult = requestSchema.safeParse({
@@ -438,10 +425,10 @@ const RequestFood = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || checkingRateLimit || !formData.foodType || !formData.locationCity || !formData.locationState}
+                  disabled={isSubmitting || !formData.foodType || !formData.locationCity || !formData.locationState}
                   className="flex-1"
                 >
-                  {isSubmitting || checkingRateLimit ? 'Creating...' : 'Post Request'}
+                  {isSubmitting ? 'Creating...' : 'Post Request'}
                 </Button>
               </div>
             </form>

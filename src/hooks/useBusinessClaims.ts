@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmailVerification } from './useEmailVerification';
-import { useRateLimit } from './useRateLimit';
 import { toast as sonnerToast } from 'sonner';
 
 interface BusinessClaimData {
@@ -23,7 +22,6 @@ export const useBusinessClaims = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isVerified } = useEmailVerification();
-  const { checkRateLimit } = useRateLimit();
   const { toast } = useToast();
 
   const submitBusinessClaim = useCallback(async (
@@ -33,12 +31,6 @@ export const useBusinessClaims = () => {
     // Check email verification first
     if (!isVerified) {
       sonnerToast.error('Please verify your email address before claiming a business');
-      return;
-    }
-
-    // Check rate limit
-    const canProceed = await checkRateLimit('business_claim', 3, 60);
-    if (!canProceed) {
       return;
     }
 
@@ -93,7 +85,7 @@ export const useBusinessClaims = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, isVerified, checkRateLimit]);
+  }, [toast, isVerified]);
 
   const getBusinessAnalytics = useCallback(async (userId?: string) => {
     try {

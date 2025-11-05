@@ -14,7 +14,6 @@ import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
-import { useRateLimit } from '@/hooks/useRateLimit';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { StreakPopup } from '@/components/StreakPopup';
 import { z } from 'zod';
@@ -63,7 +62,6 @@ const SendRecommendation = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { checkRateLimit, checking: rateLimitChecking } = useRateLimit();
   const { hasRole } = useUserRoles();
   
   const [request, setRequest] = useState<FoodRequest | null>(null);
@@ -154,17 +152,6 @@ const SendRecommendation = () => {
         placeId: formData.placeId,
         mapsUrl: formData.mapsUrl
       });
-
-      // Check rate limit
-      const canRecommend = await checkRateLimit('create_recommendation', 10, 60);
-      if (!canRecommend) {
-        toast({
-          title: "Too many recommendations",
-          description: "Please wait before submitting more recommendations.",
-          variant: "destructive",
-        });
-        return;
-      }
 
       const { error } = await supabase
         .from('recommendations')
@@ -453,10 +440,10 @@ const SendRecommendation = () => {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || rateLimitChecking || !formData.restaurantName}
+                      disabled={isSubmitting || !formData.restaurantName}
                       className="flex-1"
                     >
-                      {isSubmitting || rateLimitChecking ? 'Sending...' : 'Send Recommendation'}
+                      {isSubmitting ? 'Sending...' : 'Send Recommendation'}
                     </Button>
                   </div>
                 </form>
