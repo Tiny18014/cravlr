@@ -137,7 +137,7 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
       const { error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('user_id', user.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 
