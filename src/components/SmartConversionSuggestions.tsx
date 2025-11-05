@@ -84,11 +84,15 @@ export default function SmartConversionSuggestions() {
       // Get user names for display
       const enrichedSuggestions = await Promise.all(
         (highProbClicks || []).map(async (click: any) => {
-          const { data: requesterProfile } = await supabase
+          // Fetch profile to avoid deep type inference issues
+          // @ts-expect-error - Known TypeScript limitation with deeply nested Supabase types
+          const profileResult = await supabase
             .from('profiles')
             .select('display_name')
             .eq('user_id', click.requester_id)
             .maybeSingle();
+          
+          const requesterProfile = profileResult.data;
 
           return {
             id: click.id,

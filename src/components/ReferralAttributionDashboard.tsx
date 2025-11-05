@@ -151,18 +151,22 @@ export default function ReferralAttributionDashboard() {
       // Enhance clicks with user names and device info
       const enhancedClicks = await Promise.all(
         (clicksData || []).map(async (click: any) => {
-          const [recommenderProfile, requesterProfile] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('user_id', click.recommender_id)
-              .maybeSingle(),
-            supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('user_id', click.requester_id)
-              .maybeSingle()
-          ]);
+          // Fetch profiles separately to avoid deep type inference issues
+          // @ts-expect-error - Known TypeScript limitation with deeply nested Supabase types
+          const recommenderResult = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', click.recommender_id)
+            .maybeSingle();
+          
+          const requesterResult = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', click.requester_id)
+            .maybeSingle();
+
+          const recommenderProfile = recommenderResult;
+          const requesterProfile = requesterResult;
 
           // Parse user agent for device info
           const userAgent = click.user_agent || '';
