@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      business_claims: {
+        Row: {
+          claimed_at: string | null
+          created_at: string
+          id: string
+          place_id: string
+          restaurant_name: string
+          status: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          place_id: string
+          restaurant_name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          place_id?: string
+          restaurant_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       business_profiles: {
         Row: {
           business_name: string
@@ -21,6 +57,8 @@ export type Database = {
           created_at: string
           default_ticket_value: number | null
           id: string
+          is_premium: boolean | null
+          place_id: string | null
           updated_at: string
           user_id: string
         }
@@ -30,6 +68,8 @@ export type Database = {
           created_at?: string
           default_ticket_value?: number | null
           id?: string
+          is_premium?: boolean | null
+          place_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -39,6 +79,8 @@ export type Database = {
           created_at?: string
           default_ticket_value?: number | null
           id?: string
+          is_premium?: boolean | null
+          place_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -82,6 +124,103 @@ export type Database = {
           location_state?: string
           requester_id?: string
           status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guru_map_likes: {
+        Row: {
+          created_at: string
+          id: string
+          map_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          map_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          map_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_map_likes_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "guru_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guru_map_places: {
+        Row: {
+          added_by: string
+          created_at: string
+          id: string
+          map_id: string
+          notes: string | null
+          place_id: string
+          place_name: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          id?: string
+          map_id: string
+          notes?: string | null
+          place_id: string
+          place_name: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          id?: string
+          map_id?: string
+          notes?: string | null
+          place_id?: string
+          place_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guru_map_places_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "guru_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guru_maps: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_public: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -157,7 +296,10 @@ export type Database = {
           display_name: string | null
           id: string
           last_feedback_date: string | null
+          location_city: string | null
+          location_state: string | null
           notify_recommender: boolean | null
+          persona: string | null
           points_this_month: number | null
           points_total: number | null
           streak_count: number
@@ -169,7 +311,10 @@ export type Database = {
           display_name?: string | null
           id: string
           last_feedback_date?: string | null
+          location_city?: string | null
+          location_state?: string | null
           notify_recommender?: boolean | null
+          persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
           streak_count?: number
@@ -181,7 +326,10 @@ export type Database = {
           display_name?: string | null
           id?: string
           last_feedback_date?: string | null
+          location_city?: string | null
+          location_state?: string | null
           notify_recommender?: boolean | null
+          persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
           streak_count?: number
@@ -380,7 +528,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      view_business_commissions: {
+        Row: {
+          click_id: string | null
+          clicked_at: string | null
+          commission_paid: boolean | null
+          commission_rate: number | null
+          conversion_value: number | null
+          converted: boolean | null
+          place_id: string | null
+          recommendation_id: string | null
+          recommender_id: string | null
+          recommender_name: string | null
+          restaurant_address: string | null
+          restaurant_name: string | null
+          visit_confirmed_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_clicks_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assign_user_role: {
@@ -389,6 +562,30 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      get_request_results: {
+        Args: { request_uuid: string }
+        Returns: {
+          confidence_score: number
+          created_at: string
+          notes: string
+          recommendation_id: string
+          recommender_name: string
+          restaurant_name: string
+        }[]
+      }
+      get_unpaid_commissions: {
+        Args: { business_user_id: string }
+        Returns: {
+          click_id: string
+          clicked_at: string
+          commission_amount: number
+          commission_rate: number
+          conversion_value: number
+          recommendation_id: string
+          recommender_name: string
+          visit_confirmed_at: string
+        }[]
       }
     }
     Enums: {
