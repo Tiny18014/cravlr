@@ -1,18 +1,21 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface PushNotificationRequest {
-  requestId: string;
-  foodType: string;
-  locationCity: string;
-  locationState: string;
-  urgency: 'low' | 'medium' | 'high';
-}
+const pushNotificationSchema = z.object({
+  requestId: z.string().uuid('Invalid request ID'),
+  foodType: z.string().trim().min(1).max(100, 'Food type must be 1-100 characters'),
+  locationCity: z.string().trim().min(1).max(100, 'City name must be 1-100 characters'),
+  locationState: z.string().trim().length(2, 'State must be 2-letter code').toUpperCase(),
+  urgency: z.enum(['low', 'medium', 'high'], {
+    errorMap: () => ({ message: 'Urgency must be low, medium, or high' })
+  })
+});
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -48,7 +51,22 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { requestId, foodType, locationCity, locationState, urgency }: PushNotificationRequest = await req.json();
+    // Validate input
+    const body = await req.json();
+    const validationResult = pushNotificationSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.error('❌ Validation failed:', validationResult.error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues.map(i => i.message) 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { requestId, foodType, locationCity, locationState, urgency } = validationResult.data;
 
     // Get the food request details
     const { data: request, error: requestError } = await supabase

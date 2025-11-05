@@ -97,27 +97,40 @@ export const useBusinessClaims = () => {
 
   const fetchBusinessClaims = useCallback(async (userId?: string) => {
     try {
-      let query = supabase
-        .from('business_claims')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      setLoading(true);
+      
+      // If userId is provided, fetch user's own claims
       if (userId) {
-        query = query.eq('user_id', userId);
+        const { data, error } = await supabase
+          .from('business_claims')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('❌ Error fetching business claims:', error);
+          throw error;
+        }
+
+        return data || [];
       }
 
-      const { data, error } = await query;
+      // No userId means admin wants all claims - use admin edge function
+      const { data, error } = await supabase.functions.invoke('admin-get-claims');
 
       if (error) {
-        console.error('❌ Error fetching business claims:', error);
-        throw error;
+        console.error('❌ Error fetching all business claims:', error);
+        setError(error.message);
+        return [];
       }
 
-      return data || [];
+      return data?.claims || [];
     } catch (err: any) {
       console.error('❌ Error in fetchBusinessClaims:', err);
       setError(err.message);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -128,22 +141,23 @@ export const useBusinessClaims = () => {
   ) => {
     setLoading(true);
     try {
-      const updateData: any = {
-        status,
-        verification_notes: notes,
-        verified_by: (await supabase.auth.getUser()).data.user?.id
-      };
+      // Use admin edge function for updating claim status
+      const { data, error } = await supabase.functions.invoke('admin-update-claim', {
+        body: {
+          claimId,
+          status,
+          notes
+        }
+      });
 
-      if (status === 'verified') {
-        updateData.verified_at = new Date().toISOString();
+      if (error) {
+        console.error('❌ Error updating claim status:', error);
+        throw error;
       }
 
-      const { error } = await supabase
-        .from('business_claims')
-        .update(updateData)
-        .eq('id', claimId);
-
-      if (error) throw error;
+      if (!data?.success) {
+        throw new Error('Failed to update claim status');
+      }
 
       toast({
         title: `Claim ${status === 'verified' ? 'Approved' : 'Rejected'}`,

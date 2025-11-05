@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -11,10 +12,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface AwardPointsRequest {
-  recommendationId: string;
-  points: number;
-}
+const awardPointsSchema = z.object({
+  recommendationId: z.string().uuid('Invalid recommendation ID'),
+  points: z.number().int('Points must be an integer').min(1, 'Points must be at least 1').max(100, 'Points cannot exceed 100')
+});
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -42,7 +43,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { recommendationId, points }: AwardPointsRequest = await req.json();
+    // Validate input
+    const body = await req.json();
+    const validationResult = awardPointsSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues.map(i => i.message) 
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const { recommendationId, points } = validationResult.data;
     
     console.log(`User ${user.id} awarding ${points} points for recommendation ${recommendationId}`);
 

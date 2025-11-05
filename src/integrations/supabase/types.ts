@@ -377,6 +377,13 @@ export type Database = {
             referencedRelation: "recommendations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recommendation_feedback_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "view_business_commissions"
+            referencedColumns: ["recommendation_id"]
+          },
         ]
       }
       recommendations: {
@@ -477,6 +484,13 @@ export type Database = {
             referencedRelation: "recommendations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "referral_clicks_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "view_business_commissions"
+            referencedColumns: ["recommendation_id"]
+          },
         ]
       }
       request_user_state: {
@@ -548,17 +562,10 @@ export type Database = {
           recommender_name: string | null
           restaurant_address: string | null
           restaurant_name: string | null
+          user_id: string | null
           visit_confirmed_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "referral_clicks_recommendation_id_fkey"
-            columns: ["recommendation_id"]
-            isOneToOne: false
-            referencedRelation: "recommendations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
