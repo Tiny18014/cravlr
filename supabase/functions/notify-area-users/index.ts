@@ -105,7 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get requester profile
     const { data: requesterProfile } = await supabase
       .from('profiles')
-      .select('display_name, email')
+      .select('display_name')
       .eq('id', request.requester_id)
       .single();
 
@@ -113,12 +113,10 @@ const handler = async (req: Request): Promise<Response> => {
     // First try to find users in the same city/state
     const { data: nearbyUsers, error: usersError } = await supabase
       .from('profiles')
-      .select('email, display_name, notification_email, user_id, location_lat, location_lng, do_not_disturb, notify_recommender')
+      .select('id, display_name, notify_recommender')
       .eq('location_city', request.location_city)
       .eq('location_state', request.location_state)
-      .neq('user_id', request.requester_id) // Don't notify the requester
-      .eq('is_active', true)
-      .eq('do_not_disturb', false) // Only get users who are NOT in DND mode
+      .neq('id', request.requester_id) // Don't notify the requester
       .eq('notify_recommender', true); // Only get users who want recommender notifications
 
     if (usersError) {
@@ -137,31 +135,19 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Filter users by distance if coordinates are available
-    let eligibleUsers = nearbyUsers;
-    if (request.location_lat && request.location_lng) {
-      eligibleUsers = nearbyUsers.filter(user => {
-        if (!user.location_lat || !user.location_lng) return true; // Include users without coordinates
-        const distance = calculateDistance(
-          parseFloat(request.location_lat),
-          parseFloat(request.location_lng),
-          parseFloat(user.location_lat),
-          parseFloat(user.location_lng)
-        );
-        return distance <= 50; // Within 50km radius
-      });
-    }
-
-    console.log(`Found ${eligibleUsers.length} eligible users to notify`);
+    console.log(`Found ${nearbyUsers.length} eligible users to notify`);
 
     // Send notification emails to all eligible users
-    const emailPromises = eligibleUsers.map(async (user) => {
-      const emailTo = user.notification_email || user.email;
+    const emailPromises = nearbyUsers.map(async (user) => {
+      // Get user's email from auth.users using service role key
+      const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(user.id);
       
-      if (!emailTo) {
-        console.log(`No email for user ${user.user_id}`);
+      if (authUserError || !authUser?.user?.email) {
+        console.log(`No email found for user ${user.id}`);
         return null;
       }
+      
+      const emailTo = authUser.user.email;
 
       try {
         const emailResponse = await resend.emails.send({
@@ -224,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ 
       success: true,
       notificationsSent: successfulEmails,
-      totalEligibleUsers: eligibleUsers.length
+      totalEligibleUsers: nearbyUsers.length
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
