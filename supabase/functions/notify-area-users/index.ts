@@ -81,13 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get request details
     const { data: request, error: requestError } = await supabase
       .from('food_requests')
-      .select(`
-        *,
-        profiles!food_requests_requester_id_fkey (
-          display_name,
-          email
-        )
-      `)
+      .select('*')
       .eq('id', requestId)
       .single();
 
@@ -107,6 +101,13 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get requester profile
+    const { data: requesterProfile } = await supabase
+      .from('profiles')
+      .select('display_name, email')
+      .eq('id', request.requester_id)
+      .single();
 
     // Find users in the same geographic area who are eligible for notifications
     // First try to find users in the same city/state
@@ -181,8 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p><strong>Location:</strong> ${request.location_city}, ${request.location_state}</p>
                 ${request.location_address ? `<p><strong>Near:</strong> ${request.location_address}</p>` : ''}
                 ${request.additional_notes ? `<p><strong>Notes:</strong> ${request.additional_notes}</p>` : ''}
-                <p><strong>Requested by:</strong> ${request.profiles.display_name || 'A fellow foodie'}</p>
-                <p><strong>Response Window:</strong> ${request.response_window} minutes</p>
+                <p><strong>Requested by:</strong> ${requesterProfile?.display_name || 'A fellow foodie'}</p>
               </div>
               
               <p>Know a great spot? Head over to Cravlr to share your recommendation and earn points!</p>
