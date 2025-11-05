@@ -68,7 +68,7 @@ serve(async (req) => {
     // Check if the request exists and get requester info
     const { data: request, error: requestError } = await supabase
       .from('food_requests')
-      .select('id, status, expires_at, requester_id')
+      .select('id, status, expire_at, requester_id')
       .eq('id', requestId)
       .single();
 
@@ -116,7 +116,7 @@ serve(async (req) => {
     }
 
     // Check if request has expired (for active requests)
-    if (new Date(request.expires_at) <= new Date()) {
+    if (new Date(request.expire_at) <= new Date()) {
       return new Response(
         JSON.stringify({ error: 'Request has expired' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
