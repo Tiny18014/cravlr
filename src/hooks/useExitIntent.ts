@@ -22,6 +22,10 @@ export const useExitIntent = ({ enabled, onExitIntent, delay = 1500 }: UseExitIn
   }, [hasTriggered, enabled, onExitIntent, delay]);
 
   useEffect(() => {
+    // TEMPORARILY DISABLED: Exit intent detection
+    // Uncomment the code below to re-enable exit-intent popups
+    
+    /*
     if (!enabled) return;
 
     // Desktop: Mouse leaving viewport towards top
@@ -57,6 +61,7 @@ export const useExitIntent = ({ enabled, onExitIntent, delay = 1500 }: UseExitIn
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (delayTimer) clearTimeout(delayTimer);
     };
+    */
   }, [enabled, hasTriggered, triggerWithDelay, delayTimer]);
 
   return { hasTriggered };
