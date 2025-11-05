@@ -13,6 +13,7 @@ import { ArrowLeft, MapPin, Star } from 'lucide-react';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
+import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useRateLimit } from '@/hooks/useRateLimit';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { StreakPopup } from '@/components/StreakPopup';
@@ -72,6 +73,7 @@ const SendRecommendation = () => {
   const [triggerAppFeedback, setTriggerAppFeedback] = useState(false);
   const [showStreakPopup, setShowStreakPopup] = useState(false);
   const [streakData, setStreakData] = useState<{ streakCount: number; points: number }>({ streakCount: 0, points: 0 });
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
   const [formData, setFormData] = useState({
     restaurantName: '',
@@ -193,10 +195,10 @@ const SendRecommendation = () => {
       // Update streak and points for recommenders only
       if (hasRole('recommender')) {
         try {
-          // Fetch current streak and points
+          // Fetch current streak, points, and last feedback date
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('streak_count, total_points')
+            .select('streak_count, total_points, last_feedback_date')
             .eq('id', user.id)
             .single();
 
@@ -222,6 +224,26 @@ const SendRecommendation = () => {
           // Show streak popup
           setStreakData({ streakCount: newStreak, points: pointsToAdd });
           setShowStreakPopup(true);
+
+          // Check if we should show feedback modal
+          const shouldShowFeedback = (newStreak % 3 === 0 || newStreak % 4 === 0);
+          
+          let daysSinceLastFeedback = Infinity;
+          if (profileData?.last_feedback_date) {
+            const lastFeedbackDate = new Date(profileData.last_feedback_date);
+            const currentDate = new Date();
+            const diffTime = Math.abs(currentDate.getTime() - lastFeedbackDate.getTime());
+            daysSinceLastFeedback = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          }
+
+          const hasNotGivenFeedbackRecently = !profileData?.last_feedback_date || daysSinceLastFeedback > 3;
+
+          if (shouldShowFeedback && hasNotGivenFeedbackRecently) {
+            // Wait 1.5 seconds after streak popup before showing feedback modal
+            setTimeout(() => {
+              setShowFeedbackModal(true);
+            }, 1500);
+          }
         } catch (streakError) {
           console.error('Error updating streak:', streakError);
           // Don't block the success flow if streak update fails
@@ -456,6 +478,13 @@ const SendRecommendation = () => {
         onClose={() => setShowStreakPopup(false)}
         streakCount={streakData.streakCount}
         points={streakData.points}
+      />
+
+      <AppFeedbackSurvey
+        open={showFeedbackModal}
+        onOpenChange={setShowFeedbackModal}
+        role="recommender"
+        sourceAction="streak_milestone_feedback"
       />
     </div>
   );

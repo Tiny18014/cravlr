@@ -156,6 +156,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          last_feedback_date: string | null
           notify_recommender: boolean | null
           points_this_month: number | null
           points_total: number | null
@@ -167,6 +168,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          last_feedback_date?: string | null
           notify_recommender?: boolean | null
           points_this_month?: number | null
           points_total?: number | null
@@ -178,6 +180,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          last_feedback_date?: string | null
           notify_recommender?: boolean | null
           points_this_month?: number | null
           points_total?: number | null

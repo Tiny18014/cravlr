@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Star } from "lucide-react";
 import { useAppFeedback, type FeedbackRole } from "@/hooks/useAppFeedback";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppFeedbackSurveyProps {
   open: boolean;
@@ -39,6 +42,8 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
   const [rating, setRating] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const { submitFeedback, loading } = useAppFeedback();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const handleSubmit = async () => {
     const tags = [experience];
@@ -55,6 +60,27 @@ export const AppFeedbackSurvey = ({ open, onOpenChange, role, sourceAction }: Ap
     });
 
     if (success) {
+      // Update last_feedback_date for recommenders
+      if (role === 'recommender' && user) {
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ last_feedback_date: new Date().toISOString() })
+            .eq('id', user.id);
+
+          if (error) {
+            console.error('Error updating last_feedback_date:', error);
+          } else {
+            toast({
+              title: "Thanks for your feedback!",
+              description: "You're helping make Cravlr better.",
+            });
+          }
+        } catch (err) {
+          console.error('Error updating last_feedback_date:', err);
+        }
+      }
+
       setShowThankYou(true);
       
       setTimeout(() => {
