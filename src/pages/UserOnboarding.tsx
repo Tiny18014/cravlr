@@ -158,12 +158,10 @@ const UserOnboarding = () => {
         .update({
           location_city: locationCity,
           location_state: locationState,
-          location_lat: locationLat,
-          location_lng: locationLng,
           cuisine_expertise: selectedCuisines,
           search_range: searchRange,
         })
-        .eq('user_id', user.id);
+        .eq('id', user.id);
       
       if (error) throw error;
       

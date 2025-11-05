@@ -218,7 +218,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
           supabase
             .from('profiles')
             .select('display_name, persona')
-            .eq('user_id', user.id)
+            .eq('id', user.id)
             .single(),
           supabase
             .from('user_roles')

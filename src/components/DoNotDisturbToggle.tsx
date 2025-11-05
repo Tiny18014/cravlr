@@ -22,7 +22,7 @@ export function DoNotDisturbToggle({ notifyRecommender, onToggle }: DoNotDisturb
       const { error } = await supabase
         .from('profiles')
         .update({ notify_recommender: enabled })
-        .eq('user_id', user.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 

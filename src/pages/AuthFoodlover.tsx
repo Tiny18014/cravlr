@@ -120,7 +120,7 @@ const AuthFoodlover = () => {
             const { error: profileError } = await supabase
               .from('profiles')
               .update({ display_name: displayName })
-              .eq('user_id', user.id);
+              .eq('id', user.id);
 
             if (profileError) {
               console.error('Error updating profile:', profileError);

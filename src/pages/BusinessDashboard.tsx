@@ -141,13 +141,10 @@ export default function BusinessDashboard() {
     }
   };
 
-  const fetchClickData = async () => {
-    const { data } = await supabase
-      .from('referral_clicks')
-      .select('*')
-      .eq('recommender_id', user?.id)
-      .order('clicked_at', { ascending: false });
-    return data || [];
+  const fetchClickData = async (): Promise<any[]> => {
+    // Temporarily stubbed - feature unavailable
+    console.log('Feature temporarily unavailable: fetchClickData');
+    return [];
   };
 
   const totalStats = analytics.reduce(

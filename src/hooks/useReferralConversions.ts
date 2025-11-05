@@ -68,12 +68,12 @@ export const useReferralConversions = () => {
           supabase
              .from('profiles')
              .select('display_name')
-             .eq('user_id', click.recommender_id)
+             .eq('id', click.recommender_id)
              .maybeSingle(),
            supabase
              .from('profiles')
              .select('display_name')
-             .eq('user_id', click.requester_id)
+             .eq('id', click.requester_id)
              .maybeSingle()
          ]);
 
