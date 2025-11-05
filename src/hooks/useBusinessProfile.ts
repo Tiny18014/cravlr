@@ -7,9 +7,7 @@ interface BusinessProfile {
   user_id: string;
   business_name: string;
   is_premium: boolean;
-  premium_started_at: string | null;
   commission_rate: number;
-  subscription_tier: string;
 }
 
 export const useBusinessProfile = () => {

@@ -11,11 +11,7 @@ interface GuruMap {
   id: string;
   title: string;
   description: string | null;
-  theme: string | null;
-  likes_count: number;
-  view_count: number;
   created_by: string;
-  collaborators: string[];
   created_at: string;
   creator?: {
     display_name: string;
@@ -35,14 +31,13 @@ export function TopMapsTab() {
 
   const loadTopMaps = async () => {
     const { data: maps, error } = await supabase
-      .from("guru_maps")
-      .select(`
-        *,
-        creator:profiles!created_by(display_name),
-        places:guru_map_places(count)
-      `)
-      .order("likes_count", { ascending: false })
-      .limit(10);
+        .from("guru_maps")
+        .select(`
+          *,
+          places:guru_map_places(count)
+        `)
+        .order("created_at", { ascending: false})
+        .limit(10);
 
     if (error) {
       console.error("Error loading maps:", error);
@@ -91,16 +86,7 @@ export function TopMapsTab() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span className="truncate">{map.title}</span>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Heart className="h-4 w-4" />
-                    {map.likes_count}
-                  </div>
                 </CardTitle>
-                {map.theme && (
-                  <CardDescription className="text-xs bg-primary/10 px-2 py-1 rounded-full w-fit">
-                    {map.theme}
-                  </CardDescription>
-                )}
                 {map.description && (
                   <CardDescription className="line-clamp-2">
                     {map.description}
@@ -113,21 +99,6 @@ export function TopMapsTab() {
                     <MapPin className="h-4 w-4" />
                     {map.places?.length || 0} places
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {map.collaborators?.length || 0}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Eye className="h-4 w-4" />
-                    {map.view_count || 0} views
-                  </div>
-                  {map.creator?.display_name && (
-                    <p className="text-xs text-muted-foreground">
-                      By {map.creator.display_name}
-                    </p>
-                  )}
                 </div>
               </CardContent>
             </Card>

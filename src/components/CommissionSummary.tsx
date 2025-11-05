@@ -44,15 +44,7 @@ export function CommissionSummary({ userId }: CommissionSummaryProps) {
   const fetchCommissions = async () => {
     setLoading(true);
     try {
-      // Fetch commission data
-      const { data, error } = await supabase
-        .from('view_business_commissions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('visit_confirmed_at', { ascending: false });
-
-      if (error) throw error;
-      setCommissions(data || []);
+      setCommissions([]);
 
       // Fetch unpaid total
       const { data: unpaidData, error: unpaidError } = await supabase

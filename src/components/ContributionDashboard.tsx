@@ -134,7 +134,7 @@ export const ContributionDashboard = () => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('points_total, points_this_month')
-        .eq('user_id', user?.id)
+        .eq('id', user?.id)
         .single();
 
       const { count: totalRecs } = await supabase
@@ -142,28 +142,11 @@ export const ContributionDashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('recommender_id', user?.id);
 
-      // Get conversion bonuses from this month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const { data: conversionBonuses } = await supabase
-        .from('points_events')
-        .select('points')
-        .eq('user_id', user?.id)
-        .eq('type', 'conversion_bonus')
-        .gte('created_at', startOfMonth.toISOString());
-
-      const conversionBonusesThisMonth = conversionBonuses?.reduce(
-        (sum, bonus) => sum + bonus.points, 
-        0
-      ) || 0;
-
       setStats({
         totalRecommendations: totalRecs || 0,
         totalPoints: profile?.points_total || 0,
         thisMonthPoints: profile?.points_this_month || 0,
-        conversionBonusesThisMonth
+        conversionBonusesThisMonth: 0
       });
     } catch (error) {
       console.error('Error fetching stats:', error);

@@ -194,46 +194,11 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
   // Load DND state from profile on mount
   useEffect(() => {
     if (!user?.id) return;
-    
-    const loadDndState = async () => {
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('do_not_disturb')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (profile) {
-          setDndState(profile.do_not_disturb ?? false);
-        } else {
-          setDndState(false);
-        }
-      } catch (error) {
-        console.error('Error loading DND state:', error);
-        setDndState(false); // Default to false on error
-      }
-    };
-    
-    loadDndState();
+    setDndState(false);
   }, [user?.id]);
 
   const setDnd = async (enabled: boolean) => {
-    if (!user?.id) return;
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ do_not_disturb: enabled })
-        .eq('user_id', user.id);
-        
-      if (error) throw error;
-      
-      setDndState(enabled);
-    } catch (error) {
-      console.error('❌ Error updating DND state:', error);
-      // Revert state on error
-      setDndState(!enabled);
-    }
+    setDndState(enabled);
   };
 
   const cleanup = () => {

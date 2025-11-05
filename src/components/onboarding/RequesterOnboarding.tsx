@@ -41,15 +41,13 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
 
       const { data } = await supabase
         .from('profiles')
-        .select('location_city, location_lat, location_lng')
-        .eq('user_id', user.id)
+        .select('location_city, location_state')
+        .eq('id', user.id)
         .single();
 
       if (data?.location_city) {
         setHasExistingLocation(true);
         setLocationCity(data.location_city);
-        setLocationLat(data.location_lat);
-        setLocationLng(data.location_lng);
       }
     } catch (error) {
       console.error('Error checking location:', error);
@@ -127,18 +125,12 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const updates: any = {
-        location_city: locationCity,
-        request_range: requestRange,
-      };
-
-      if (locationLat !== null) updates.location_lat = locationLat;
-      if (locationLng !== null) updates.location_lng = locationLng;
-
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
-        .eq('user_id', user.id);
+        .update({
+          location_city: locationCity,
+        })
+        .eq('id', user.id);
 
       if (error) throw error;
 
