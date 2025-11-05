@@ -117,8 +117,7 @@ const ActiveRequestsList = ({
           location_state,
           status,
           created_at,
-          expire_at,
-          profiles!inner(display_name)
+          expire_at
         `)
         .eq('status', 'active')
         .neq('requester_id', user.id)
@@ -129,7 +128,14 @@ const ActiveRequestsList = ({
 
       // Enrich with recommendation count and user state
       const enrichedRequests = await Promise.all(
-        (data || []).map(async (request) => {
+        (data || []).map(async (request: any) => {
+          // Fetch the profile separately
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', request.requester_id)
+            .single();
+
           const { count } = await supabase
             .from('recommendations')
             .select('*', { count: 'exact', head: true })
@@ -140,17 +146,18 @@ const ActiveRequestsList = ({
             .select('id')
             .eq('request_id', request.id)
             .eq('recommender_id', user.id)
-            .single();
+            .maybeSingle();
 
           const { data: userState } = await supabase
             .from('request_user_state')
             .select('state')
             .eq('request_id', request.id)
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
           return {
             ...request,
+            profiles: profile || { display_name: 'Unknown User' },
             recommendation_count: count || 0,
             user_has_recommended: !!userRec,
             user_state: (userState?.state as "accepted" | "ignored") || null

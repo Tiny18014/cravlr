@@ -9,15 +9,22 @@ import { format } from 'date-fns';
 
 interface CommissionEntry {
   click_id: string;
-  recommender_name: string | null;
+  recommender_name: string;
   clicked_at: string;
-  visit_confirmed_at: string | null;
-  visit_date: string | null;
-  spend_amount: number | null;
-  commission_amount: number | null;
-  commission_paid: boolean | null;
-  commission_paid_at: string | null;
-  business_notes: string | null;
+  visit_confirmed_at: string;
+  conversion_value: number;
+  commission_rate: number;
+  commission_amount?: number;
+  commission_paid: boolean;
+  recommendation_id: string;
+  recommender_id: string;
+  restaurant_name: string;
+  restaurant_address: string;
+  place_id: string;
+  converted: boolean;
+  visit_date?: string;
+  spend_amount?: number;
+  business_notes?: string;
 }
 
 interface CommissionSummaryProps {
@@ -52,7 +59,12 @@ export function CommissionSummary({ userId }: CommissionSummaryProps) {
         .rpc('get_unpaid_commissions', { business_user_id: userId });
 
       if (unpaidError) throw unpaidError;
-      setUnpaidTotal(unpaidData || 0);
+      
+      // Calculate unpaid total from the data
+      const total = Array.isArray(unpaidData) 
+        ? unpaidData.reduce((sum, item) => sum + (item.commission_amount || 0), 0)
+        : 0;
+      setUnpaidTotal(total);
     } catch (error: any) {
       console.error('Error fetching commissions:', error);
       toast({

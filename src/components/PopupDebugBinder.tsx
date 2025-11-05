@@ -19,11 +19,11 @@ export function PopupDebugBinder() {
       
       console.log("🧪 Testing notification flow for request:", requestId);
       const { data, error } = await supabase.from('notifications').insert({
-        requester_id: user.id,
         request_id: requestId,
         type: 'request_results',
-        payload: { title: 'Test Notification', message: 'Manual test notification' }
-      });
+        title: 'Test Notification',
+        message: 'Manual test notification'
+      } as any);
       
       if (error) {
         console.error("❌ Failed to insert test notification:", error);
@@ -54,7 +54,7 @@ export function PopupDebugBinder() {
     (window as any).__testSaferRPC = async (requestId: string) => {
       console.log("🧪 Testing safer RPC for request:", requestId);
       const { data, error } = await supabase.rpc('get_request_results', { 
-        p_request_id: requestId 
+        request_uuid: requestId 
       });
       
       if (error) {
@@ -88,14 +88,11 @@ export function PopupDebugBinder() {
       console.log("🧪 Request found:", request);
       
       const { data, error } = await supabase.from('notifications').insert({
-        requester_id: request.requester_id,
         request_id: requestId,
         type: 'request_results',
-        payload: { 
-          title: 'Your results are ready! 🎉',
-          message: `Tap to view the best picks for your ${request.food_type} request.`
-        }
-      });
+        title: 'Your results are ready! 🎉',
+        message: `Tap to view the best picks for your ${request.food_type} request.`
+      } as any);
       
       if (error) {
         console.error("❌ Failed to insert notification:", error);

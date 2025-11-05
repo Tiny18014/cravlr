@@ -54,8 +54,8 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
           supabase
             .from('profiles')
             .select('persona')
-            .eq('user_id', user.id)
-            .single(),
+            .eq('id', user.id)
+            .maybeSingle(),
           supabase
             .from('business_claims')
             .select('id, status')

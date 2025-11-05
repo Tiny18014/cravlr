@@ -84,16 +84,27 @@ export const ContributionDashboard = () => {
 
       // Add status and recommendation count for each
       const enrichedData = await Promise.all(
-        (data || []).map(async (rec) => {
+        (data || []).map(async (rec: any) => {
+          if (!rec.request_id) return null;
+          
+          // Get the request details
+          const { data: requestData } = await supabase
+            .from('food_requests')
+            .select('*')
+            .eq('id', rec.request_id)
+            .single();
+            
+          if (!requestData) return null;
+
           // Get total recommendation count for this request
           const { count } = await supabase
             .from('recommendations')
             .select('*', { count: 'exact', head: true })
-            .eq('request_id', rec.food_requests.id);
+            .eq('request_id', rec.request_id);
 
-          // Determine status - simplified for now
+          // Determine status
           let status: 'pending' | 'viewed' | 'accepted' = 'pending';
-          if (rec.food_requests.status === 'active') {
+          if (requestData.status === 'active') {
             status = 'pending';
           } else {
             status = 'viewed';
@@ -101,13 +112,16 @@ export const ContributionDashboard = () => {
 
           return {
             ...rec,
+            food_requests: requestData,
             status,
             recommendation_count: count || 0
           };
         })
       );
+      
+      const filteredData = enrichedData.filter(Boolean);
 
-      setRecommendations(enrichedData);
+      setRecommendations(filteredData as any);
     } catch (error) {
       console.error('Error fetching recommendations:', error);
     } finally {
