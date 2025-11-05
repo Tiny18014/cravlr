@@ -8,7 +8,6 @@ export interface FoodRequest {
   requester_id: string;
   location_city: string;
   location_state: string;
-  response_window: number;
 }
 
 export interface Recommendation {
@@ -23,7 +22,7 @@ export class RequestService {
   static async getUserActiveRequests(userId: string): Promise<FoodRequest[]> {
     const { data, error } = await supabase
       .from("food_requests")
-      .select("id, food_type, expire_at, status, requester_id, location_city, location_state, response_window")
+      .select("id, food_type, expire_at, status, requester_id, location_city, location_state")
       .eq("requester_id", userId)
       .eq("status", "active")
       .gt("expire_at", new Date().toISOString())
@@ -71,7 +70,7 @@ export class RequestService {
     try {
       await supabase
         .from('notifications')
-        .update({ read_at: new Date().toISOString() })
+        .update({ read: true })
         .eq('request_id', requestId)
         .eq('requester_id', userId)
         .eq('type', 'request_results');

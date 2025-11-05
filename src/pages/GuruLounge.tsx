@@ -27,19 +27,21 @@ export default function GuruLounge() {
       return;
     }
 
+    // Guru feature temporarily disabled - checking user roles instead
     try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('guru_level')
-        .eq('user_id', user.id)
-        .single();
+      const { data: roles, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
-      if (!profile?.guru_level) {
+      const isGuruRole = roles?.some(r => r.role === 'admin'); // Temporarily admin-only
+      
+      if (!isGuruRole) {
         toast({
           title: "Access Denied",
-          description: "This feature is exclusive to Cravlr Gurus. Keep recommending to unlock access!",
+          description: "This feature is currently under development.",
           variant: "destructive"
         });
         navigate('/');

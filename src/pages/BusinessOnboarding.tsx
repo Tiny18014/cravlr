@@ -40,9 +40,6 @@ export default function BusinessOnboarding() {
           // Determine current step based on claim status
           if (claim.status === 'verified') {
             setCurrentStep('complete');
-          } else if (claim.verification_step === 'phone_verification' || 
-                     claim.verification_step === 'email_verification') {
-            setCurrentStep('verification');
           } else {
             setCurrentStep('claim');
           }

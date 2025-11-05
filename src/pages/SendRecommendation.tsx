@@ -111,18 +111,26 @@ const SendRecommendation = () => {
     try {
       const { data, error } = await supabase
         .from('food_requests')
-        .select(`
-          *,
-          profiles (
-            display_name
-          )
-        `)
+        .select('*')
         .eq('id', requestId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setRequest(data);
+      
+      if (data) {
+        // Fetch requester profile separately
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', data.requester_id)
+          .maybeSingle();
+        
+        setRequest({
+          ...data,
+          profiles: { display_name: profile?.display_name || 'Anonymous' }
+        });
+      }
     } catch (error) {
       console.error('Error fetching request:', error);
       toast({

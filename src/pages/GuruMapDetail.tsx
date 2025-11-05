@@ -27,9 +27,6 @@ interface GuruMapDetail {
   id: string;
   title: string;
   description: string | null;
-  theme: string | null;
-  likes_count: number;
-  collaborators: string[];
   created_by: string;
   is_public: boolean;
   creator_profile?: {
@@ -61,35 +58,57 @@ export default function GuruMapDetail() {
     try {
       const { data: mapData, error: mapError } = await supabase
         .from('guru_maps')
-        .select(`
-          *,
-          creator_profile:profiles!guru_maps_created_by_fkey (
-            display_name
-          )
-        `)
+        .select('*')
         .eq('id', mapId)
-        .single();
+        .maybeSingle();
 
       if (mapError) throw mapError;
-      setMap(mapData);
-      setIsCollaborator(
-        mapData.created_by === user?.id || 
-        mapData.collaborators.includes(user?.id || '')
-      );
+      
+      if (mapData) {
+        // Fetch creator profile separately
+        const { data: creator } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', mapData.created_by)
+          .maybeSingle();
+        
+        setMap({
+          ...mapData,
+          creator_profile: { display_name: creator?.display_name || 'Anonymous' }
+        });
+        setIsCollaborator(mapData.created_by === user?.id);
+      }
 
       const { data: placesData, error: placesError } = await supabase
         .from('guru_map_places')
-        .select(`
-          *,
-          adder_profile:profiles!guru_map_places_added_by_fkey (
-            display_name
-          )
-        `)
+        .select('*')
         .eq('map_id', mapId)
         .order('created_at', { ascending: false });
 
       if (placesError) throw placesError;
-      setPlaces(placesData || []);
+      
+      // Enrich places with profile data and transform to match interface
+      const enrichedPlaces = await Promise.all((placesData || []).map(async (place) => {
+        const { data: adderProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', place.added_by)
+          .maybeSingle();
+        
+        return {
+          id: place.id,
+          name: place.place_name,
+          address: null,
+          notes: place.notes,
+          place_id: place.place_id,
+          photo_token: null,
+          rating: null,
+          added_by: place.added_by,
+          adder_profile: { display_name: adderProfile?.display_name || 'A Guru' }
+        };
+      }));
+      
+      setPlaces(enrichedPlaces);
     } catch (error) {
       console.error('Error loading map:', error);
       toast({
@@ -133,7 +152,6 @@ export default function GuruMapDetail() {
 
         if (error) throw error;
         setHasLiked(false);
-        setMap({ ...map, likes_count: map.likes_count - 1 });
       } else {
         const { error } = await supabase
           .from('guru_map_likes')
@@ -144,7 +162,6 @@ export default function GuruMapDetail() {
 
         if (error) throw error;
         setHasLiked(true);
-        setMap({ ...map, likes_count: map.likes_count + 1 });
       }
     } catch (error) {
       console.error('Error toggling like:', error);
@@ -192,7 +209,6 @@ export default function GuruMapDetail() {
           
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-bold">{map.title}</h1>
-            {map.theme && <Badge variant="secondary">{map.theme}</Badge>}
           </div>
           
           {map.description && (
@@ -201,10 +217,6 @@ export default function GuruMapDetail() {
           
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>by {map.creator_profile?.display_name || 'Anonymous'}</span>
-            <span className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {map.collaborators.length} collaborators
-            </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-4 w-4" />
               {places.length} places
@@ -220,7 +232,7 @@ export default function GuruMapDetail() {
             className="gap-2"
           >
             <Heart className={`h-4 w-4 ${hasLiked ? 'fill-current' : ''}`} />
-            {map.likes_count}
+            Like
           </Button>
           <Button variant="outline" size="sm">
             <Share2 className="h-4 w-4" />

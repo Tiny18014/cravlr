@@ -182,27 +182,23 @@ const RequestFood = () => {
 
       const { data, error } = await supabase
         .from('food_requests')
-        .insert({
+        .insert([{
           requester_id: user.id,
           food_type: validated.foodType,
           location_city: validated.locationCity,
           location_state: validated.locationState,
           location_address: validated.locationAddress || null,
           additional_notes: validated.additionalNotes || null,
-          response_window: validated.responseWindow,
-          location_lat: lat,
-          location_lng: lng,
-          status: 'active'
-        })
+          status: 'active',
+          expire_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        }])
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('✅ Request created with coordinates:', {
-        id: data.id,
-        lat: data.location_lat,
-        lng: data.location_lng
+      console.log('✅ Request created:', {
+        id: data.id
       });
 
       // Notify users in the area about the new request

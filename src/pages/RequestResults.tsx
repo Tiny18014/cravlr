@@ -105,13 +105,10 @@ const RequestResults = () => {
       console.log("✅ RequestResults: Found request:", requestData);
       setRequest(requestData);
 
-      // Fetch recommendations with LEFT JOIN to profiles (not requiring profiles to exist)
+      // Fetch recommendations separately
       const { data: recommendations, error: recError } = await supabase
         .from('recommendations')
-        .select(`
-          *,
-          profiles(display_name)
-        `)
+        .select('*')
         .eq('request_id', requestId)
         .order('created_at', { ascending: true });
 
@@ -122,10 +119,24 @@ const RequestResults = () => {
 
       console.log("🔍 RequestResults: Found recommendations:", recommendations);
 
+      // Fetch profiles for each recommendation separately
+      const enrichedRecs = await Promise.all((recommendations || []).map(async (rec) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', rec.recommender_id)
+          .maybeSingle();
+        
+        return {
+          ...rec,
+          profiles: { display_name: profile?.display_name || 'Anonymous' }
+        };
+      }));
+
       // Simple aggregation for now - group by restaurant name
       const groups = new Map();
       
-      for (const rec of recommendations || []) {
+      for (const rec of enrichedRecs) {
         const key = rec.place_id || rec.restaurant_name.toLowerCase().trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
         
         if (!groups.has(key)) {
@@ -138,9 +149,9 @@ const RequestResults = () => {
             firstSubmittedAt: rec.created_at,
             lastSubmittedAt: rec.created_at,
             notes: [],
-            rating: rec.rating,
-            priceLevel: rec.price_level,
-            photoToken: rec.photo_token,
+            rating: null,
+            priceLevel: null,
+            photoToken: null,
             distanceMeters: null,
             recommendationId: rec.id, // Store first recommendation ID for referral tracking
             referralUrl: null // Will be populated later

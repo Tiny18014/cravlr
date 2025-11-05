@@ -30,7 +30,6 @@ const profileFormSchema = z.object({
     message: "State is required.",
   }),
   notify_recommender: z.boolean(),
-  do_not_disturb: z.boolean(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -53,7 +52,6 @@ const Profile = () => {
       location_city: '',
       location_state: '',
       notify_recommender: true,
-      do_not_disturb: false,
     },
   });
 
@@ -71,8 +69,8 @@ const Profile = () => {
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user?.id)
-        .single();
+        .eq('id', user?.id)
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -90,11 +88,7 @@ const Profile = () => {
           location_city: profile.location_city || '',
           location_state: profile.location_state || '',
           notify_recommender: profile.notify_recommender ?? true,
-          do_not_disturb: profile.do_not_disturb ?? false,
         });
-        
-        // Sync with notification context
-        setDnd(profile.do_not_disturb ?? false);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -117,13 +111,11 @@ const Profile = () => {
       const { error } = await supabase
         .from('profiles')
         .upsert({
-          user_id: user.id,
-          email: user.email || '',
+          id: user.id,
           display_name: values.display_name,
           location_city: values.location_city,
           location_state: values.location_state,
           notify_recommender: values.notify_recommender,
-          do_not_disturb: values.do_not_disturb,
           updated_at: new Date().toISOString(),
         });
 
@@ -136,9 +128,6 @@ const Profile = () => {
       
       // Reset form with new values to clear dirty state
       form.reset(values);
-      
-      // Sync DND state with notification context
-      setDnd(values.do_not_disturb);
 
       toast({
         title: "Profile updated",
@@ -278,32 +267,23 @@ const Profile = () => {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="do_not_disturb"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Do Not Disturb
-                        </FormLabel>
-                        <FormDescription>
-                          Temporarily pause all notifications.
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                         <Switch
-                           checked={field.value}
-                           onCheckedChange={(checked) => {
-                             console.log("🔄 DND toggle clicked:", checked);
-                             field.onChange(checked);
-                             // Don't sync to context here - let form submission handle it
-                           }}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                <div className="rounded-lg border p-4">
+                  <div className="space-y-0.5 mb-4">
+                    <div className="text-base font-medium">
+                      Do Not Disturb
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Temporarily pause all notifications. Toggle in the top navigation bar.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {dnd ? (
+                      <><Bell className="h-4 w-4 text-muted-foreground" /> Do Not Disturb is ON</>
+                    ) : (
+                      <><Bell className="h-4 w-4 text-primary" /> Notifications are ON</>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

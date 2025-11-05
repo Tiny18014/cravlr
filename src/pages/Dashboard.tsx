@@ -149,11 +149,7 @@ const Dashboard = () => {
       console.log('🔍 Fetching recommendations for user:', user?.id);
       const { data: recommendations, error: recommendationsError } = await supabase
         .from('recommendations')
-        .select(`
-          *,
-          food_requests (food_type, location_city, location_state),
-          profiles (display_name)
-        `)
+        .select('*')
         .eq('recommender_id', user?.id)
         .order('created_at', { ascending: false });
 
@@ -162,29 +158,64 @@ const Dashboard = () => {
         console.error('❌ Error fetching recommendations:', recommendationsError);
         throw recommendationsError;
       }
-      setMyRecommendations(recommendations || []);
 
-      // Fetch recommendations received by user
-      const { data: received, error: receivedError } = await supabase
-        .from('recommendations')
-        .select(`
-          *,
-          profiles (display_name),
-          food_requests!inner (food_type, requester_id)
-        `)
-        .eq('food_requests.requester_id', user?.id)
-        .order('created_at', { ascending: false });
+      // Fetch related data separately
+      const enrichedRecs = await Promise.all((recommendations || []).map(async (rec) => {
+        const [requestData, profileData] = await Promise.all([
+          supabase.from('food_requests').select('food_type, location_city, location_state').eq('id', rec.request_id).maybeSingle(),
+          supabase.from('profiles').select('display_name').eq('id', rec.recommender_id).maybeSingle()
+        ]);
+        return {
+          ...rec,
+          food_requests: requestData.data,
+          profiles: { display_name: profileData.data?.display_name || 'Anonymous' }
+        };
+      }));
+      
+      setMyRecommendations(enrichedRecs || []);
 
-      if (receivedError) throw receivedError;
-      setReceivedRecommendations(received || []);
+      // Fetch recommendations received by user - get requests first
+      const { data: userRequests } = await supabase
+        .from('food_requests')
+        .select('id, food_type')
+        .eq('requester_id', user?.id);
+
+      const requestIds = (userRequests || []).map(r => r.id);
+      
+      if (requestIds.length > 0) {
+        const { data: received, error: receivedError } = await supabase
+          .from('recommendations')
+          .select('*')
+          .in('request_id', requestIds)
+          .order('created_at', { ascending: false });
+
+        if (receivedError) throw receivedError;
+
+        // Enrich with profile data
+        const enrichedReceived = await Promise.all((received || []).map(async (rec) => {
+          const [profileData, requestData] = await Promise.all([
+            supabase.from('profiles').select('display_name').eq('id', rec.recommender_id).maybeSingle(),
+            supabase.from('food_requests').select('food_type').eq('id', rec.request_id).maybeSingle()
+          ]);
+          return {
+            ...rec,
+            profiles: { display_name: profileData.data?.display_name || 'Anonymous' },
+            food_requests: requestData.data
+          };
+        }));
+        
+        setReceivedRecommendations(enrichedReceived || []);
+      } else {
+        setReceivedRecommendations([]);
+      }
 
       // Fetch user points and roles
       const [profileResult, rolesResult] = await Promise.all([
         supabase
           .from('profiles')
-          .select('points_total, points_this_month, reputation_score, approval_rate, total_feedbacks, positive_feedbacks, guru_level')
-          .eq('user_id', user?.id)
-          .single(),
+          .select('total_points, points_this_month')
+          .eq('id', user?.id)
+          .maybeSingle(),
         supabase
           .from('user_roles')
           .select('role')
@@ -198,15 +229,15 @@ const Dashboard = () => {
         console.error('Error fetching profile:', profileError);
       } else if (profile) {
         setUserPoints({
-          total: profile.points_total || 0,
+          total: profile.total_points || 0,
           thisMonth: profile.points_this_month || 0,
-          reputation_score: profile.reputation_score || 0,
-          approval_rate: profile.approval_rate || 0,
-          total_feedbacks: profile.total_feedbacks || 0,
-          positive_feedbacks: profile.positive_feedbacks || 0,
+          reputation_score: 0,
+          approval_rate: 0,
+          total_feedbacks: 0,
+          positive_feedbacks: 0,
           is_admin: isAdmin
         });
-        setIsGuru(profile.guru_level || false);
+        setIsGuru(false); // Guru feature disabled
       }
 
     } catch (error) {

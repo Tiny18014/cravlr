@@ -192,17 +192,7 @@ const BrowseRequests = () => {
       // Query for active requests (disable radius filter for testing)
       const { data, error } = await supabase
         .from('food_requests')
-        .select(`
-          id,
-          requester_id,
-          food_type,
-          location_city,
-          location_state,
-          status,
-          created_at,
-          expire_at,
-          profiles!inner(display_name)
-        `)
+        .select('*')
         .eq('status', 'active')
         .neq('requester_id', user.id) // Hide your own requests
         .order('created_at', { ascending: false });
@@ -211,9 +201,15 @@ const BrowseRequests = () => {
 
       console.log(`🎯 Fetched ${data?.length || 0} active requests (excluding own requests)`);
 
-      // For each request, get recommendation count and user state
+      // For each request, get recommendation count, user state, and profile
       const enrichedRequests = await Promise.all(
         (data || []).map(async (request) => {
+          // Get requester profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', request.requester_id)
+            .maybeSingle();
           // Get recommendation count
           const { count } = await supabase
             .from('recommendations')
@@ -238,6 +234,7 @@ const BrowseRequests = () => {
 
           return {
             ...request,
+            profiles: { display_name: profile?.display_name || 'Anonymous' },
             recommendation_count: count || 0,
             user_has_recommended: !!userRec,
             user_state: (userState?.state as "accepted" | "ignored") || null
