@@ -17,13 +17,14 @@ export const useFeedback = () => {
   const submitFeedback = async ({ recommendationId, feedbackType, starRating }: SubmitFeedbackParams) => {
     setLoading(true);
     try {
-      console.log('🎯 Submitting feedback:', { recommendationId, feedbackType, starRating });
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
         .from('recommendation_feedback')
-        .upsert({
+        .insert({
           recommendation_id: recommendationId,
-          requester_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: user.id,
           feedback_type: feedbackType,
           star_rating: starRating
         });
@@ -38,36 +39,11 @@ export const useFeedback = () => {
         return false;
       }
 
-      // Award points for positive feedback
-      if (feedbackType === 'thumbs_up') {
-        console.log('🎯 Awarding points for positive feedback...');
-        
-        // Calculate base points (50 for thumbs up) and bonus for star rating
-        const basePoints = 50;
-        const feedbackBonus = starRating ? Math.max(0, (starRating - 3) * 10) : 0; // 0-20 bonus for 4-5 stars
-        const totalPoints = basePoints + feedbackBonus;
-        
-        const { error: awardError } = await supabase.functions.invoke('award-points', {
-          body: {
-            recommendationId: recommendationId,
-            points: totalPoints
-          }
-        });
-
-        if (awardError) {
-          console.error('❌ Error awarding points:', awardError);
-          // Don't fail the feedback submission if point awarding fails
-        } else {
-          console.log('✅ Points awarded successfully:', totalPoints);
-        }
-      }
-
       toast({
         title: "Feedback submitted",
         description: `Thank you for your ${feedbackType === 'thumbs_up' ? 'positive' : ''} feedback!`,
       });
 
-      console.log('✅ Feedback submitted successfully');
       return true;
     } catch (err) {
       console.error('❌ Unexpected error:', err);
@@ -84,11 +60,14 @@ export const useFeedback = () => {
 
   const getFeedback = async (recommendationId: string) => {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return null;
+
       const { data, error } = await supabase
         .from('recommendation_feedback')
         .select('*')
         .eq('recommendation_id', recommendationId)
-        .eq('requester_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {

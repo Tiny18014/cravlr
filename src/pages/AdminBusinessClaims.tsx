@@ -11,8 +11,6 @@ interface BusinessClaim {
   id: string;
   restaurant_name: string;
   place_id?: string;
-  business_email: string;
-  business_phone?: string;
   status: string;
   created_at: string;
   verified_at?: string;
@@ -134,16 +132,6 @@ export default function AdminBusinessClaims() {
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-2 mb-4">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{claim.business_email}</span>
-                      </div>
-                      {claim.business_phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{claim.business_phone}</span>
-                        </div>
-                      )}
                       {claim.place_id && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -228,10 +216,6 @@ export default function AdminBusinessClaims() {
                             <> • Reviewed {new Date(claim.verified_at).toLocaleDateString()}</>
                           )}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{claim.business_email}</span>
-                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(claim.status)}

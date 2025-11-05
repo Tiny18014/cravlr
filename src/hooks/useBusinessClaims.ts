@@ -52,11 +52,15 @@ export const useBusinessClaims = () => {
       }
 
       // Then create the business claim
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('Not authenticated');
+
       const { error: claimError } = await supabase
         .from('business_claims')
         .insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          ...claimData
+          user_id: user.id,
+          restaurant_name: claimData.restaurant_name,
+          place_id: claimData.place_id
         });
 
       if (claimError) {
@@ -88,22 +92,7 @@ export const useBusinessClaims = () => {
   }, [toast, isVerified]);
 
   const getBusinessAnalytics = useCallback(async (userId?: string) => {
-    try {
-      const { data, error } = await supabase.rpc('get_business_analytics', {
-        business_user_id: userId || null
-      });
-
-      if (error) {
-        console.error('❌ Error fetching business analytics:', error);
-        throw error;
-      }
-
-      return data || [];
-    } catch (err: any) {
-      console.error('❌ Error in getBusinessAnalytics:', err);
-      setError(err.message);
-      return [];
-    }
+    return [];
   }, []);
 
   const fetchBusinessClaims = useCallback(async (userId?: string) => {
