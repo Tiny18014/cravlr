@@ -14,6 +14,8 @@ import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
 import { useRateLimit } from '@/hooks/useRateLimit';
+import { useUserRoles } from '@/hooks/useUserRoles';
+import { StreakPopup } from '@/components/StreakPopup';
 import { z } from 'zod';
 
 interface FoodRequest {
@@ -61,12 +63,15 @@ const SendRecommendation = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkRateLimit, checking: rateLimitChecking } = useRateLimit();
+  const { hasRole } = useUserRoles();
   
   const [request, setRequest] = useState<FoodRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [triggerAppFeedback, setTriggerAppFeedback] = useState(false);
+  const [showStreakPopup, setShowStreakPopup] = useState(false);
+  const [streakData, setStreakData] = useState<{ streakCount: number; points: number }>({ streakCount: 0, points: 0 });
   
   const [formData, setFormData] = useState({
     restaurantName: '',
@@ -183,6 +188,44 @@ const SendRecommendation = () => {
           return;
         }
         throw error;
+      }
+
+      // Update streak and points for recommenders only
+      if (hasRole('recommender')) {
+        try {
+          // Fetch current streak and points
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('streak_count, total_points')
+            .eq('id', user.id)
+            .single();
+
+          if (profileError) throw profileError;
+
+          const currentStreak = profileData?.streak_count || 0;
+          const currentPoints = profileData?.total_points || 0;
+          const pointsToAdd = 10;
+          const newStreak = currentStreak + 1;
+          const newPoints = currentPoints + pointsToAdd;
+
+          // Update streak and points
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              streak_count: newStreak,
+              total_points: newPoints
+            })
+            .eq('id', user.id);
+
+          if (updateError) throw updateError;
+
+          // Show streak popup
+          setStreakData({ streakCount: newStreak, points: pointsToAdd });
+          setShowStreakPopup(true);
+        } catch (streakError) {
+          console.error('Error updating streak:', streakError);
+          // Don't block the success flow if streak update fails
+        }
       }
 
       toast({
@@ -406,6 +449,13 @@ const SendRecommendation = () => {
         shouldTrigger={triggerAppFeedback}
         onTriggered={() => setTriggerAppFeedback(false)}
         onComplete={() => navigate('/browse-requests')}
+      />
+
+      <StreakPopup
+        isOpen={showStreakPopup}
+        onClose={() => setShowStreakPopup(false)}
+        streakCount={streakData.streakCount}
+        points={streakData.points}
       />
     </div>
   );
