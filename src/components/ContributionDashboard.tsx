@@ -24,7 +24,7 @@ interface UserRecommendation {
     location_city: string;
     location_state: string;
     status: string;
-    expires_at: string;
+    expire_at: string;
     profiles: {
       display_name: string;
     };
@@ -73,7 +73,7 @@ export const ContributionDashboard = () => {
             location_city,
             location_state,
             status,
-            expires_at,
+            expire_at,
             profiles!inner (display_name)
           )
         `)
@@ -183,7 +183,7 @@ export const ContributionDashboard = () => {
 
   const canRecommendAgain = (request: UserRecommendation['food_requests']) => {
     const now = new Date();
-    const expiresAt = new Date(request.expires_at);
+    const expiresAt = new Date(request.expire_at);
     return request.status === 'active' && expiresAt > now;
   };
 

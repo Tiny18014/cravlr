@@ -16,7 +16,7 @@ interface FoodRequest {
   location_state: string;
   status: string;
   created_at: string;
-  expires_at: string;
+  expire_at: string;
   profiles: {
     display_name: string;
   };
@@ -117,7 +117,7 @@ const ActiveRequestsList = ({
           location_state,
           status,
           created_at,
-          expires_at,
+          expire_at,
           profiles!inner(display_name)
         `)
         .eq('status', 'active')
@@ -236,7 +236,7 @@ const ActiveRequestsList = ({
       
       <div className={compact ? "space-y-2" : "space-y-4"}>
         {requests.map((request) => {
-          const isExpired = new Date(request.expires_at) < new Date();
+          const isExpired = new Date(request.expire_at) < new Date();
           const isFull = (request.recommendation_count || 0) >= 10;
           const canRecommend = !isExpired && !isFull && !request.user_has_recommended;
 
@@ -255,7 +255,7 @@ const ActiveRequestsList = ({
                         {request.location_city}, {request.location_state}
                       </div>
                     </div>
-                    <CountdownTimer expiresAt={request.expires_at} />
+                    <CountdownTimer expiresAt={request.expire_at} />
                   </div>
 
                   {/* Status and actions */}

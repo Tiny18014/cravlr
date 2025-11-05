@@ -24,7 +24,7 @@ interface FoodRequest {
   additional_notes?: string;
   status: string;
   created_at: string;
-  expires_at: string;
+  expire_at: string;
   requester_id: string;
   recommendation_count?: number;
 }
@@ -261,11 +261,11 @@ const Dashboard = () => {
   // Filter requests with client-side expiration check as backup
   const now = new Date();
   const activeRequests = myRequests.filter(req => 
-    req.status === 'active' && new Date(req.expires_at) > now
+    req.status === 'active' && new Date(req.expire_at) > now
   );
   const expiredRequests = myRequests.filter(req => 
     req.status === 'expired' || req.status === 'closed' || 
-    (req.status === 'active' && new Date(req.expires_at) <= now)
+    (req.status === 'active' && new Date(req.expire_at) <= now)
   );
   const recentRequests = myRequests.slice(0, 3); // Show only last 3 requests
   const totalRecommendationsReceived = receivedRecommendations.length;
@@ -415,7 +415,7 @@ const Dashboard = () => {
               <>
                 {recentRequests.map((request) => {
                   const isExpired = request.status === 'expired' || request.status === 'closed' || 
-                    (request.status === 'active' && new Date(request.expires_at) <= now);
+                    (request.status === 'active' && new Date(request.expire_at) <= now);
                   const statusText = isExpired ? 'Expired' : request.status === 'active' ? 'Active' : 'Closed';
                   const statusColor = isExpired ? 'bg-gray-500' : request.status === 'active' ? 'bg-green-500' : 'bg-gray-500';
                   
@@ -440,7 +440,7 @@ const Dashboard = () => {
                             </div>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Clock className="h-4 w-4 mr-2" />
-                              Created {formatDate(request.created_at)} • Expires {formatDate(request.expires_at)}
+                              Created {formatDate(request.created_at)} • Expires {formatDate(request.expire_at)}
                             </div>
                           </div>
 

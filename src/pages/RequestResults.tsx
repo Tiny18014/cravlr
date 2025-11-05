@@ -53,7 +53,7 @@ interface FoodRequest {
   food_type: string;
   location_city: string;
   location_state: string;
-  expires_at: string;
+  expire_at: string;
   status: string;
 }
 
@@ -258,7 +258,7 @@ const RequestResults = () => {
       setResults({
         requestId,
         status: requestData.status,
-        expiresAt: requestData.expires_at,
+        expiresAt: requestData.expire_at,
         totalRecommendations: recommendations?.length || 0,
         groups: sortedGroups,
         hasMore: false
@@ -272,10 +272,10 @@ const RequestResults = () => {
   };
 
   const updateTimeRemaining = () => {
-    if (!request?.expires_at) return;
+    if (!request?.expire_at) return;
 
     const now = new Date();
-    const expiresAt = new Date(request.expires_at);
+    const expiresAt = new Date(request.expire_at);
     const diffMs = expiresAt.getTime() - now.getTime();
 
     if (diffMs <= 0) {

@@ -20,7 +20,7 @@ interface FoodRequest {
   location_state: string;
   status: string;
   created_at: string;
-  expires_at: string;
+  expire_at: string;
   profiles: {
     display_name: string;
   };
@@ -49,7 +49,7 @@ const ActionRow = ({
   // State calculations
   const is_full = (request.recommendation_count || 0) >= 10;
   const now = Date.now();
-  const expiresAt = new Date(request.expires_at).getTime();
+  const expiresAt = new Date(request.expire_at).getTime();
   const time_left = expiresAt - now;
   const expired = time_left <= 0;
   const inactive = request.status !== 'active' || is_full || expired;
@@ -200,7 +200,7 @@ const BrowseRequests = () => {
           location_state,
           status,
           created_at,
-          expires_at,
+          expire_at,
           profiles!inner(display_name)
         `)
         .eq('status', 'active')
@@ -376,7 +376,7 @@ const BrowseRequests = () => {
                       <div className="flex items-center justify-between">
                         <h3 className="text-2xl font-bold">{request.food_type}</h3>
                         <div className="flex items-center gap-2">
-                          <CountdownTimer expiresAt={request.expires_at} />
+                          <CountdownTimer expiresAt={request.expire_at} />
                         </div>
                       </div>
                       

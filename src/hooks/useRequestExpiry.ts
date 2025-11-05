@@ -49,16 +49,15 @@ export const useRequestExpiry = (
   useEffect(() => {
     // Guard: only requester gets their own expiry notification
     if (!request || !userId || request.requester_id !== userId) return;
-    if (!request.expires_at) return;
+    if (!request.expire_at) return;
     
-    // Skip if already fired for this request
-    if (firedRequests.has(request.id)) return;
 
-    // Clear old timers
-    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
-    if (intervalIdRef.current) clearInterval(intervalIdRef.current);
+    // Time calculations
+    const skewAdjustedServerNow = Date.now() + skewMs;
 
-    const serverExpiry = Date.parse(request.expires_at);
+    // Calculate expiry time
+    // Parse server expiry time - this is already in UTC
+    const serverExpiry = Date.parse(request.expire_at);
     const localNow = Date.now();
     const localExpiry = serverExpiry - skewMs;
     const msUntil = localExpiry - localNow;
@@ -93,7 +92,7 @@ export const useRequestExpiry = (
       if (intervalIdRef.current) clearInterval(intervalIdRef.current);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [request?.id, request?.expires_at, request?.requester_id, userId, skewMs, showNotification]);
+  }, [request?.id, request?.expire_at, request?.requester_id, userId, skewMs, showNotification]);
 
   // Cleanup function to reset notification counts when component unmounts
   useEffect(() => {

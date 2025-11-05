@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface FoodRequest {
   id: string;
   food_type: string;
-  expires_at: string;
+  expire_at: string;
   status: string;
   requester_id: string;
   location_city: string;
@@ -23,10 +23,10 @@ export class RequestService {
   static async getUserActiveRequests(userId: string): Promise<FoodRequest[]> {
     const { data, error } = await supabase
       .from("food_requests")
-      .select("id, food_type, expires_at, status, requester_id, location_city, location_state, response_window")
+      .select("id, food_type, expire_at, status, requester_id, location_city, location_state, response_window")
       .eq("requester_id", userId)
       .eq("status", "active")
-      .gt("expires_at", new Date().toISOString())
+      .gt("expire_at", new Date().toISOString())
       .order("created_at", { ascending: false });
 
     if (error && error.code !== "PGRST116") {
