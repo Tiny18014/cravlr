@@ -293,6 +293,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          cuisine_expertise: string[] | null
           display_name: string | null
           id: string
           last_feedback_date: string | null
@@ -302,12 +303,14 @@ export type Database = {
           persona: string | null
           points_this_month: number | null
           points_total: number | null
+          search_range: string | null
           streak_count: number
           total_points: number
           updated_at: string
         }
         Insert: {
           created_at?: string
+          cuisine_expertise?: string[] | null
           display_name?: string | null
           id: string
           last_feedback_date?: string | null
@@ -317,12 +320,14 @@ export type Database = {
           persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
+          search_range?: string | null
           streak_count?: number
           total_points?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
+          cuisine_expertise?: string[] | null
           display_name?: string | null
           id?: string
           last_feedback_date?: string | null
@@ -332,6 +337,7 @@ export type Database = {
           persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
+          search_range?: string | null
           streak_count?: number
           total_points?: number
           updated_at?: string
