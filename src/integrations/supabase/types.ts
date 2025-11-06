@@ -576,6 +576,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      generate_referral_code: { Args: never; Returns: string }
       get_request_results: {
         Args: { request_uuid: string }
         Returns: {
