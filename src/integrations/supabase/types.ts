@@ -493,6 +493,67 @@ export type Database = {
           },
         ]
       }
+      referral_links: {
+        Row: {
+          commission_rate: number | null
+          created_at: string
+          expires_at: string
+          id: string
+          maps_url: string | null
+          place_id: string | null
+          recommendation_id: string
+          referral_code: string
+          request_id: string
+          restaurant_name: string
+        }
+        Insert: {
+          commission_rate?: number | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          maps_url?: string | null
+          place_id?: string | null
+          recommendation_id: string
+          referral_code: string
+          request_id: string
+          restaurant_name: string
+        }
+        Update: {
+          commission_rate?: number | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          maps_url?: string | null
+          place_id?: string | null
+          recommendation_id?: string
+          referral_code?: string
+          request_id?: string
+          restaurant_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_links_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_links_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "view_business_commissions"
+            referencedColumns: ["recommendation_id"]
+          },
+          {
+            foreignKeyName: "referral_links_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       request_user_state: {
         Row: {
           created_at: string
