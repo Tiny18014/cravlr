@@ -75,10 +75,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('🔗 Generating referral link for recommendation:', recommendationId);
 
-    // Verify recommendation exists and get associated request
+    // Verify recommendation exists
     const { data: recommendation, error: recError } = await supabase
       .from('recommendations')
-      .select('recommender_id, request_id, food_requests!inner(requester_id)')
+      .select('recommender_id')
       .eq('id', recommendationId)
       .single();
 
@@ -90,9 +90,32 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get the request to verify requester
+    const { data: request, error: requestError } = await supabase
+      .from('food_requests')
+      .select('requester_id')
+      .eq('id', requestId)
+      .single();
+
+    if (requestError || !request) {
+      console.error('❌ Request not found:', requestError);
+      return new Response(
+        JSON.stringify({ error: 'Request not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     // Allow both recommender and requester to generate referral links
     const isRecommender = recommendation.recommender_id === user.id;
-    const isRequester = recommendation.food_requests.requester_id === user.id;
+    const isRequester = request.requester_id === user.id;
+
+    console.log('🔐 Permission check:', { 
+      userId: user.id, 
+      recommenderId: recommendation.recommender_id,
+      requesterId: request.requester_id,
+      isRecommender, 
+      isRequester 
+    });
 
     if (!isRecommender && !isRequester) {
       console.error('❌ User is neither recommender nor requester');
