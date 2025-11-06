@@ -75,10 +75,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('🔗 Generating referral link for recommendation:', recommendationId);
 
-    // Verify recommendation ownership
+    // Verify recommendation exists and get associated request
     const { data: recommendation, error: recError } = await supabase
       .from('recommendations')
-      .select('recommender_id')
+      .select('recommender_id, request_id, food_requests!inner(requester_id)')
       .eq('id', recommendationId)
       .single();
 
@@ -90,8 +90,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (recommendation.recommender_id !== user.id) {
-      console.error('❌ User does not own this recommendation');
+    // Allow both recommender and requester to generate referral links
+    const isRecommender = recommendation.recommender_id === user.id;
+    const isRequester = recommendation.food_requests.requester_id === user.id;
+
+    if (!isRecommender && !isRequester) {
+      console.error('❌ User is neither recommender nor requester');
       return new Response(
         JSON.stringify({ error: 'You do not have permission to create a referral link for this recommendation' }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
