@@ -94,10 +94,9 @@ const handler = async (req: Request): Promise<Response> => {
     // Get eligible users for push notifications
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('user_id, notify_recommender, location_city, location_state, location_lat, location_lng, timezone, quiet_hours_start, quiet_hours_end')
+      .select('id, notify_recommender, location_city, location_state')
       .eq('notify_recommender', true)
-      .eq('is_active', true)
-      .neq('user_id', request.requester_id);
+      .neq('id', request.requester_id);
 
     if (profilesError) {
       throw new Error('Failed to fetch profiles');
@@ -105,43 +104,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const eligibleUsers = profiles?.filter(profile => {
       // Same city and state
-      if (profile.location_city !== request.location_city || 
-          profile.location_state !== request.location_state) {
-        return false;
-      }
-
-      // Check quiet hours if set
-      if (profile.quiet_hours_start && profile.quiet_hours_end) {
-        const now = new Date();
-        const userTimezone = profile.timezone || 'America/New_York';
-        
-        // Simple quiet hours check (could be enhanced with proper timezone handling)
-        const currentHour = now.getHours();
-        const quietStart = parseInt(profile.quiet_hours_start.split(':')[0]);
-        const quietEnd = parseInt(profile.quiet_hours_end.split(':')[0]);
-        
-        if (currentHour >= quietStart && currentHour < quietEnd) {
-          return false;
-        }
-      }
-
-      // Check radius if coordinates available
-      if (profile.location_lat && profile.location_lng && 
-          request.location_lat && request.location_lng) {
-        const distance = calculateDistance(
-          Number(profile.location_lat), Number(profile.location_lng),
-          Number(request.location_lat), Number(request.location_lng)
-        );
-        return distance <= 15; // 15km radius
-      }
-
-      return true;
+      return profile.location_city === request.location_city && 
+             profile.location_state === request.location_state;
     }) || [];
 
     console.log(`Found ${eligibleUsers.length} eligible users for push notification`);
 
     // Get OneSignal player IDs for eligible users
-    const userIds = eligibleUsers.map(u => u.user_id);
+    const userIds = eligibleUsers.map(u => u.id);
     const { data: subscriptions } = await supabase
       .from('push_subscriptions')
       .select('player_id')
