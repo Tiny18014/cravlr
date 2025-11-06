@@ -20,7 +20,8 @@ export const ExitIntentFeedbackTrigger = ({ role, sourceAction }: ExitIntentFeed
   const feedbackSubmitted = feedbackSessionManager.hasFeedbackSubmitted();
   const exitFeedbackShown = feedbackSessionManager.hasExitFeedbackShown();
 
-  const shouldEnable = !feedbackSubmitted && !exitFeedbackShown && canShowFeedback;
+  // Temporarily disabled - will be re-enabled manually later
+  const shouldEnable = false; // !feedbackSubmitted && !exitFeedbackShown && canShowFeedback;
 
   const handleExitIntent = () => {
     if (shouldEnable) {
