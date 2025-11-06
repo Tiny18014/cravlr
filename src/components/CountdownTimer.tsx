@@ -22,10 +22,16 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ expiresAt, className })
         return;
       }
 
-      const minutes = Math.floor(difference / (1000 * 60));
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-      if (minutes > 0) {
+      if (days > 0) {
+        setTimeLeft(`${days}d ${hours}h left`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours}h ${minutes}m left`);
+      } else if (minutes > 0) {
         setTimeLeft(`${minutes}m ${seconds}s left`);
       } else {
         setTimeLeft(`${seconds}s left`);
