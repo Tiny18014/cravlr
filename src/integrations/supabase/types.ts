@@ -451,6 +451,10 @@ export type Database = {
           converted: boolean
           id: string
           recommendation_id: string
+          recommender_id: string | null
+          referral_link_id: string | null
+          request_id: string | null
+          requester_id: string | null
           restaurant_name: string
           visit_confirmed_at: string | null
         }
@@ -462,6 +466,10 @@ export type Database = {
           converted?: boolean
           id?: string
           recommendation_id: string
+          recommender_id?: string | null
+          referral_link_id?: string | null
+          request_id?: string | null
+          requester_id?: string | null
           restaurant_name: string
           visit_confirmed_at?: string | null
         }
@@ -473,6 +481,10 @@ export type Database = {
           converted?: boolean
           id?: string
           recommendation_id?: string
+          recommender_id?: string | null
+          referral_link_id?: string | null
+          request_id?: string | null
+          requester_id?: string | null
           restaurant_name?: string
           visit_confirmed_at?: string | null
         }
@@ -490,6 +502,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "view_business_commissions"
             referencedColumns: ["recommendation_id"]
+          },
+          {
+            foreignKeyName: "referral_clicks_referral_link_id_fkey"
+            columns: ["referral_link_id"]
+            isOneToOne: false
+            referencedRelation: "referral_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_clicks_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
           },
         ]
       }
