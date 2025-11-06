@@ -231,7 +231,7 @@ const SendRecommendation = () => {
             daysSinceLastFeedback = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           }
 
-          const hasNotGivenFeedbackRecently = !profileData?.last_feedback_date || daysSinceLastFeedback > 3;
+          const hasNotGivenFeedbackRecently = !profileData?.last_feedback_date || daysSinceLastFeedback > 7;
 
           if (shouldShowFeedback && hasNotGivenFeedbackRecently) {
             // Wait 1.5 seconds after streak popup before showing feedback modal
