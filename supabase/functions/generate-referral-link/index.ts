@@ -28,6 +28,26 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('❌ Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     // Parse and validate request body
     const body = await req.json();
     const validationResult = requestSchema.safeParse(body);
@@ -54,6 +74,29 @@ const handler = async (req: Request): Promise<Response> => {
     } = validationResult.data;
 
     console.log('🔗 Generating referral link for recommendation:', recommendationId);
+
+    // Verify recommendation ownership
+    const { data: recommendation, error: recError } = await supabase
+      .from('recommendations')
+      .select('recommender_id')
+      .eq('id', recommendationId)
+      .single();
+
+    if (recError || !recommendation) {
+      console.error('❌ Recommendation not found:', recError);
+      return new Response(
+        JSON.stringify({ error: 'Recommendation not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    if (recommendation.recommender_id !== user.id) {
+      console.error('❌ User does not own this recommendation');
+      return new Response(
+        JSON.stringify({ error: 'You do not have permission to create a referral link for this recommendation' }),
+        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
 
     // Check if referral link already exists
     const { data: existingLink } = await supabase

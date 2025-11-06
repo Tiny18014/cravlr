@@ -47,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
     await supabase
       .from('recommendation_feedback')
       .delete()
-      .eq('requester_id', user.id);
+      .eq('user_id', user.id);
 
     // 2. Delete notifications
     await supabase
@@ -107,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
     await supabase
       .from('profiles')
       .delete()
-      .eq('user_id', user.id);
+      .eq('id', user.id);
 
     // 12. Finally, delete the auth user using admin API
     const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
