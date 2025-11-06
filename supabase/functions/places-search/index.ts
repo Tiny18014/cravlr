@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.79.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,6 +18,10 @@ const CACHE_TTL_MIN = 15;
 
 // Simple in-memory cache
 const cache = new Map();
+
+// Rate limiting cache: key is "userId:minute", value is request count
+const rateLimitCache = new Map<string, number>();
+const RATE_LIMIT_REQUESTS_PER_MINUTE = 20;
 
 interface SearchRequest {
   zip?: string;
@@ -206,6 +211,59 @@ serve(async (req) => {
   }
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+  }
+
+  // Authenticate user
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    console.error('Missing Authorization header');
+    return new Response(JSON.stringify({ error: 'Unauthorized - Missing authentication' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+  
+  if (authError || !user) {
+    console.error('Authentication failed:', authError?.message);
+    return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  console.log('Authenticated user:', user.id);
+
+  // Rate limiting: check requests per minute
+  const currentMinute = Math.floor(Date.now() / 60000);
+  const rateLimitKey = `${user.id}:${currentMinute}`;
+  const requestCount = rateLimitCache.get(rateLimitKey) || 0;
+
+  if (requestCount >= RATE_LIMIT_REQUESTS_PER_MINUTE) {
+    console.warn(`Rate limit exceeded for user ${user.id}`);
+    return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a minute.' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Increment rate limit counter
+  rateLimitCache.set(rateLimitKey, requestCount + 1);
+
+  // Clean up old rate limit entries (older than 2 minutes)
+  const twoMinutesAgo = currentMinute - 2;
+  for (const key of rateLimitCache.keys()) {
+    const keyMinute = parseInt(key.split(':')[1]);
+    if (keyMinute < twoMinutesAgo) {
+      rateLimitCache.delete(key);
+    }
   }
 
   try {
