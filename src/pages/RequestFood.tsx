@@ -190,7 +190,7 @@ const RequestFood = () => {
           location_address: validated.locationAddress || null,
           additional_notes: validated.additionalNotes || null,
           status: 'active',
-          expire_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          expire_at: new Date(Date.now() + validated.responseWindow * 60 * 1000).toISOString()
         }])
         .select()
         .single();
