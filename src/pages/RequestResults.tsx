@@ -10,7 +10,6 @@ import { useReferralLinks } from "@/hooks/useReferralLinks";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { AppFeedbackTrigger } from "@/components/AppFeedbackTrigger";
 import { ExitIntentFeedbackTrigger } from "@/components/ExitIntentFeedbackTrigger";
 import { feedbackSessionManager } from "@/utils/feedbackSessionManager";
 
@@ -67,10 +66,7 @@ const RequestResults = () => {
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [goingIntents, setGoingIntents] = useState<Set<string>>(new Set());
-  const [showFeedbackTrigger, setShowFeedbackTrigger] = useState(false);
   const { generateReferralLink } = useReferralLinks();
-  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const feedbackShownRef = useRef<boolean>(false);
 
   const fetchResults = async () => {
     if (!requestId) {
@@ -306,11 +302,9 @@ const RequestResults = () => {
 
   useEffect(() => {
     if (requestId) {
-      // Track request view and reset feedback flags if this is a new request
+      // Track request view for feedback analytics
       feedbackSessionManager.trackRequestView(requestId);
       fetchResults();
-      // Reset feedback flag when requestId changes (new request)
-      feedbackShownRef.current = false;
     }
   }, [requestId]);
 
@@ -327,17 +321,6 @@ const RequestResults = () => {
     const interval = setInterval(fetchResults, 10000);
     return () => clearInterval(interval);
   }, [requestId]);
-
-  // Cleanup feedback timer on unmount or navigation
-  useEffect(() => {
-    return () => {
-      if (feedbackTimerRef.current) {
-        console.log('🧹 Cleaning up feedback timer on unmount/navigation');
-        clearTimeout(feedbackTimerRef.current);
-        feedbackTimerRef.current = null;
-      }
-    };
-  }, []);
 
   const toggleNotes = (groupKey: string) => {
     const newExpanded = new Set(expandedNotes);
@@ -433,25 +416,6 @@ const RequestResults = () => {
       
       // Show success message
       toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
-      
-      // Clear any existing feedback timer
-      if (feedbackTimerRef.current) {
-        clearTimeout(feedbackTimerRef.current);
-      }
-      
-      // Only trigger feedback if it hasn't been shown yet for this request
-      if (!feedbackShownRef.current) {
-        // Trigger feedback popup after 1-second delay
-        console.log('🎯 Will show feedback popup in 1 second...');
-        feedbackTimerRef.current = setTimeout(() => {
-          console.log('🎯 Showing feedback popup now!');
-          setShowFeedbackTrigger(true);
-          feedbackShownRef.current = true; // Mark feedback as shown
-          feedbackTimerRef.current = null;
-        }, 1000);
-      } else {
-        console.log('🎯 Feedback already shown for this request, skipping');
-      }
 
     } catch (error) {
       console.error('Error handling going click:', error);
@@ -714,20 +678,6 @@ const RequestResults = () => {
           </div>
         )}
       </div>
-      
-      <AppFeedbackTrigger
-        role="requester"
-        sourceAction="selected_going_option"
-        shouldTrigger={showFeedbackTrigger}
-        onTriggered={() => {
-          console.log('🎯 Feedback intro modal displayed');
-          setShowFeedbackTrigger(false); // Reset immediately to prevent re-triggers
-          feedbackSessionManager.markFeedbackSubmitted();
-        }}
-        onComplete={() => {
-          console.log('🎯 Feedback completed, resetting state');
-        }}
-      />
       
       <ExitIntentFeedbackTrigger
         role="requester"

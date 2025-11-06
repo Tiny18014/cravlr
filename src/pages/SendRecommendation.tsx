@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Star } from 'lucide-react';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
-import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { StreakPopup } from '@/components/StreakPopup';
@@ -68,7 +67,6 @@ const SendRecommendation = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [triggerAppFeedback, setTriggerAppFeedback] = useState(false);
   const [showStreakPopup, setShowStreakPopup] = useState(false);
   const [streakData, setStreakData] = useState<{ streakCount: number; points: number }>({ streakCount: 0, points: 0 });
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -249,9 +247,6 @@ const SendRecommendation = () => {
         title: "Recommendation sent!",
         description: "Your recommendation has been shared with the requester.",
       });
-      
-      // Trigger app feedback after successful recommendation
-      setTriggerAppFeedback(true);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
@@ -459,14 +454,6 @@ const SendRecommendation = () => {
             </Card>
         </div>
       </main>
-      
-      <AppFeedbackTrigger
-        role="recommender"
-        sourceAction="submitted_recommendation"
-        shouldTrigger={triggerAppFeedback}
-        onTriggered={() => setTriggerAppFeedback(false)}
-        onComplete={() => navigate('/browse-requests')}
-      />
 
       <StreakPopup
         isOpen={showStreakPopup}
