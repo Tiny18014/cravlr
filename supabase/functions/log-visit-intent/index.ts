@@ -99,14 +99,16 @@ serve(async (req) => {
       );
     }
 
-    // Get referral_link_id if it exists
+    // Get referral_link_id and commission_rate if they exist
     const { data: referralLinkData } = await supabaseAdmin
       .from('referral_links')
-      .select('id')
+      .select('id, commission_rate')
       .eq('recommendation_id', recommendationId)
       .maybeSingle();
 
-    // Insert the visit intent
+    console.log('📊 Referral link data:', referralLinkData);
+
+    // Insert the visit intent (clicked_at is automatically set by default)
     const { error: insertError } = await supabaseAdmin
       .from('referral_clicks')
       .insert({
@@ -116,13 +118,14 @@ serve(async (req) => {
         recommender_id: recommendationData.recommender_id,
         referral_link_id: referralLinkData?.id || null,
         restaurant_name: restaurantName,
-        place_id: placeId,
-        click_source: 'going_button',
-        clicked_at: new Date().toISOString()
+        commission_rate: referralLinkData?.commission_rate || 10.00,
+        converted: false,
+        commission_paid: false
       });
 
+    console.log('✅ Insert result:', insertError ? 'ERROR' : 'SUCCESS');
     if (insertError) {
-      console.error('Error inserting visit intent:', insertError);
+      console.error('❌ Insert error details:', insertError);
       return new Response(
         JSON.stringify({ error: 'Failed to log visit intent' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
