@@ -172,18 +172,7 @@ const SendRecommendation = () => {
           ...(validatedData.mapsUrl && { maps_url: validatedData.mapsUrl })
         });
 
-      if (error) {
-        // Handle duplicate recommendation error specifically
-        if (error.code === '23505' && error.message.includes('recommendations_request_id_recommender_id_restaurant_name_key')) {
-          toast({
-            title: "Already recommended",
-            description: `You've already recommended "${validatedData.restaurantName}" for this request. Try a different restaurant.`,
-            variant: "destructive",
-          });
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       // Update streak and points for recommenders only
       if (hasRole('recommender')) {
