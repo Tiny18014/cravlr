@@ -233,9 +233,14 @@ const SendRecommendation = () => {
       }
 
       toast({
-        title: "Recommendation sent!",
+        title: "✅ Recommendation sent!",
         description: "Your recommendation has been shared with the requester.",
       });
+
+      // Redirect to browse requests after 2.5 seconds
+      setTimeout(() => {
+        navigate('/browse-requests');
+      }, 2500);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
