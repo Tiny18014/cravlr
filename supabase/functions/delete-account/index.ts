@@ -129,8 +129,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.error('Error in delete-account function:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to delete account',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to delete account. Please contact support if this persists.',
+        error_code: 'ACCOUNT_DELETE_FAILED'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
