@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +22,22 @@ interface EnhancedClickData {
   device_fingerprint?: string;
 }
 
+// Zod validation schema for input
+const clickDataSchema = z.object({
+  referral_code: z.string().min(1).max(50),
+  user_agent: z.string().max(500),
+  ip_address: z.string().max(100),
+  screen_resolution: z.string().max(20).optional(),
+  timezone: z.string().max(50).optional(),
+  language: z.string().max(10).optional(),
+  referrer: z.string().max(2000).optional(),
+  utm_source: z.string().max(100).optional(),
+  utm_medium: z.string().max(100).optional(),
+  utm_campaign: z.string().max(100).optional(),
+  session_id: z.string().max(100).optional(),
+  device_fingerprint: z.string().max(100).optional()
+});
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -33,7 +50,25 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const clickData: EnhancedClickData = await req.json();
+    // Parse and validate input
+    const rawData = await req.json();
+    const validationResult = clickDataSchema.safeParse(rawData);
+    
+    if (!validationResult.success) {
+      console.error('❌ Invalid input data:', validationResult.error.issues);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input data',
+          details: validationResult.error.issues
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const clickData: EnhancedClickData = validationResult.data;
     
     console.log('📊 Enhanced attribution tracking for:', clickData.referral_code);
 
