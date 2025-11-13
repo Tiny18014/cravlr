@@ -9,11 +9,13 @@ import { AppFeedbackTrigger } from '@/components/AppFeedbackTrigger';
 interface FeedbackButtonsProps {
   recommendationId: string;
   className?: string;
+  onFeedbackSubmitted?: () => void;
 }
 
 export const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({ 
   recommendationId, 
-  className 
+  className,
+  onFeedbackSubmitted
 }) => {
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackType | null>(null);
   const [showStarRating, setShowStarRating] = useState(false);
@@ -53,6 +55,11 @@ export const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
       });
       setShowStarRating(false);
       setStarRating(0);
+      
+      // Trigger callback for redirect
+      if (onFeedbackSubmitted) {
+        onFeedbackSubmitted();
+      }
     }
   };
 
@@ -69,6 +76,11 @@ export const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
     
     // Trigger app feedback after positive recommendation feedback
     setTriggerAppFeedback(true);
+    
+    // Trigger callback for redirect
+    if (onFeedbackSubmitted) {
+      onFeedbackSubmitted();
+    }
   };
 
   const handleSkipRating = async () => {
@@ -82,6 +94,11 @@ export const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
     
     // Trigger app feedback after positive recommendation feedback
     setTriggerAppFeedback(true);
+    
+    // Trigger callback for redirect
+    if (onFeedbackSubmitted) {
+      onFeedbackSubmitted();
+    }
   };
 
   if (selectedFeedback && !showStarRating) {
