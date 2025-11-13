@@ -19,8 +19,8 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				'poppins': ['Poppins', 'sans-serif'],
-				'nunito': ['Nunito', 'sans-serif'],
+				'inter': ['Inter', 'sans-serif'],
+				'sans': ['Inter', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -30,6 +30,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
+					dark: 'hsl(var(--primary-dark))',
+					light: 'hsl(var(--primary-light))',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
 				secondary: {
@@ -66,13 +68,15 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				plum: {
-					DEFAULT: 'hsl(var(--plum-berry))',
-					dark: 'hsl(var(--plum-berry-dark))',
-					light: 'hsl(var(--plum-berry-light))'
+				section: 'hsl(var(--section-tint))',
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
 				},
-				lime: 'hsl(var(--fresh-lime))',
-				'neutral-bg': 'hsl(var(--neutral-bg))'
+				'badge-gold': {
+					DEFAULT: 'hsl(var(--badge-gold))',
+					foreground: 'hsl(var(--badge-gold-foreground))'
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
