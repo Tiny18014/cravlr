@@ -54,11 +54,12 @@ All colors MUST be HSL.
 
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Cozy cafe theme colors */
-    --beige: 42 47% 93%;
-    --coral: 14 100% 68%;
-    --coral-dark: 14 100% 58%;
-    --mint: 156 73% 74%;
+    /* Cravlr food-centric theme colors */
+    --plum-berry: 328 61% 41%;
+    --plum-berry-dark: 328 61% 31%;
+    --plum-berry-light: 328 61% 51%;
+    --fresh-lime: 87 100% 67%;
+    --neutral-bg: 210 17% 98%;
   }
 
   .dark {
