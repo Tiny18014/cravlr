@@ -14,20 +14,25 @@ All colors MUST be HSL.
     --primary: 328 61% 41%;              /* Plum Berry #A03272 */
     --primary-dark: 328 61% 31%;         /* Plum Berry Dark #7A2156 */
     --primary-light: 328 45% 90%;        /* Plum Berry Light Tint #F4D7E8 */
+    --primary-gradient: 328 55% 68%;     /* Plum Berry Mid #C96DA7 */
     --primary-foreground: 0 0% 100%;     /* White text on primary */
 
-    /* Backgrounds */
+    /* Soft Pastel Backgrounds */
     --background: 300 14% 97%;           /* Soft neutral #F7F5F8 */
+    --background-soft: 300 50% 99%;      /* Very soft #FAF8FC */
+    --background-warm: 30 100% 98%;      /* Warm tint #FFF9F7 */
     --section-tint: 330 33% 97%;         /* Section background #F9EFF5 */
     --card: 0 0% 100%;                   /* Card white #FFFFFF */
     --card-foreground: 0 0% 11%;         /* Text on cards #1C1C1C */
 
     /* Typography Colors */
-    --foreground: 0 0% 11%;              /* Text Dark #1C1C1C */
+    --foreground: 260 15% 17%;           /* Text Dark #2C2738 */
+    --text-medium: 280 9% 37%;           /* Text Grey #5A5363 */
     --muted-foreground: 0 0% 42%;        /* Text Grey #6B6B6B */
 
     /* UI Elements */
-    --border: 300 7% 90%;                /* Dividers #E6E2E7 */
+    --border: 270 14% 92%;               /* Dividers #EAE4EF */
+    --border-light: 300 7% 90%;          /* Light dividers #E6E2E7 */
     --input: 300 7% 90%;
     --ring: 328 61% 41%;                 /* Focus ring matches primary */
 
@@ -38,6 +43,7 @@ All colors MUST be HSL.
     /* Accent Colors */
     --accent: 330 33% 97%;               /* Subtle accent bg */
     --accent-foreground: 328 61% 41%;    /* Plum Berry foreground */
+    --accent-bubble: 328 50% 95%;        /* Icon bubble #F5E8F1 */
     
     --success: 166 49% 53%;              /* Success Accent #4CBFA6 */
     --success-foreground: 0 0% 100%;

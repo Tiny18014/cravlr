@@ -24,14 +24,19 @@ export default {
 			},
 			colors: {
 				border: 'hsl(var(--border))',
+				'border-light': 'hsl(var(--border-light))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
+				'background-soft': 'hsl(var(--background-soft))',
+				'background-warm': 'hsl(var(--background-warm))',
 				foreground: 'hsl(var(--foreground))',
+				'text-medium': 'hsl(var(--text-medium))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					dark: 'hsl(var(--primary-dark))',
 					light: 'hsl(var(--primary-light))',
+					gradient: 'hsl(var(--primary-gradient))',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
 				secondary: {
@@ -48,7 +53,8 @@ export default {
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
+					foreground: 'hsl(var(--accent-foreground))',
+					bubble: 'hsl(var(--accent-bubble))'
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
