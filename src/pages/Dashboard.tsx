@@ -365,21 +365,21 @@ const Dashboard = () => {
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-green-600 mb-1">{activeRequests.length}</div>
+              <div className="text-2xl font-bold text-primary mb-1">{activeRequests.length}</div>
               <div className="text-sm text-muted-foreground">Active Requests</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-gray-500 mb-1">{expiredRequests.length}</div>
+              <div className="text-2xl font-bold text-primary mb-1">{expiredRequests.length}</div>
               <div className="text-sm text-muted-foreground">Expired Requests</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-blue-600 mb-1">{totalRecommendationsReceived}</div>
+              <div className="text-2xl font-bold text-primary mb-1">{totalRecommendationsReceived}</div>
               <div className="text-sm text-muted-foreground">Recommendations Received</div>
             </CardContent>
           </Card>
@@ -387,7 +387,7 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="flex gap-4 flex-wrap items-center">
-          <Button onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
+          <Button variant="outline" onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
             Request Food
           </Button>
           <Button variant="outline" onClick={handleBrowseRequestsClick} className="flex-1 md:flex-none">
