@@ -414,11 +414,54 @@ const RequestResults = () => {
       // Mark as "going" in local state
       setGoingIntents(prev => new Set([...prev, group.key]));
       
-      // Show success message
-      toast.success(`Great choice! We've logged your intent to visit ${group.name}`);
+      // Show success toast and redirect to dashboard
+      toast.success("Enjoy your meal! Redirecting…");
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 800);
 
     } catch (error) {
       console.error('Error handling going click:', error);
+      toast.error('Something went wrong');
+    }
+  };
+
+  const handleNotGoingClick = async (group: RecommendationGroup) => {
+    if (!user || !request) {
+      toast.error('Not logged in or request not loaded');
+      return;
+    }
+    
+    if (!group.recommendationId) {
+      toast.error('Unable to log - missing recommendation data');
+      return;
+    }
+    
+    try {
+      // Call edge function to mark request as ignored
+      const { error } = await supabase.functions.invoke('request-accept-ignore', {
+        body: {
+          requestId: request.id,
+          action: 'ignore'
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error marking as not going:', error);
+        toast.error('Failed to update');
+        return;
+      }
+      
+      // Show success toast and redirect to dashboard
+      toast.success("Thanks for letting us know!");
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 800);
+
+    } catch (error) {
+      console.error('Error handling not going click:', error);
       toast.error('Something went wrong');
     }
   };
@@ -603,25 +646,37 @@ const RequestResults = () => {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="shrink-0 flex gap-2">
-                            {/* Going Button */}
+                          <div className="shrink-0 flex gap-2 flex-wrap">
+                            {/* Going & Not Going Buttons */}
                             {user && request && user.id === request.requester_id && (
-                              <Button 
-                                variant={goingIntents.has(group.key) ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => handleGoingClick(group)}
-                                disabled={goingIntents.has(group.key)}
-                                className="whitespace-nowrap"
-                              >
-                                {goingIntents.has(group.key) ? (
-                                  <>
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Going!
-                                  </>
-                                ) : (
-                                  "I'm Going"
+                              <>
+                                <Button 
+                                  variant={goingIntents.has(group.key) ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleGoingClick(group)}
+                                  disabled={goingIntents.has(group.key)}
+                                  className="whitespace-nowrap"
+                                >
+                                  {goingIntents.has(group.key) ? (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Going!
+                                    </>
+                                  ) : (
+                                    "I'm Going"
+                                  )}
+                                </Button>
+                                {!goingIntents.has(group.key) && (
+                                  <Button 
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleNotGoingClick(group)}
+                                    className="whitespace-nowrap"
+                                  >
+                                    I'm Not Going
+                                  </Button>
                                 )}
-                              </Button>
+                              </>
                             )}
                             
                             {/* Maps Button */}
@@ -652,6 +707,12 @@ const RequestResults = () => {
                             <FeedbackButtons 
                               recommendationId={group.recommendationId}
                               className="w-full"
+                              onFeedbackSubmitted={() => {
+                                toast.success("Thanks for your feedback!");
+                                setTimeout(() => {
+                                  navigate('/dashboard');
+                                }, 800);
+                              }}
                             />
                           </div>
                         )}
