@@ -353,26 +353,14 @@ const RequestResults = () => {
   };
 
   const handleGoingClick = async (group: RecommendationGroup) => {
-    console.log('🎯🎯🎯 handleGoingClick CALLED');
-    console.log('User:', user);
-    console.log('Request:', request);
-    console.log('Group:', group);
+    console.log('🎯 handleGoingClick CALLED for:', group.name);
     
     if (!user || !request) {
-      console.error('❌ Missing user or request:', { user: !!user, request: !!request });
+      console.error('❌ Missing user or request');
       toast.error('Not logged in or request not loaded');
       return;
     }
     
-    console.log('🎯 handleGoingClick called for:', group.name);
-    console.log('🔍 Group data:', {
-      recommendationId: group.recommendationId,
-      requestId: request.id,
-      restaurantName: group.name,
-      placeId: group.placeId
-    });
-    
-    // Check if recommendationId exists
     if (!group.recommendationId) {
       console.error('❌ No recommendationId for this recommendation');
       toast.error('Unable to log intent - missing recommendation data');
@@ -417,17 +405,21 @@ const RequestResults = () => {
       // Show success toast and redirect to dashboard
       toast.success("Enjoy your meal! Redirecting…");
       
+      console.log('🚀 Navigating to /dashboard in 800ms');
       setTimeout(() => {
+        console.log('🚀 EXECUTING NAVIGATION NOW');
         navigate('/dashboard');
       }, 800);
 
     } catch (error) {
-      console.error('Error handling going click:', error);
+      console.error('❌ Error handling going click:', error);
       toast.error('Something went wrong');
     }
   };
 
   const handleNotGoingClick = async (group: RecommendationGroup) => {
+    console.log('🚫 handleNotGoingClick CALLED for:', group.name);
+    
     if (!user || !request) {
       toast.error('Not logged in or request not loaded');
       return;
@@ -456,12 +448,14 @@ const RequestResults = () => {
       // Show success toast and redirect to dashboard
       toast.success("Thanks for letting us know!");
       
+      console.log('🚀 Navigating to /dashboard in 800ms');
       setTimeout(() => {
+        console.log('🚀 EXECUTING NAVIGATION NOW');
         navigate('/dashboard');
       }, 800);
 
     } catch (error) {
-      console.error('Error handling not going click:', error);
+      console.error('❌ Error handling not going click:', error);
       toast.error('Something went wrong');
     }
   };
@@ -708,8 +702,10 @@ const RequestResults = () => {
                               recommendationId={group.recommendationId}
                               className="w-full"
                               onFeedbackSubmitted={() => {
+                                console.log('⭐ Feedback submitted, redirecting to dashboard');
                                 toast.success("Thanks for your feedback!");
                                 setTimeout(() => {
+                                  console.log('🚀 EXECUTING NAVIGATION NOW');
                                   navigate('/dashboard');
                                 }, 800);
                               }}
