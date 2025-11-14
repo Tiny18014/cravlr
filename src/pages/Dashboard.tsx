@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Clock, Star, User, LogOut, Bell, BellOff, Sparkles } from 'lucide-react';
-import { ReputationBadge } from '@/components/ReputationBadge';
-import { useNotifications } from '@/contexts/UnifiedNotificationContext';
-import { Switch } from '@/components/ui/switch';
-import { BecomeRecommenderModal } from '@/components/onboarding/BecomeRecommenderModal';
-import { useUserRoles } from '@/hooks/useUserRoles';
-// Timer is now handled globally via UnifiedRequestManager
+import { MapPin, Clock, Star, TrendingUp, FileText, Clock3, MessageCircle, Award } from 'lucide-react';
+import { DashboardHeader } from '@/components/DashboardHeader';
+import { DashboardBottomNav } from '@/components/DashboardBottomNav';
 
 interface FoodRequest {
   id: string;
@@ -21,11 +16,9 @@ interface FoodRequest {
   location_city: string;
   location_state: string;
   location_address?: string;
-  additional_notes?: string;
   status: string;
   created_at: string;
   expire_at: string;
-  requester_id: string;
   recommendation_count?: number;
 }
 
@@ -33,213 +26,90 @@ interface Recommendation {
   id: string;
   restaurant_name: string;
   restaurant_address?: string;
-  restaurant_phone?: string;
   notes?: string;
   confidence_score: number;
-  awarded_points?: number;
   created_at: string;
-  request_id: string;
   food_requests?: {
     food_type: string;
-    location_city: string;
-    location_state: string;
-  };
-  profiles?: {
-    display_name: string;
   };
 }
 
 interface ReceivedRecommendation {
   id: string;
   restaurant_name: string;
-  restaurant_address?: string;
-  restaurant_phone?: string;
-  notes?: string;
-  confidence_score: number;
-  awarded_points?: number;
-  created_at: string;
   profiles?: {
     display_name: string;
-  };
-  food_requests?: {
-    food_type: string;
-  };
+  } | null;
 }
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
-  const { dnd, setDnd } = useNotifications();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
   const [myRecommendations, setMyRecommendations] = useState<Recommendation[]>([]);
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
-  const [userPoints, setUserPoints] = useState({ 
-    total: 0, 
-    thisMonth: 0,
-    reputation_score: 0,
-    approval_rate: 0,
-    total_feedbacks: 0,
-    positive_feedbacks: 0,
-    is_admin: false
-  });
+  const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
   const [loading, setLoading] = useState(true);
-  const [isGuru, setIsGuru] = useState(false);
-  const [showRecommenderModal, setShowRecommenderModal] = useState(false);
-  const { roles, hasRole, refetch: refetchRoles } = useUserRoles();
-  
-  // Get the default tab from URL parameter
-  const defaultTab = searchParams.get('tab') || 'requests';
-
-  // Timer is now handled globally via UnifiedRequestManager
 
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    
     fetchDashboardData();
   }, [user, navigate]);
 
-  // Refresh data when tab becomes visible (user returns from notification)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && user) {
-        console.log("📊 Dashboard tab visible, refreshing data...");
-        fetchDashboardData();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [user]);
-
   const fetchDashboardData = async () => {
     try {
-      console.log('🔄 Fetching dashboard data for user:', user?.id);
-      // Fetch user's requests with recommendation counts
+      // Fetch requests with recommendation counts
       const { data: requests, error: requestsError } = await supabase
         .from('food_requests')
-        .select('*')
+        .select('*, recommendations(count)')
         .eq('requester_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (requestsError) throw requestsError;
 
-      // Add recommendation count to each request
-      const requestsWithCounts = await Promise.all(
-        (requests || []).map(async (request) => {
-          const { count } = await supabase
-            .from('recommendations')
-            .select('*', { count: 'exact', head: true })
-            .eq('request_id', request.id);
-          
-          return {
-            ...request,
-            recommendation_count: count || 0
-          };
-        })
-      );
+      setMyRequests(requests?.map(req => ({
+        ...req,
+        recommendation_count: req.recommendations?.[0]?.count || 0
+      })) || []);
 
-      setMyRequests(requestsWithCounts);
-
-      // Fetch recommendations user has made
-      console.log('🔍 Fetching recommendations for user:', user?.id);
-      const { data: recommendations, error: recommendationsError } = await supabase
+      // Fetch recommendations made
+      const { data: recommendations, error: recError } = await supabase
         .from('recommendations')
-        .select('*')
+        .select('*, food_requests(food_type)')
         .eq('recommender_id', user?.id)
         .order('created_at', { ascending: false });
 
-      console.log('📋 Recommendations query result:', { recommendations, error: recommendationsError });
-      if (recommendationsError) {
-        console.error('❌ Error fetching recommendations:', recommendationsError);
-        throw recommendationsError;
+      if (recError) throw recError;
+      setMyRecommendations(recommendations || []);
+
+      // Fetch recommendations received - count only
+      const { data: receivedCount, error: receivedError } = await supabase
+        .from('recommendations')
+        .select('id, restaurant_name, food_requests!inner(requester_id)')
+        .eq('food_requests.requester_id', user?.id);
+
+      if (receivedError) {
+        console.error('Error fetching received recommendations:', receivedError);
       }
+      setReceivedRecommendations(receivedCount || []);
 
-      // Fetch related data separately
-      const enrichedRecs = await Promise.all((recommendations || []).map(async (rec) => {
-        const [requestData, profileData] = await Promise.all([
-          supabase.from('food_requests').select('food_type, location_city, location_state').eq('id', rec.request_id).maybeSingle(),
-          supabase.from('profiles').select('display_name').eq('id', rec.recommender_id).maybeSingle()
-        ]);
-        return {
-          ...rec,
-          food_requests: requestData.data,
-          profiles: { display_name: profileData.data?.display_name || 'Anonymous' }
-        };
-      }));
-      
-      setMyRecommendations(enrichedRecs || []);
+      // Fetch user points
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('total_points, points_this_month')
+        .eq('id', user?.id)
+        .maybeSingle();
 
-      // Fetch recommendations received by user - get requests first
-      const { data: userRequests } = await supabase
-        .from('food_requests')
-        .select('id, food_type')
-        .eq('requester_id', user?.id);
-
-      const requestIds = (userRequests || []).map(r => r.id);
-      
-      if (requestIds.length > 0) {
-        const { data: received, error: receivedError } = await supabase
-          .from('recommendations')
-          .select('*')
-          .in('request_id', requestIds)
-          .order('created_at', { ascending: false });
-
-        if (receivedError) throw receivedError;
-
-        // Enrich with profile data
-        const enrichedReceived = await Promise.all((received || []).map(async (rec) => {
-          const [profileData, requestData] = await Promise.all([
-            supabase.from('profiles').select('display_name').eq('id', rec.recommender_id).maybeSingle(),
-            supabase.from('food_requests').select('food_type').eq('id', rec.request_id).maybeSingle()
-          ]);
-          return {
-            ...rec,
-            profiles: { display_name: profileData.data?.display_name || 'Anonymous' },
-            food_requests: requestData.data
-          };
-        }));
-        
-        setReceivedRecommendations(enrichedReceived || []);
-      } else {
-        setReceivedRecommendations([]);
-      }
-
-      // Fetch user points and roles
-      const [profileResult, rolesResult] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('total_points, points_this_month')
-          .eq('id', user?.id)
-          .maybeSingle(),
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user?.id)
-      ]);
-
-      const { data: profile, error: profileError } = profileResult;
-      const isAdmin = rolesResult.data?.some(r => r.role === 'admin') || false;
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
-      } else if (profile) {
+      if (profile) {
         setUserPoints({
           total: profile.total_points || 0,
-          thisMonth: profile.points_this_month || 0,
-          reputation_score: 0,
-          approval_rate: 0,
-          total_feedbacks: 0,
-          positive_feedbacks: 0,
-          is_admin: isAdmin
+          thisMonth: profile.points_this_month || 0
         });
-        setIsGuru(false); // Guru feature disabled
       }
-
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
@@ -252,20 +122,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleBrowseRequestsClick = async () => {
-    await refetchRoles();
-    if (hasRole('recommender')) {
-      navigate('/browse-requests');
-    } else {
-      setShowRecommenderModal(true);
-    }
-  };
-
-  const handleRecommenderContinue = () => {
-    setShowRecommenderModal(false);
-    navigate('/onboarding/recommender?upgrade=true');
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -275,21 +131,16 @@ const Dashboard = () => {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    return status === 'active' ? 'bg-green-500' : 'bg-gray-500';
-  };
-
   if (!user) return null;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-background via-primary/[0.02] to-background flex items-center justify-center">
         <div className="text-center">Loading dashboard...</div>
       </div>
     );
   }
 
-  // Filter requests with client-side expiration check as backup
   const now = new Date();
   const activeRequests = myRequests.filter(req => 
     req.status === 'active' && new Date(req.expire_at) > now
@@ -298,288 +149,231 @@ const Dashboard = () => {
     req.status === 'expired' || req.status === 'closed' || 
     (req.status === 'active' && new Date(req.expire_at) <= now)
   );
-  const recentRequests = myRequests.slice(0, 3); // Show only last 3 requests
-  const totalRecommendationsReceived = receivedRecommendations.length;
+  const recentRequests = myRequests.slice(0, 5);
+  const recentRecommendations = myRecommendations.slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Home
-            </Button>
-            {isGuru && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={() => navigate('/guru-lounge')}
-                className="gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                Guru Lounge
-              </Button>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold">Your Food Requests 📝</h1>
-              <p className="text-muted-foreground mt-1">Track responses and see recommendations.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={async () => {
-            console.log('🔘 Sign out button clicked');
-            try {
-              await signOut();
-              console.log('🔄 Navigating to welcome page...');
-              navigate('/welcome');
-            } catch (error) {
-              console.error('❌ Sign out error in component:', error);
-              // Force navigation even if sign out fails
-              navigate('/welcome');
-            }
-          }} className="flex items-center gap-2">
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
+      <DashboardHeader 
+        onSignOut={signOut} 
+        userName={user?.email?.split('@')[0] || "User"} 
+      />
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Points & Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-primary mb-1">{userPoints.total}</div>
-              <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-                <span>Total Points</span>
-                <ReputationBadge 
-                  reputationScore={userPoints.reputation_score}
-                  approvalRate={userPoints.approval_rate}
-                  totalFeedbacks={userPoints.total_feedbacks}
-                />
+      <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+        {/* Page Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-semibold text-foreground">Craving Insights</h1>
+          <p className="text-sm text-muted-foreground">
+            Your food requests, recommendations, and activity in one place.
+          </p>
+        </div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+                  <Award className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-foreground">{userPoints.total}</p>
+                  <p className="text-xs text-muted-foreground">Total Points</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">{activeRequests.length}</div>
-              <div className="text-sm text-muted-foreground">Active Requests</div>
+
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-foreground">{activeRequests.length}</p>
+                  <p className="text-xs text-muted-foreground">Active Requests</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">{expiredRequests.length}</div>
-              <div className="text-sm text-muted-foreground">Expired Requests</div>
+
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+                  <Clock3 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-foreground">{expiredRequests.length}</p>
+                  <p className="text-xs text-muted-foreground">Expired Requests</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">{totalRecommendationsReceived}</div>
-              <div className="text-sm text-muted-foreground">Recommendations Received</div>
+
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-foreground">{receivedRecommendations.length}</p>
+                  <p className="text-xs text-muted-foreground">Recommendations</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex gap-4 flex-wrap items-center">
-          <Button variant="outline" onClick={() => navigate('/request-food')} className="flex-1 md:flex-none">
-            Request Food
-          </Button>
-          <Button variant="outline" onClick={handleBrowseRequestsClick} className="flex-1 md:flex-none">
-            Browse Requests
-          </Button>
-          <Button variant="ghost" onClick={() => navigate('/profile')} className="flex-1 md:flex-none flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Profile
-          </Button>
-          {userPoints.is_admin && (
-            <Button variant="secondary" onClick={() => navigate('/admin/conversions')} className="flex-1 md:flex-none">
-              Admin Panel
+        {/* Recent Requests Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Recent Requests</h2>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/request-food')}
+              className="text-primary hover:text-primary-dark"
+            >
+              + New Request
             </Button>
-          )}
-          
-          {/* Do Not Disturb Toggle */}
-          <div className="flex items-center gap-2 ml-auto">
-            {dnd ? (
-              <BellOff className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Bell className="h-4 w-4 text-primary" />
-            )}
-            <Switch
-              id="dnd-toggle"
-              checked={!dnd}
-              onCheckedChange={(enabled) => {
-                console.log("🔄 DND toggle clicked:", !enabled);
-                setDnd(!enabled);
-              }}
-            />
-            <span className="text-sm font-medium">
-              {dnd ? 'Do Not Disturb' : 'Notifications'}
-            </span>
           </div>
-        </div>
 
-        <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="requests">Recent Requests</TabsTrigger>
-            <TabsTrigger value="made">My Recommendations</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="requests" className="space-y-4">
-            {recentRequests.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <div className="text-6xl mb-4">🍴</div>
-                  <p className="text-muted-foreground mb-2">You haven't created any food requests yet.</p>
-                  <p className="text-sm text-muted-foreground mb-4">👉 Tap below to get started!</p>
-                  <Button onClick={() => navigate('/request-food')}>
-                    Create Food Request
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                {recentRequests.map((request) => {
-                  const isExpired = request.status === 'expired' || request.status === 'closed' || 
-                    (request.status === 'active' && new Date(request.expire_at) <= now);
-                  const statusText = isExpired ? 'Expired' : request.status === 'active' ? 'Active' : 'Closed';
-                  const statusColor = isExpired ? 'bg-gray-500' : request.status === 'active' ? 'bg-green-500' : 'bg-gray-500';
-                  
-                  return (
-                    <Card key={request.id}>
-                      <CardContent className="p-6">
-                        <div className="space-y-4">
-                          {/* Food type - big and bold */}
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-2xl font-bold">{request.food_type}</h3>
-                            <Badge className={statusColor}>
-                              {statusText}
-                            </Badge>
-                          </div>
-                          
-                          {/* Location and timing */}
-                          <div className="space-y-2">
-                            <div className="flex items-center text-muted-foreground">
-                              <MapPin className="h-4 w-4 mr-2" />
-                              {request.location_city}, {request.location_state}
-                              {request.location_address && ` - ${request.location_address}`}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Clock className="h-4 w-4 mr-2" />
-                              Created {formatDate(request.created_at)} • Expires {formatDate(request.expire_at)}
-                            </div>
-                          </div>
-
-                          {/* Recommendation counter and action */}
-                          <div className="flex justify-between items-center pt-2">
-                            <div className="text-sm text-muted-foreground">
-                              {request.recommendation_count || 0}/10 recommendations
-                            </div>
-                            {(request.recommendation_count || 0) > 0 && (
-                              <Button 
-                                variant="default" 
-                                size="sm"
-                                onClick={() => navigate(`/requests/${request.id}/results`)}
-                              >
-                                View Recommendations
-                              </Button>
-                            )}
-                          </div>
-                          
-                          {request.additional_notes && (
-                            <p className="text-sm text-muted-foreground border-t pt-3">{request.additional_notes}</p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+          {recentRequests.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">No requests yet</p>
+                <Button onClick={() => navigate('/request-food')}>
+                  Create Your First Request
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {recentRequests.map((request) => {
+                const isExpired = request.status === 'expired' || request.status === 'closed' || 
+                  (request.status === 'active' && new Date(request.expire_at) <= now);
                 
-                {myRequests.length > 3 && (
-                  <Card>
-                    <CardContent className="text-center py-4">
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Showing 3 of {myRequests.length} requests
-                      </p>
-                      <Button variant="outline" size="sm">
-                        View All Requests
-                      </Button>
+                return (
+                  <Card key={request.id} className="border-border/50 hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-foreground mb-1">
+                              {request.food_type}
+                            </h3>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3" />
+                              {request.location_city}, {request.location_state}
+                            </div>
+                          </div>
+                          <Badge 
+                            variant={isExpired ? "secondary" : "default"}
+                            className={isExpired ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}
+                          >
+                            {isExpired ? 'Expired' : 'Active'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3 text-primary fill-primary" />
+                              <span>{request.recommendation_count || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Expires {formatDate(request.expire_at)}</span>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/request-results/${request.id}`)}
+                            className="text-primary h-7 px-3 hover:bg-primary/10"
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
-                )}
-              </>
-            )}
-          </TabsContent>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-          <TabsContent value="made" className="space-y-4">
-            {myRecommendations.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">You haven't made any recommendations yet.</p>
-                  <Button onClick={() => navigate('/browse-requests')}>
-                    Browse Requests
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              myRecommendations.slice(0, 5).filter(rec => rec && rec.food_requests).map((rec) => (
-                <Card key={rec.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{rec.restaurant_name}</CardTitle>
-                      <div className="flex items-center">
-                        {rec.awarded_points && rec.awarded_points > 0 ? (
-                          <Badge variant="secondary">+{rec.awarded_points} pts</Badge>
-                        ) : (
-                          <Badge variant="outline">Pending</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
+        {/* My Recommendations Section */}
+        <div className="space-y-3 pb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">My Recommendations</h2>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/browse-requests')}
+              className="text-primary hover:text-primary-dark"
+            >
+              Browse Requests
+            </Button>
+          </div>
+
+          {recentRecommendations.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="text-center py-12">
+                <Star className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">No recommendations yet</p>
+                <Button onClick={() => navigate('/browse-requests')}>
+                  Start Recommending
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {recentRecommendations.map((rec) => (
+                <Card key={rec.id} className="border-border/50 hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
                     <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Recommended for: {rec.food_requests?.food_type} request
-                      </p>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {rec.food_requests?.location_city}, {rec.food_requests?.location_state}
-                      </div>
-                      {rec.restaurant_address && (
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mr-2" />
-                          Restaurant: {rec.restaurant_address}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold text-foreground mb-1">
+                            {rec.restaurant_name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            For: {rec.food_requests?.food_type || 'Unknown request'}
+                          </p>
+                          {rec.restaurant_address && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3" />
+                              {rec.restaurant_address}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {rec.restaurant_phone && (
-                        <p className="text-sm text-muted-foreground">📞 {rec.restaurant_phone}</p>
-                      )}
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Recommended {formatDate(rec.created_at)}
+                        <div className="flex items-center gap-1 text-primary flex-shrink-0">
+                          <Star className="h-4 w-4 fill-primary" />
+                          <span className="text-sm font-semibold">{rec.confidence_score}/5</span>
+                        </div>
                       </div>
+                      
                       {rec.notes && (
-                        <p className="text-sm mt-2">{rec.notes}</p>
+                        <p className="text-xs text-muted-foreground pt-2 border-t border-border/30 line-clamp-2">
+                          {rec.notes}
+                        </p>
                       )}
                     </div>
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
-      <BecomeRecommenderModal
-        open={showRecommenderModal}
-        onOpenChange={setShowRecommenderModal}
-        onContinue={handleRecommenderContinue}
-      />
+      <DashboardBottomNav />
     </div>
   );
 };
