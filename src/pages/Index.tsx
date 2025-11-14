@@ -39,39 +39,38 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
   const { dnd, setDnd } = useNotifications();
   
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-background-soft">
+    <header className="flex items-center justify-between px-6 py-5">
       <div className="flex items-center gap-3">
         <div 
           aria-hidden 
-          className="h-11 w-11 rounded-full bg-accent-bubble grid place-items-center font-semibold text-primary text-lg"
+          className="h-10 w-10 rounded-full bg-primary/10 grid place-items-center font-semibold text-primary text-base"
         >
           {userName.charAt(0).toUpperCase()}
         </div>
         <div className="leading-tight">
-          <p className="text-body font-medium text-foreground">
-            Welcome back, <span className="font-semibold">{userName}!</span>
+          <p className="text-sm font-medium text-foreground">
+            Welcome back, <span className="font-semibold">{userName}</span>
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {/* Do Not Disturb Toggle */}
+      <div className="flex items-center gap-1">
         <button 
-          className="rounded-xl p-2.5 hover:bg-accent-bubble transition-colors"
-          aria-label="Do Not Disturb"
+          className="rounded-full p-2 hover:bg-primary/5 transition-colors"
+          aria-label="Notifications"
           onClick={() => setDnd(!dnd)}
         >
           {dnd ? (
             <BellOff className="h-5 w-5 text-primary" />
           ) : (
-            <Bell className="h-5 w-5 text-text-medium" />
+            <Bell className="h-5 w-5 text-muted-foreground" />
           )}
         </button>
         <button 
           onClick={onSignOut}
           aria-label="Profile" 
-          className="rounded-xl p-2.5 hover:bg-accent-bubble transition-colors"
+          className="rounded-full p-2 hover:bg-primary/5 transition-colors"
         >
-          <User className="h-5 w-5 text-text-medium" />
+          <User className="h-5 w-5 text-muted-foreground" />
         </button>
       </div>
     </header>
@@ -80,32 +79,27 @@ function Header({ onSignOut, userName }: { onSignOut: () => void; userName: stri
 
 function HeroCard({ onRecommendClick }: { onRecommendClick: () => void }) {
   return (
-    <section className="px-6">
-      <div className="relative rounded-2xl bg-gradient-to-b from-background-soft to-background-warm p-8 shadow-[0_4px_12px_rgba(0,0,0,0.04)] overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-4 right-4 opacity-[0.06]">
-          <Sparkles className="h-16 w-16 text-primary" />
-        </div>
+    <section className="px-6 pt-6">
+      <div className="relative rounded-3xl bg-gradient-to-br from-primary/5 via-background to-primary/5 p-10 overflow-hidden">
         
         <div className="relative text-center">
-          <h1 className="text-3xl font-semibold text-foreground mb-3">
+          <h1 className="text-4xl font-semibold text-foreground mb-3 tracking-tight">
             What are you craving today?
           </h1>
-          <p className="text-body text-text-medium leading-relaxed max-w-md mx-auto mb-8">
+          <p className="text-base text-muted-foreground leading-relaxed max-w-md mx-auto mb-8">
             Get trusted food suggestions from locals.
           </p>
 
-          <div className="space-y-3 max-w-sm mx-auto">
+          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <Link
               to="/request-food"
-              className="block w-full rounded-2xl bg-gradient-to-br from-primary to-primary-gradient py-4 text-center text-body font-semibold text-primary-foreground shadow-[0_4px_12px_rgba(160,50,114,0.25)] hover:shadow-[0_6px_20px_rgba(160,50,114,0.35)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex-1 rounded-full bg-gradient-to-r from-primary to-primary-dark py-3.5 px-6 text-center text-sm font-semibold text-primary-foreground shadow-sm hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Request Food
             </Link>
-
             <button
               onClick={onRecommendClick}
-              className="block w-full rounded-2xl bg-gradient-to-br from-primary to-primary-gradient py-4 text-center text-body font-semibold text-primary-foreground shadow-[0_4px_12px_rgba(160,50,114,0.25)] hover:shadow-[0_6px_20px_rgba(160,50,114,0.35)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex-1 rounded-full bg-background border-2 border-primary py-3.5 px-6 text-sm font-semibold text-primary hover:bg-primary/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Recommend Food
             </button>
@@ -117,48 +111,49 @@ function HeroCard({ onRecommendClick }: { onRecommendClick: () => void }) {
 }
 
 function HowItWorks() {
-  const steps = [
-    {
-      icon: MessageCircle,
-      title: "Request",
-      description: "Tell locals what you're craving.",
-    },
-    {
-      icon: Star,
-      title: "Recommend",
-      description: "Food lovers suggest places with notes & vibes.",
-    },
-    {
-      icon: Gift,
-      title: "Earn",
-      description: "Earn points for great recommendations.",
-    },
-  ];
-
   return (
-    <section className="px-6 py-8">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-semibold text-foreground mb-2">How It Works</h2>
-        <p className="text-body text-text-medium">Three simple steps to discover amazing food</p>
-      </div>
-
-      <div className="grid gap-4 max-w-4xl mx-auto">
-        {steps.map((step, index) => (
-          <div
-            key={index}
-            className="flex items-start gap-4 bg-card rounded-2xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-border"
-          >
-            <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-accent-bubble flex items-center justify-center">
-              <step.icon className="h-6 w-6 text-primary" strokeWidth={2} />
-            </div>
-            <div className="flex-1 pt-1">
-              <h3 className="font-semibold text-foreground mb-1">{step.title}</h3>
-              <p className="text-small text-text-medium leading-relaxed">{step.description}</p>
-            </div>
-          </div>
-        ))}
+    <section className="px-6 py-8 pb-24">
+      <h2 className="text-xl font-semibold text-foreground mb-6">How It Works</h2>
+      <div className="space-y-4 max-w-lg mx-auto">
+        <StepCard
+          number={1}
+          icon={<MessageCircle className="h-5 w-5" />}
+          title="Post a Request"
+          description="Looking for the best pizza? Share what you're craving and where you are."
+        />
+        <StepCard
+          number={2}
+          icon={<Gift className="h-5 w-5" />}
+          title="Get Recommendations"
+          description="Locals who know the area will send you personalized suggestions."
+        />
+        <StepCard
+          number={3}
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          title="Discover & Enjoy"
+          description="Visit the spots, share your experience, and earn rewards for helping others!"
+        />
       </div>
     </section>
+  );
+}
+
+function StepCard({ number, icon, title, description }: { number: number; icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-4 p-4 rounded-2xl bg-card/50 border border-border/50">
+      <div className="relative flex-shrink-0">
+        <div className="h-11 w-11 rounded-full bg-primary/10 grid place-items-center text-primary">
+          {icon}
+        </div>
+        <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground grid place-items-center text-xs font-semibold">
+          {number}
+        </div>
+      </div>
+      <div className="pt-1">
+        <h3 className="font-semibold text-sm text-card-foreground mb-1">{title}</h3>
+        <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+      </div>
+    </div>
   );
 }
 
@@ -217,18 +212,15 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background">
       <Header onSignOut={onSignOut} userName={userName} />
-      
-      <main className="space-y-8 py-6">
+      <main className="flex-1 space-y-1">
         <HeroCard onRecommendClick={handleRecommendClick} />
         <HowItWorks />
       </main>
-
       <BottomNav />
-
-      <BecomeRecommenderModal
-        open={isRecommenderModalOpen}
+      <BecomeRecommenderModal 
+        open={isRecommenderModalOpen} 
         onOpenChange={setIsRecommenderModalOpen}
         onContinue={handleRecommenderContinue}
       />
