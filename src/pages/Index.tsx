@@ -112,8 +112,8 @@ function HeroCard({ onRecommendClick }: { onRecommendClick: () => void }) {
 
 function HowItWorks() {
   return (
-    <section className="px-6 py-8 pb-24">
-      <h2 className="text-xl font-semibold text-foreground mb-6">How It Works</h2>
+    <section className="px-6 py-6">
+      <h2 className="text-xl font-semibold text-foreground mb-6 text-center">How It Works</h2>
       <div className="space-y-4 max-w-lg mx-auto">
         <StepCard
           number={1}
@@ -214,10 +214,10 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background">
       <Header onSignOut={onSignOut} userName={userName} />
-      <main className="flex-1 space-y-1">
+      <main className="flex-1 flex flex-col justify-center space-y-8">
         <HeroCard onRecommendClick={handleRecommendClick} />
+        <HowItWorks />
       </main>
-      <HowItWorks />
       <BottomNav />
       <BecomeRecommenderModal 
         open={isRecommenderModalOpen} 
