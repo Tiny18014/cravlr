@@ -8,6 +8,9 @@ export function PopupDebugBinder() {
   const { user } = useAuth();
   
   useEffect(() => {
+    // Only expose debug functions in development mode
+    if (!import.meta.env.DEV) return;
+
     (window as any).__showNotification = showNotification;
     
     // Add test functions for the full notification flow

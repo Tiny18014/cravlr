@@ -5,6 +5,7 @@ export default function DebugDBRealtime({ user }: { user: any }) {
   const [lastEvt, setLastEvt] = useState("");
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     console.log("DebugDBRealtime mounting with user:", user?.email);
     if (!user) return;
     
@@ -26,6 +27,8 @@ export default function DebugDBRealtime({ user }: { user: any }) {
       supabase.removeChannel(ch);
     };
   }, [user]);
+
+  if (!import.meta.env.DEV) return null;
 
   return lastEvt ? (
     <div style={{
