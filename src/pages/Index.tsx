@@ -2,13 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search, Bell, Home, ClipboardList, User, Trophy, Star, ArrowRight, CheckCircle2, BellOff, Sparkles, MessageCircle, Gift } from "lucide-react";
+import { Plus, Search, Home, ClipboardList, Trophy, Star, ArrowRight, CheckCircle2, Sparkles, MessageCircle, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNotifications } from "@/contexts/UnifiedNotificationContext";
-import { Switch } from "@/components/ui/switch";
 import Footer from "@/components/Footer";
 import { BecomeRecommenderModal } from "@/components/onboarding/BecomeRecommenderModal";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { DashboardHeader } from "@/components/DashboardHeader";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -35,47 +34,6 @@ function UnauthenticatedView() {
   return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 }
 
-function Header({ onSignOut, userName }: { onSignOut: () => void; userName: string }) {
-  const { dnd, setDnd } = useNotifications();
-  
-  return (
-    <header className="flex items-center justify-between px-6 py-5">
-      <div className="flex items-center gap-3">
-        <div 
-          aria-hidden 
-          className="h-10 w-10 rounded-full bg-primary/10 grid place-items-center font-semibold text-primary text-base"
-        >
-          {userName.charAt(0).toUpperCase()}
-        </div>
-        <div className="leading-tight">
-          <p className="text-sm font-medium text-foreground">
-            Welcome back, <span className="font-semibold">{userName}</span>
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-1">
-        <button 
-          className="rounded-full p-2 hover:bg-primary/5 transition-colors"
-          aria-label="Notifications"
-          onClick={() => setDnd(!dnd)}
-        >
-          {dnd ? (
-            <BellOff className="h-5 w-5 text-primary" />
-          ) : (
-            <Bell className="h-5 w-5 text-muted-foreground" />
-          )}
-        </button>
-        <button 
-          onClick={onSignOut}
-          aria-label="Profile" 
-          className="rounded-full p-2 hover:bg-primary/5 transition-colors"
-        >
-          <User className="h-5 w-5 text-muted-foreground" />
-        </button>
-      </div>
-    </header>
-  );
-}
 
 function HeroCard({ onRecommendClick }: { onRecommendClick: () => void }) {
   return (
@@ -213,7 +171,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background">
-      <Header onSignOut={onSignOut} userName={userName} />
+      <DashboardHeader onSignOut={onSignOut} userName={userName} />
       <main className="flex-1 flex flex-col justify-center space-y-8">
         <HeroCard onRecommendClick={handleRecommendClick} />
         <HowItWorks />
