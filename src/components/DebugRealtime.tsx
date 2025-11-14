@@ -6,6 +6,7 @@ export default function DebugRealtime({ user }: { user: any }) {
   const [lastMsg, setLastMsg] = useState("");
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     console.log("DebugRealtime mounting with user:", user?.email);
     if (!user) return;
     
@@ -25,6 +26,8 @@ export default function DebugRealtime({ user }: { user: any }) {
       supabase.removeChannel(ch);
     };
   }, [user]);
+
+  if (!import.meta.env.DEV) return null;
 
   async function sendPing() {
     console.log("📡 Sending broadcast ping from:", user?.email);

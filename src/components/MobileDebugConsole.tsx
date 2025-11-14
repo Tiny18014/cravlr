@@ -5,6 +5,7 @@ export default function MobileDebugConsole() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     // Capture console.log, console.error, etc.
     const originalLog = console.log;
     const originalError = console.error;
@@ -30,6 +31,8 @@ export default function MobileDebugConsole() {
       console.error = originalError;
     };
   }, []);
+
+  if (!import.meta.env.DEV) return null;
 
   if (!visible) {
     return (
