@@ -344,6 +344,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_attempts: {
+        Row: {
+          action_type: string
+          attempted_at: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          attempted_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          attempted_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       recommendation_feedback: {
         Row: {
           created_at: string
@@ -663,6 +690,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      bootstrap_first_admin: { Args: never; Returns: undefined }
+      check_rate_limit: {
+        Args: {
+          p_action_type: string
+          p_ip_address: string
+          p_max_attempts: number
+          p_user_id: string
+          p_window_minutes: number
+        }
+        Returns: boolean
+      }
+      cleanup_old_rate_limits: { Args: never; Returns: undefined }
       generate_referral_code: { Args: never; Returns: string }
       get_request_results: {
         Args: { request_uuid: string }
@@ -687,6 +726,10 @@ export type Database = {
           recommender_name: string
           visit_confirmed_at: string
         }[]
+      }
+      log_rate_limit_attempt: {
+        Args: { p_action_type: string; p_ip_address: string; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

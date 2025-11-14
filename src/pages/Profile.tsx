@@ -8,16 +8,16 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, MapPin, Bell, Save, MessageSquareHeart } from 'lucide-react';
+import { User, MapPin, Save, MessageSquareHeart, Bell } from 'lucide-react';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
-import { useNotifications } from '@/contexts/UnifiedNotificationContext';
 import AccountDeletion from '@/components/AccountDeletion';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -35,15 +35,15 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { dnd, setDnd } = useNotifications();
   const { hasRole } = useUserRoles();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locationInput, setLocationInput] = useState('');
   const [showFeedbackSurvey, setShowFeedbackSurvey] = useState(false);
+  const [userName, setUserName] = useState('');
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -82,6 +82,7 @@ const Profile = () => {
           : '';
         
         setLocationInput(locationDisplay);
+        setUserName(profile.display_name || user?.email?.split('@')[0] || 'User');
         
         form.reset({
           display_name: profile.display_name || '',
@@ -156,26 +157,8 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <User className="h-8 w-8" />
-                Profile Settings
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Manage your personal information and preferences
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background pb-20">
+      <DashboardHeader onSignOut={signOut} userName={userName} />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <Form {...form}>
@@ -266,24 +249,6 @@ const Profile = () => {
                     </FormItem>
                   )}
                 />
-
-                <div className="rounded-lg border p-4">
-                  <div className="space-y-0.5 mb-4">
-                    <div className="text-base font-medium">
-                      Do Not Disturb
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Temporarily pause all notifications. Toggle in the top navigation bar.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {dnd ? (
-                      <><Bell className="h-4 w-4 text-muted-foreground" /> Do Not Disturb is ON</>
-                    ) : (
-                      <><Bell className="h-4 w-4 text-primary" /> Notifications are ON</>
-                    )}
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
