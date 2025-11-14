@@ -93,13 +93,13 @@ function HeroCard({ onRecommendClick }: { onRecommendClick: () => void }) {
           <div className="flex flex-col gap-3 max-w-sm mx-auto">
             <Link
               to="/request-food"
-              className="w-full rounded-full bg-background border-2 border-primary py-3.5 px-6 text-center text-sm font-semibold text-primary hover:bg-primary/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full rounded-full bg-gradient-to-r from-primary to-primary-dark py-3.5 px-6 text-center text-sm font-semibold text-primary-foreground shadow-sm hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Request Food
             </Link>
             <button
               onClick={onRecommendClick}
-              className="w-full rounded-full bg-background border-2 border-primary py-3.5 px-6 text-sm font-semibold text-primary hover:bg-primary/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full rounded-full bg-gradient-to-r from-primary to-primary-dark py-3.5 px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Recommend Food
             </button>
