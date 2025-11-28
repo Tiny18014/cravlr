@@ -22,13 +22,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Initialize Supabase client with service role key for full access
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-
-    // Authenticate user
+    // Authenticate user first
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -37,8 +31,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Create auth client to verify user
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     
     if (authError || !user) {
       console.error('❌ Authentication failed:', authError);
@@ -47,6 +47,12 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
+
+    // Initialize Supabase client with service role key for database operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
     // Parse and validate request body
     const body = await req.json();
