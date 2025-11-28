@@ -78,35 +78,34 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    // Verify authentication first
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('❌ Missing authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create client with user's auth to verify they exist
-    const supabaseAuth = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+  // Verify authentication first
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    console.error('❌ Missing authorization header');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  }
 
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    
-    if (authError || !user) {
-      console.error('❌ Authentication failed:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  // Create client with user's auth to verify they exist
+  const supabaseAuth = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: authHeader } } }
+  );
 
-    console.log('✅ Authenticated user:', user.id);
+  const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+  
+  if (authError || !user) {
+    console.error('❌ Authentication failed:', authError);
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log('✅ Authenticated user:', user.id);
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
