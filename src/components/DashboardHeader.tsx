@@ -56,10 +56,6 @@ export function DashboardHeader({ onSignOut, userName }: DashboardHeaderProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Dashboard
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/dashboard?tab=requests')}>
               <FileText className="mr-2 h-4 w-4" />
               My Requests
