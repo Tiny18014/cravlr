@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,8 @@ const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'overview';
   const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
   const [myRecommendations, setMyRecommendations] = useState<Recommendation[]>([]);
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
@@ -152,6 +154,174 @@ const Dashboard = () => {
   const recentRequests = myRequests.slice(0, 5);
   const recentRecommendations = myRecommendations.slice(0, 5);
 
+  // Render My Requests Tab
+  if (activeTab === 'requests') {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
+        <DashboardHeader 
+          onSignOut={signOut} 
+          userName={user?.email?.split('@')[0] || "User"} 
+        />
+
+        <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-semibold text-foreground">My Requests</h1>
+            <Button 
+              variant="default"
+              onClick={() => navigate('/request-food')}
+            >
+              + New Request
+            </Button>
+          </div>
+
+          {myRequests.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">No requests yet</p>
+                <Button onClick={() => navigate('/request-food')}>
+                  Create Your First Request
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3 pb-4">
+              {myRequests.map((request) => {
+                const isExpired = request.status === 'expired' || request.status === 'closed' || 
+                  (request.status === 'active' && new Date(request.expire_at) <= now);
+                
+                return (
+                  <Card key={request.id} className="border-border/50 hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-foreground mb-1">
+                              {request.food_type}
+                            </h3>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3" />
+                              {request.location_city}, {request.location_state}
+                            </div>
+                          </div>
+                          <Badge 
+                            variant={isExpired ? "secondary" : "default"}
+                            className={isExpired ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}
+                          >
+                            {isExpired ? 'Expired' : 'Active'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3 text-primary fill-primary" />
+                              <span>{request.recommendation_count || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Expires {formatDate(request.expire_at)}</span>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/request-results/${request.id}`)}
+                            className="text-primary h-7 px-3 hover:bg-primary/10"
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </main>
+
+        <DashboardBottomNav />
+      </div>
+    );
+  }
+
+  // Render My Recommendations Tab
+  if (activeTab === 'recommendations') {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
+        <DashboardHeader 
+          onSignOut={signOut} 
+          userName={user?.email?.split('@')[0] || "User"} 
+        />
+
+        <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-semibold text-foreground">My Recommendations</h1>
+            <Button 
+              variant="default"
+              onClick={() => navigate('/browse-requests')}
+            >
+              Browse Requests
+            </Button>
+          </div>
+
+          {myRecommendations.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="text-center py-12">
+                <Star className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">No recommendations yet</p>
+                <Button onClick={() => navigate('/browse-requests')}>
+                  Start Recommending
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3 pb-4">
+              {myRecommendations.map((rec) => (
+                <Card key={rec.id} className="border-border/50 hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold text-foreground mb-1">
+                            {rec.restaurant_name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            For: {rec.food_requests?.food_type || 'Unknown request'}
+                          </p>
+                          {rec.restaurant_address && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3" />
+                              {rec.restaurant_address}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-primary flex-shrink-0">
+                          <Star className="h-4 w-4 fill-primary" />
+                          <span className="text-sm font-semibold">{rec.confidence_score}/5</span>
+                        </div>
+                      </div>
+                      
+                      {rec.notes && (
+                        <p className="text-xs text-muted-foreground pt-2 border-t border-border/30 line-clamp-2">
+                          {rec.notes}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </main>
+
+        <DashboardBottomNav />
+      </div>
+    );
+  }
+
+  // Render Overview Dashboard (default)
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
       <DashboardHeader 
@@ -234,10 +404,10 @@ const Dashboard = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate('/request-food')}
+              onClick={() => navigate('/dashboard?tab=requests')}
               className="text-primary hover:text-primary-dark"
             >
-              + New Request
+              View All
             </Button>
           </div>
 
@@ -315,10 +485,10 @@ const Dashboard = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate('/browse-requests')}
+              onClick={() => navigate('/dashboard?tab=recommendations')}
               className="text-primary hover:text-primary-dark"
             >
-              Browse Requests
+              View All
             </Button>
           </div>
 
