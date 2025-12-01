@@ -226,7 +226,7 @@ const Dashboard = () => {
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => navigate(`/request-results/${request.id}`)}
+                            onClick={() => navigate(`/requests/${request.id}/results`)}
                             className="text-primary h-7 px-3 hover:bg-primary/10"
                           >
                             View
