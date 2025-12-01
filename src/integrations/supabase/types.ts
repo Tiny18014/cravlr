@@ -297,6 +297,7 @@ export type Database = {
           display_name: string | null
           id: string
           last_feedback_date: string | null
+          level: string | null
           location_city: string | null
           location_state: string | null
           notify_recommender: boolean | null
@@ -314,6 +315,7 @@ export type Database = {
           display_name?: string | null
           id: string
           last_feedback_date?: string | null
+          level?: string | null
           location_city?: string | null
           location_state?: string | null
           notify_recommender?: boolean | null
@@ -331,6 +333,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           last_feedback_date?: string | null
+          level?: string | null
           location_city?: string | null
           location_state?: string | null
           notify_recommender?: boolean | null
@@ -373,27 +376,39 @@ export type Database = {
       }
       recommendation_feedback: {
         Row: {
+          comment: string | null
           created_at: string
           feedback_type: string
           id: string
+          photo_urls: string[] | null
+          points_awarded: number | null
           recommendation_id: string
           star_rating: number | null
+          thumbs_up: boolean | null
           user_id: string
         }
         Insert: {
+          comment?: string | null
           created_at?: string
           feedback_type: string
           id?: string
+          photo_urls?: string[] | null
+          points_awarded?: number | null
           recommendation_id: string
           star_rating?: number | null
+          thumbs_up?: boolean | null
           user_id: string
         }
         Update: {
+          comment?: string | null
           created_at?: string
           feedback_type?: string
           id?: string
+          photo_urls?: string[] | null
+          points_awarded?: number | null
           recommendation_id?: string
           star_rating?: number | null
+          thumbs_up?: boolean | null
           user_id?: string
         }
         Relationships: [
@@ -419,6 +434,7 @@ export type Database = {
           confidence_score: number
           created_at: string
           id: string
+          last_reminder_sent_at: string | null
           maps_url: string | null
           notes: string | null
           place_id: string | null
@@ -428,12 +444,15 @@ export type Database = {
           restaurant_name: string
           status: string
           updated_at: string
+          visit_checked_at: string | null
+          visit_reminder_count: number | null
         }
         Insert: {
           awarded_points?: number | null
           confidence_score: number
           created_at?: string
           id?: string
+          last_reminder_sent_at?: string | null
           maps_url?: string | null
           notes?: string | null
           place_id?: string | null
@@ -443,12 +462,15 @@ export type Database = {
           restaurant_name: string
           status?: string
           updated_at?: string
+          visit_checked_at?: string | null
+          visit_reminder_count?: number | null
         }
         Update: {
           awarded_points?: number | null
           confidence_score?: number
           created_at?: string
           id?: string
+          last_reminder_sent_at?: string | null
           maps_url?: string | null
           notes?: string | null
           place_id?: string | null
@@ -458,6 +480,8 @@ export type Database = {
           restaurant_name?: string
           status?: string
           updated_at?: string
+          visit_checked_at?: string | null
+          visit_reminder_count?: number | null
         }
         Relationships: [
           {
@@ -660,6 +684,45 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_reminders: {
+        Row: {
+          created_at: string | null
+          id: string
+          recommendation_id: string
+          scheduled_for: string
+          sent: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recommendation_id: string
+          scheduled_for: string
+          sent?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recommendation_id?: string
+          scheduled_for?: string
+          sent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_reminders_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_reminders_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "view_business_commissions"
+            referencedColumns: ["recommendation_id"]
+          },
+        ]
+      }
     }
     Views: {
       view_business_commissions: {
@@ -691,6 +754,10 @@ export type Database = {
         Returns: undefined
       }
       bootstrap_first_admin: { Args: never; Returns: undefined }
+      calculate_recommender_level: {
+        Args: { total_points: number }
+        Returns: string
+      }
       check_rate_limit: {
         Args: {
           p_action_type: string
