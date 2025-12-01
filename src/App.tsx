@@ -1,8 +1,9 @@
+import * as React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UnifiedNotificationProvider } from "@/contexts/UnifiedNotificationContext";
 import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisplay";
@@ -46,6 +47,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Component to listen to location changes
+const LocationListener = ({ setCurrentPath }: { setCurrentPath: (path: string) => void }) => {
+  const location = useLocation();
+  
+  React.useEffect(() => {
+    setCurrentPath(location.pathname);
+  }, [location.pathname, setCurrentPath]);
+  
+  return null;
+};
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -59,6 +71,7 @@ const App = () => {
 const AppContent = () => {
   const { user } = useAuth();
   const isDevelopment = import.meta.env.DEV;
+  const [currentPath, setCurrentPath] = React.useState(window.location.pathname);
   
   return (
     <UnifiedNotificationProvider>
@@ -67,6 +80,7 @@ const AppContent = () => {
         <Sonner />
         <OneSignalInit />
         <BrowserRouter>
+          <LocationListener setCurrentPath={setCurrentPath} />
           <UnifiedRequestManager />
           <UnifiedNotificationDisplay />
           {isDevelopment && (
@@ -109,7 +123,7 @@ const AppContent = () => {
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-            {user && <DashboardBottomNav />}
+            {user && currentPath !== '/welcome' && <DashboardBottomNav />}
           </BrowserRouter>
         </TooltipProvider>
       </UnifiedNotificationProvider>
