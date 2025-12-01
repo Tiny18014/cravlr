@@ -14,6 +14,7 @@ import MobileDebugConsole from "@/components/MobileDebugConsole";
 import CookieConsent from "@/components/CookieConsent";
 import { useAuth } from "@/contexts/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
+import { DashboardBottomNav } from "./components/DashboardBottomNav";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -108,6 +109,7 @@ const AppContent = () => {
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            {user && <DashboardBottomNav />}
           </BrowserRouter>
         </TooltipProvider>
       </UnifiedNotificationProvider>

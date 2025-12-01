@@ -5,27 +5,31 @@ import { Home, ClipboardList, Trophy } from 'lucide-react';
 export function DashboardBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const isHome = location.pathname === '/' || location.pathname === '/welcome';
+  const isRequests = location.pathname === '/browse-requests';
   const isDashboard = location.pathname === '/dashboard';
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-3 safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-3 safe-area-inset-bottom z-50">
       <div className="flex justify-around items-center max-w-md mx-auto">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/welcome")}
           className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-            !isDashboard ? 'opacity-60 hover:opacity-100' : ''
+            isHome ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
           }`}
         >
-          <Home className={`h-5 w-5 ${!isDashboard ? 'text-muted-foreground' : 'text-primary'}`} strokeWidth={2} />
-          <span className={`text-xs font-medium ${!isDashboard ? 'text-muted-foreground' : 'text-primary'}`}>Home</span>
+          <Home className={`h-5 w-5 ${isHome ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
+          <span className={`text-xs font-medium ${isHome ? 'text-primary' : 'text-muted-foreground'}`}>Home</span>
         </button>
         
         <button
           onClick={() => navigate("/browse-requests")}
-          className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all opacity-60 hover:opacity-100"
+          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+            isRequests ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
+          }`}
         >
-          <ClipboardList className="h-5 w-5 text-muted-foreground" strokeWidth={2} />
-          <span className="text-xs font-medium text-muted-foreground">Requests</span>
+          <ClipboardList className={`h-5 w-5 ${isRequests ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
+          <span className={`text-xs font-medium ${isRequests ? 'text-primary' : 'text-muted-foreground'}`}>Requests</span>
         </button>
         
         <button
