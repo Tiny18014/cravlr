@@ -13,7 +13,7 @@ export function DashboardBottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-3 safe-area-inset-bottom z-50">
       <div className="flex justify-around items-center max-w-md mx-auto">
         <button
-          onClick={() => navigate("/welcome")}
+          onClick={() => navigate("/")}
           className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
             isHome ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
           }`}
