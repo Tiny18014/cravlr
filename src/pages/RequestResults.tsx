@@ -546,7 +546,7 @@ const RequestResults = () => {
               const hasMoreNotes = group.notes.length > 1;
 
               return (
-                <Card key={group.key} className="overflow-hidden">
+                <Card key={group.key} className="overflow-hidden group">
                   <CardContent className="p-0">
                     <div className="flex">
                       {/* Photo */}
@@ -649,7 +649,11 @@ const RequestResults = () => {
                                   size="sm"
                                   onClick={() => handleGoingClick(group)}
                                   disabled={goingIntents.has(group.key)}
-                                  className="whitespace-nowrap"
+                                  className={`whitespace-nowrap ${
+                                    goingIntents.has(group.key) 
+                                      ? "" 
+                                      : "border-transparent group-hover:border-primary"
+                                  }`}
                                 >
                                   {goingIntents.has(group.key) ? (
                                     <>
@@ -665,7 +669,7 @@ const RequestResults = () => {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleNotGoingClick(group)}
-                                    className="whitespace-nowrap"
+                                    className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity"
                                   >
                                     I'm Not Going
                                   </Button>
@@ -679,7 +683,7 @@ const RequestResults = () => {
                                 variant="outline" 
                                 size="sm"
                                 asChild
-                                className="whitespace-nowrap"
+                                className="whitespace-nowrap border-transparent group-hover:border-primary"
                               >
                                 <a 
                                   href={group.referralUrl || group.mapsUrl} 
