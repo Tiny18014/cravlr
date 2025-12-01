@@ -18,6 +18,7 @@ import AccountDeletion from '@/components/AccountDeletion';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { DashboardHeader } from '@/components/DashboardHeader';
+import { RecommenderProgress } from '@/components/RecommenderProgress';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -44,6 +45,8 @@ const Profile = () => {
   const [locationInput, setLocationInput] = useState('');
   const [showFeedbackSurvey, setShowFeedbackSurvey] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userLevel, setUserLevel] = useState('Newbie');
+  const [userPoints, setUserPoints] = useState(0);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -83,6 +86,8 @@ const Profile = () => {
         
         setLocationInput(locationDisplay);
         setUserName(profile.display_name || user?.email?.split('@')[0] || 'User');
+        setUserLevel(profile.level || 'Newbie');
+        setUserPoints(profile.points_total || 0);
         
         form.reset({
           display_name: profile.display_name || '',
@@ -161,6 +166,13 @@ const Profile = () => {
       <DashboardHeader onSignOut={signOut} userName={userName} />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
+        {/* Recommender Progress - Only show for recommenders */}
+        {hasRole('recommender') && (
+          <div className="mb-6">
+            <RecommenderProgress level={userLevel} currentPoints={userPoints} />
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Personal Information */}

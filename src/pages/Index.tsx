@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import { BecomeRecommenderModal } from "@/components/onboarding/BecomeRecommenderModal";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { VisitReminderManager } from "@/components/VisitReminderManager";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
@@ -182,6 +183,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
         onOpenChange={setIsRecommenderModalOpen}
         onContinue={handleRecommenderContinue}
       />
+      <VisitReminderManager />
     </div>
   );
 }

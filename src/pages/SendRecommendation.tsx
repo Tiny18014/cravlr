@@ -159,7 +159,7 @@ const SendRecommendation = () => {
         mapsUrl: formData.mapsUrl
       });
 
-      const { error } = await supabase
+      const { data: insertData, error } = await supabase
         .from('recommendations')
         .insert({
           request_id: requestId,
@@ -170,9 +170,26 @@ const SendRecommendation = () => {
           confidence_score: validatedData.confidenceScore,
           ...(validatedData.placeId && { place_id: validatedData.placeId }),
           ...(validatedData.mapsUrl && { maps_url: validatedData.mapsUrl })
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Award points and schedule visit reminder using new system
+      if (insertData) {
+        try {
+          await supabase.functions.invoke('process-recommendation-points', {
+            body: {
+              recommendationId: insertData.id,
+              action: 'create',
+            },
+          });
+        } catch (pointsError) {
+          console.error('Error processing points:', pointsError);
+          // Don't block the success flow if points fail
+        }
+      }
 
       // Update streak and points for recommenders only
       if (hasRole('recommender')) {
