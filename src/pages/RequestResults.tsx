@@ -546,7 +546,7 @@ const RequestResults = () => {
               const hasMoreNotes = group.notes.length > 1;
 
               return (
-                <Card key={group.key} className="overflow-hidden group">
+                <Card key={group.key} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="flex">
                       {/* Photo */}
@@ -649,11 +649,7 @@ const RequestResults = () => {
                                   size="sm"
                                   onClick={() => handleGoingClick(group)}
                                   disabled={goingIntents.has(group.key)}
-                                  className={`whitespace-nowrap ${
-                                    goingIntents.has(group.key) 
-                                      ? "" 
-                                      : "border-transparent group-hover:border-primary"
-                                  }`}
+                                  className="whitespace-nowrap"
                                 >
                                   {goingIntents.has(group.key) ? (
                                     <>
@@ -666,10 +662,10 @@ const RequestResults = () => {
                                 </Button>
                                 {!goingIntents.has(group.key) && (
                                   <Button 
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => handleNotGoingClick(group)}
-                                    className="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="whitespace-nowrap"
                                   >
                                     I'm Not Going
                                   </Button>
@@ -683,7 +679,7 @@ const RequestResults = () => {
                                 variant="outline" 
                                 size="sm"
                                 asChild
-                                className="whitespace-nowrap border-transparent group-hover:border-primary"
+                                className="whitespace-nowrap"
                               >
                                 <a 
                                   href={group.referralUrl || group.mapsUrl} 
