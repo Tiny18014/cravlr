@@ -16,16 +16,21 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log('🔔 Processing visit reminders...');
+
     // Get due reminders
     const { data: reminders, error: reminderError } = await supabase
       .from('visit_reminders')
       .select(`
         id,
         recommendation_id,
+        scheduled_for,
         recommendations!inner(
           id,
+          request_id,
           restaurant_name,
           food_requests!inner(
+            id,
             requester_id,
             food_type,
             location_city
@@ -36,26 +41,36 @@ serve(async (req) => {
       .lte('scheduled_for', new Date().toISOString());
 
     if (reminderError) {
+      console.error('Error fetching reminders:', reminderError);
       throw reminderError;
     }
 
-    console.log(`Processing ${reminders?.length || 0} due reminders`);
+    console.log(`📋 Found ${reminders?.length || 0} due reminders`);
 
     const results = [];
     for (const reminder of reminders || []) {
       try {
         const recommendation = reminder.recommendations as any;
-        const requesterId = recommendation.food_requests.requester_id;
+        const foodRequest = recommendation.food_requests;
+        const requesterId = foodRequest.requester_id;
+        const requestId = foodRequest.id;
+
+        console.log(`📨 Creating notification for requester ${requesterId}, request ${requestId}`);
 
         // Create notification
-        await supabase.from('notifications').insert({
+        const { error: notifError } = await supabase.from('notifications').insert({
           requester_id: requesterId,
-          request_id: recommendation.food_requests.id,
+          request_id: requestId,
           type: 'visit_reminder',
           title: 'Did you visit the restaurant?',
-          message: `Did you visit ${recommendation.restaurant_name} for ${recommendation.food_requests.food_type}?`,
+          message: `Did you visit ${recommendation.restaurant_name} for ${foodRequest.food_type}?`,
           read: false,
         });
+
+        if (notifError) {
+          console.error('Error creating notification:', notifError);
+          throw notifError;
+        }
 
         // Mark reminder as sent
         await supabase
@@ -63,9 +78,10 @@ serve(async (req) => {
           .update({ sent: true })
           .eq('id', reminder.id);
 
+        console.log(`✅ Reminder ${reminder.id} processed successfully`);
         results.push({ success: true, reminderId: reminder.id });
       } catch (error) {
-        console.error(`Error processing reminder ${reminder.id}:`, error);
+        console.error(`❌ Error processing reminder ${reminder.id}:`, error);
         results.push({ success: false, reminderId: reminder.id, error: error.message });
       }
     }
@@ -78,7 +94,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error processing visit reminders:', error);
+    console.error('❌ Error processing visit reminders:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

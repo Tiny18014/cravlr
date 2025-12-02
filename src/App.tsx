@@ -16,6 +16,7 @@ import CookieConsent from "@/components/CookieConsent";
 import { useAuth } from "@/contexts/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import { DashboardBottomNav } from "./components/DashboardBottomNav";
+import { useVisitReminderPoller } from "./hooks/useVisitReminderPoller";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -73,6 +74,9 @@ const AppContent = () => {
   const { user } = useAuth();
   const isDevelopment = import.meta.env.DEV;
   const [currentPath, setCurrentPath] = React.useState(window.location.pathname);
+  
+  // Poll for visit reminders every 30 seconds
+  useVisitReminderPoller();
   
   return (
     <UnifiedNotificationProvider>
