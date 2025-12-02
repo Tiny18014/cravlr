@@ -75,6 +75,22 @@ serve(async (req) => {
       );
     }
 
+    // Check if feedback already exists
+    const { data: existingFeedback } = await supabase
+      .from('recommendation_feedback')
+      .select('id, points_awarded')
+      .eq('recommendation_id', recommendationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingFeedback) {
+      // Feedback already exists, return success with existing points
+      return new Response(
+        JSON.stringify({ success: true, pointsAwarded: existingFeedback.points_awarded, alreadySubmitted: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Calculate points
     let pointsAwarded = 0;
     if (thumbsUp === true) pointsAwarded += 5;
