@@ -22,14 +22,14 @@ export default function FeedbackSubmission() {
 
   useEffect(() => {
     fetchRecommendation();
-  }, [recommendationId]);
+  }, [recommendationId, user]);
 
   const fetchRecommendation = async () => {
-    if (!recommendationId) return;
+    if (!recommendationId || !user) return;
 
     const { data, error } = await supabase
       .from('recommendations')
-      .select('*, food_requests!inner(food_type, location_city)')
+      .select('*, food_requests!inner(food_type, location_city, requester_id)')
       .eq('id', recommendationId)
       .single();
 
@@ -40,6 +40,17 @@ export default function FeedbackSubmission() {
         description: 'Failed to load recommendation',
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Only allow the requestor to submit feedback, not the recommender
+    if (data.food_requests.requester_id !== user.id) {
+      toast({
+        title: 'Access denied',
+        description: 'Only the person who made the request can submit feedback.',
+        variant: 'destructive',
+      });
+      navigate('/dashboard');
       return;
     }
 
