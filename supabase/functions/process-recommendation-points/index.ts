@@ -45,11 +45,11 @@ serve(async (req) => {
       // Award +5 points for creating a recommendation
       pointsToAward = 5;
 
-      // Schedule a visit reminder for 1 minute later (testing)
-      const oneMinuteLater = new Date(Date.now() + 1 * 60 * 1000);
+      // Schedule a visit reminder for 3 hours later
+      const threeHoursLater = new Date(Date.now() + 3 * 60 * 60 * 1000);
       await supabase.from('visit_reminders').insert({
         recommendation_id: recommendationId,
-        scheduled_for: oneMinuteLater.toISOString(),
+        scheduled_for: threeHoursLater.toISOString(),
       });
     }
 
