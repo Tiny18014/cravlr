@@ -97,7 +97,7 @@ export default function FeedbackSubmission() {
       }
 
       setTimeout(() => {
-        navigate('/');
+        navigate('/dashboard');
       }, 1500);
     } catch (error) {
       console.error('Error submitting feedback:', error);
