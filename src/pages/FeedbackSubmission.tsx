@@ -77,10 +77,17 @@ export default function FeedbackSubmission() {
         .eq('requester_id', user?.id)
         .eq('type', 'visit_reminder');
 
-      toast({
-        title: 'Feedback submitted!',
-        description: `Your recommender just earned ${data.pointsAwarded} Cravlr points! 🎉`,
-      });
+      if (data.alreadySubmitted) {
+        toast({
+          title: 'Already submitted',
+          description: 'You have already submitted feedback for this recommendation.',
+        });
+      } else {
+        toast({
+          title: 'Feedback submitted!',
+          description: `Your recommender just earned ${data.pointsAwarded} Cravlr points! 🎉`,
+        });
+      }
 
       setTimeout(() => {
         navigate('/dashboard');
