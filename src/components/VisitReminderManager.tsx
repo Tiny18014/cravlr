@@ -39,8 +39,10 @@ export const VisitReminderManager = () => {
       open={modalOpen}
       onOpenChange={handleModalClose}
       recommendationId={currentReminder.recommendation_id}
+      requestId={currentReminder.request_id}
       restaurantName={currentReminder.restaurant_name}
       foodType={currentReminder.food_type}
+      onDismiss={() => dismissReminder(currentReminder.id)}
     />
   );
 };

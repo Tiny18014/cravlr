@@ -70,6 +70,13 @@ export default function FeedbackSubmission() {
 
       if (error) throw error;
 
+      // Mark any visit reminder notifications as read for this recommendation
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('requester_id', user?.id)
+        .eq('type', 'visit_reminder');
+
       toast({
         title: 'Feedback submitted!',
         description: `Your recommender just earned ${data.pointsAwarded} Cravlr points! 🎉`,
