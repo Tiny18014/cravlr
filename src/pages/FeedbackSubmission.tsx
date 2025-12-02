@@ -45,12 +45,8 @@ export default function FeedbackSubmission() {
 
     // Only allow the requestor to submit feedback, not the recommender
     if (data.food_requests.requester_id !== user.id) {
-      toast({
-        title: 'Access denied',
-        description: 'Only the person who made the request can submit feedback.',
-        variant: 'destructive',
-      });
-      navigate('/dashboard');
+      // Redirect recommender to browse requests page silently
+      navigate('/browse-requests');
       return;
     }
 
