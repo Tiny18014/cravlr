@@ -70,7 +70,7 @@ export const VisitReminderModal = ({
         });
         onDismiss?.();
         onOpenChange(false);
-        navigate(`/request-results/${requestId}`);
+        navigate('/');
       }
     } catch (error) {
       console.error('Error handling visit response:', error);
