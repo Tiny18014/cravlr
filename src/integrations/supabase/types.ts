@@ -794,6 +794,13 @@ export type Database = {
           visit_confirmed_at: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       log_rate_limit_attempt: {
         Args: { p_action_type: string; p_ip_address: string; p_user_id: string }
         Returns: undefined
