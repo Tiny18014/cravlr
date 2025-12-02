@@ -10,16 +10,20 @@ interface VisitReminderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   recommendationId: string;
+  requestId: string;
   restaurantName: string;
   foodType: string;
+  onDismiss?: () => void;
 }
 
 export const VisitReminderModal = ({
   open,
   onOpenChange,
   recommendationId,
+  requestId,
   restaurantName,
   foodType,
+  onDismiss,
 }: VisitReminderModalProps) => {
   const [loading, setLoading] = useState(false);
   const [showRemindOptions, setShowRemindOptions] = useState(false);
@@ -40,25 +44,33 @@ export const VisitReminderModal = ({
           title: 'Great!',
           description: 'Please share your feedback',
         });
+        onDismiss?.();
+        onOpenChange(false);
         navigate(`/feedback/${recommendationId}`);
       } else if (response === 'remind_3h' || response === 'maybe_later') {
         toast({
           title: 'Reminder set',
           description: "We'll remind you again in 3 hours",
         });
+        onDismiss?.();
         onOpenChange(false);
+        navigate(`/request-results/${requestId}`);
       } else if (response === 'no_reminder') {
         toast({
           title: 'Got it',
           description: 'No problem! Thanks for letting us know',
         });
+        onDismiss?.();
         onOpenChange(false);
+        navigate(`/request-results/${requestId}`);
       } else if (response === 'not_visited') {
         toast({
           title: 'Thanks for letting us know',
           description: 'Maybe next time!',
         });
+        onDismiss?.();
         onOpenChange(false);
+        navigate(`/request-results/${requestId}`);
       }
     } catch (error) {
       console.error('Error handling visit response:', error);

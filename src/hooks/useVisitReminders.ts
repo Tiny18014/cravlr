@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface VisitReminder {
   id: string;
   recommendation_id: string;
+  request_id: string;
   restaurant_name: string;
   food_type: string;
 }
@@ -56,6 +57,7 @@ export const useVisitReminders = () => {
           return {
             id: notif.id,
             recommendation_id: rec.id,
+            request_id: notif.request_id,
             restaurant_name: rec.restaurant_name,
             food_type: (rec.food_requests as any).food_type,
           };
