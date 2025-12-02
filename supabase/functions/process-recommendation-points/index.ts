@@ -13,8 +13,32 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Authenticate the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { recommendationId, action } = await req.json();
 
@@ -39,17 +63,40 @@ serve(async (req) => {
       );
     }
 
+    // Verify that the caller is the requester for this recommendation
+    const { data: request, error: requestError } = await supabase
+      .from('food_requests')
+      .select('requester_id')
+      .eq('id', recommendation.request_id)
+      .single();
+
+    if (requestError || !request) {
+      return new Response(
+        JSON.stringify({ error: 'Associated request not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Authorization check: only the requester can trigger point awards
+    if (request.requester_id !== user.id) {
+      console.error(`User ${user.id} attempted to award points for recommendation ${recommendationId} owned by ${request.requester_id}`);
+      return new Response(
+        JSON.stringify({ error: 'Not authorized to award points for this recommendation' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     let pointsToAward = 0;
 
     if (action === 'create') {
       // Award +5 points for creating a recommendation
       pointsToAward = 5;
 
-      // Schedule a visit reminder for 1 minute later (testing)
-      const oneMinuteLater = new Date(Date.now() + 1 * 60 * 1000);
+      // Schedule a visit reminder for 3 hours later
+      const threeHoursLater = new Date(Date.now() + 3 * 60 * 60 * 1000);
       await supabase.from('visit_reminders').insert({
         recommendation_id: recommendationId,
-        scheduled_for: oneMinuteLater.toISOString(),
+        scheduled_for: threeHoursLater.toISOString(),
       });
     }
 
@@ -75,6 +122,8 @@ serve(async (req) => {
         event_type: action === 'create' ? 'recommendation_created' : 'feedback_received',
       });
     }
+
+    console.log(`User ${user.id} awarded ${pointsToAward} points for recommendation ${recommendationId}`);
 
     return new Response(
       JSON.stringify({ success: true, pointsAwarded: pointsToAward }),
