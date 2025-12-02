@@ -123,10 +123,10 @@ serve(async (req) => {
 
     // Schedule new reminder if needed
     if (scheduleReminder) {
-      const oneMinuteLater = new Date(Date.now() + 1 * 60 * 1000); // 1 minute for testing
+      const threeHoursLater = new Date(Date.now() + 3 * 60 * 60 * 1000); // 3 hours
       await supabase.from('visit_reminders').insert({
         recommendation_id: recommendationId,
-        scheduled_for: oneMinuteLater.toISOString(),
+        scheduled_for: threeHoursLater.toISOString(),
       });
     }
 
