@@ -62,7 +62,7 @@ export const VisitReminderModal = ({
         });
         onDismiss?.();
         onOpenChange(false);
-        navigate(`/request-results/${requestId}`);
+        navigate('/dashboard');
       } else if (response === 'not_visited') {
         toast({
           title: 'Thanks for letting us know',
