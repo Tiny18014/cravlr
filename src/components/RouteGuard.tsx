@@ -146,7 +146,8 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
   }, [user, authLoading, navigate, location.pathname, requiresAuth, businessOnly, regularUserOnly]);
 
   // Show loading while checking access or validating account type
-  if (authLoading || loading || validating) {
+  // Don't show loading for non-auth routes during validation (prevents remounting auth pages)
+  if (authLoading || loading || (validating && requiresAuth)) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
