@@ -30,10 +30,16 @@ const AuthBusiness = () => {
     }
   }, [user, navigate]);
 
-  // Clear error when user types or switches form
-  useEffect(() => {
-    setLoginError(null);
-  }, [email, password, isLogin]);
+  // Clear error when user starts typing
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (loginError) setLoginError(null);
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (loginError) setLoginError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +51,7 @@ const AuthBusiness = () => {
         if (error) {
           clearValidating();
           setLoginError('Invalid email or password. Please try again.');
-          setPassword('');
+          setLoading(false);
           return;
         } else {
           console.log('🏢 Business login successful, checking business claims...');
@@ -238,7 +244,7 @@ const AuthBusiness = () => {
                 type="email"
                 placeholder="contact@yourrestaurant.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 required
               />
               {!isLogin && (
@@ -255,7 +261,7 @@ const AuthBusiness = () => {
                 type="password"
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 required
                 minLength={6}
               />
