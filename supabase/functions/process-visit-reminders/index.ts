@@ -11,12 +11,32 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate cron secret for authentication
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  // Check for cron secret (for scheduled jobs processing ALL reminders)
   const cronSecret = req.headers.get('x-cron-secret');
   const expectedSecret = Deno.env.get('CRON_SECRET');
-  
-  if (!expectedSecret || cronSecret !== expectedSecret) {
-    console.error('❌ Unauthorized: Invalid or missing cron secret');
+  const isCronJob = expectedSecret && cronSecret === expectedSecret;
+
+  // Check for user JWT (for client polling - processes only that user's reminders)
+  const authHeader = req.headers.get('Authorization');
+  let authenticatedUserId: string | null = null;
+
+  if (!isCronJob && authHeader) {
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (!userError && user) {
+      authenticatedUserId = user.id;
+    }
+  }
+
+  // Require either cron secret or valid user JWT
+  if (!isCronJob && !authenticatedUserId) {
+    console.error('❌ Unauthorized: No valid cron secret or user JWT');
     return new Response(
       JSON.stringify({ error: 'Unauthorized' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -24,14 +44,15 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🔔 Processing visit reminders...');
+    console.log(isCronJob 
+      ? '🔔 Processing ALL visit reminders (cron job)...' 
+      : `🔔 Processing visit reminders for user ${authenticatedUserId}...`
+    );
 
-    // Get due reminders
-    const { data: reminders, error: reminderError } = await supabase
+    // Build query - filter by user if authenticated via JWT
+    let query = supabase
       .from('visit_reminders')
       .select(`
         id,
@@ -52,15 +73,22 @@ serve(async (req) => {
       .eq('sent', false)
       .lte('scheduled_for', new Date().toISOString());
 
+    const { data: reminders, error: reminderError } = await query;
+
     if (reminderError) {
       console.error('Error fetching reminders:', reminderError);
       throw reminderError;
     }
 
-    console.log(`📋 Found ${reminders?.length || 0} due reminders`);
+    // Filter to user's reminders if authenticated via JWT (not cron)
+    const filteredReminders = !isCronJob && authenticatedUserId
+      ? (reminders || []).filter((r: any) => r.recommendations?.food_requests?.requester_id === authenticatedUserId)
+      : (reminders || []);
+
+    console.log(`📋 Found ${filteredReminders.length} due reminders`);
 
     const results = [];
-    for (const reminder of reminders || []) {
+    for (const reminder of filteredReminders) {
       try {
         const recommendation = reminder.recommendations as any;
         const foodRequest = recommendation.food_requests;
