@@ -320,7 +320,7 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
                       className={cn(
                         "px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors cursor-pointer",
                         isSelected
-                          ? "border-primary bg-primary/10 text-foreground"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "border-primary bg-background text-foreground hover:bg-muted"
                       )}
                     >
