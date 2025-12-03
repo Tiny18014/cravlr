@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const feedbackSchema = z.object({
+  recommendationId: z.string().uuid('Invalid recommendation ID format'),
+  thumbsUp: z.boolean().optional(),
+  comment: z.string().max(1000, 'Comment must be 1000 characters or less').optional(),
+  photoUrls: z.array(z.string().url('Invalid photo URL')).max(10, 'Maximum 10 photos allowed').optional(),
+  visited: z.boolean().optional()
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,15 +47,23 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { recommendationId, thumbsUp, comment, photoUrls, visited } = await req.json();
-
-    if (!recommendationId) {
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = feedbackSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
       return new Response(
-        JSON.stringify({ error: 'Missing recommendationId' }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.errors.map(e => e.message).join(', ')
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { recommendationId, thumbsUp, comment, photoUrls, visited } = validationResult.data;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get recommendation details
     const { data: recommendation, error: recError } = await supabase
