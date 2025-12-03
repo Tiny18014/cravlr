@@ -312,7 +312,7 @@ const RequestFood = () => {
               <div className="space-y-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Flavor Mood</h3>
-                  <p className="text-sm text-muted-foreground">Select the taste profile you're craving.</p>
+                  <p className="text-sm text-muted-foreground">Select a taste profile.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {FLAVOR_MOODS.map((mood) => (
@@ -340,76 +340,85 @@ const RequestFood = () => {
               <div className="space-y-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Cuisine Style</h3>
-                  <p className="text-sm text-muted-foreground">Choose the cuisine you prefer (optional).</p>
+                  <p className="text-sm text-muted-foreground">Choose your preferred cuisine.</p>
                 </div>
                 <Popover open={cuisineDropdownOpen} onOpenChange={setCuisineDropdownOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-2"
+                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-3 px-4 rounded-lg border-input hover:bg-accent/50 hover:border-primary/50 transition-all duration-200"
                     >
-                      <span className="flex-1 truncate">
+                      <span className="flex-1 truncate text-sm">
                         {formData.cuisineStyles.length > 0
                           ? formData.cuisineStyles.length === 1
                             ? formData.cuisineStyles[0]
                             : `${formData.cuisineStyles.length} cuisines selected`
                           : "Select cuisines..."}
                       </span>
-                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                      <ChevronDown className={cn(
+                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                        cuisineDropdownOpen && "rotate-180"
+                      )} />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover" align="start">
-                    <div className="max-h-[300px] overflow-y-auto p-2">
+                  <PopoverContent 
+                    className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover border border-border shadow-lg rounded-lg overflow-hidden" 
+                    align="start"
+                  >
+                    <div className="max-h-[280px] overflow-y-auto p-1.5">
                       {CUISINE_OPTIONS.map((cuisine) => (
                         <div
                           key={cuisine}
-                          className="flex items-center space-x-3 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+                          className="flex items-center space-x-3 px-3 py-2.5 hover:bg-accent/60 rounded-md cursor-pointer transition-colors duration-150"
                           onClick={() => toggleCuisine(cuisine)}
                         >
                           <Checkbox
                             checked={formData.cuisineStyles.includes(cuisine)}
                             onCheckedChange={() => toggleCuisine(cuisine)}
+                            className="border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
-                          <span className="text-sm">{cuisine}</span>
+                          <span className="text-sm text-foreground">{cuisine}</span>
                         </div>
                       ))}
                     </div>
                   </PopoverContent>
                 </Popover>
                 {formData.cuisineStyles.length === 0 && (
-                  <p className="text-xs text-destructive">Select at least one cuisine style</p>
+                  <p className="text-xs text-destructive">Choose at least one cuisine before submitting.</p>
                 )}
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <Label htmlFor="location-input">Location</Label>
-                  <CityAutocomplete
-                    value={locationInput}
-                    onValueChange={setLocationInput}
-                    onCitySelect={(city, state) => {
-                      handleChange('locationCity', city);
-                      handleChange('locationState', state);
-                    }}
-                    placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Enter your city to find nearby food lovers who can help with recommendations.
-                  </p>
+                  <h3 className="text-lg font-semibold text-foreground">Location</h3>
+                  <p className="text-sm text-muted-foreground">Enter your city.</p>
                 </div>
+                <CityAutocomplete
+                  value={locationInput}
+                  onValueChange={setLocationInput}
+                  onCitySelect={(city, state) => {
+                    handleChange('locationCity', city);
+                    handleChange('locationState', state);
+                  }}
+                  placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-input hover:border-primary/50 focus:border-primary transition-all duration-200"
+                />
               </div>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="locationAddress">Specific area (optional)</Label>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Specific Area</h3>
+                    <p className="text-sm text-muted-foreground">Neighborhood or street (optional).</p>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={getCurrentLocation}
                     disabled={isGeolocating}
-                    className="text-sm"
+                    className="text-sm rounded-lg"
                   >
                     {isGeolocating ? (
                       <>
@@ -429,6 +438,7 @@ const RequestFood = () => {
                   placeholder="Neighborhood, street, or specific area"
                   value={formData.locationAddress}
                   onChange={(e) => handleChange('locationAddress', e.target.value)}
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-input hover:border-primary/50 focus:border-primary transition-all duration-200"
                 />
                 {formData.lat && formData.lng && (
                   <div className="text-sm text-green-600 flex items-center">
@@ -438,13 +448,17 @@ const RequestFood = () => {
                 )}
               </div>
               
-              <div>
-                <Label htmlFor="additionalNotes">Additional preferences (optional)</Label>
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Additional Preferences</h3>
+                  <p className="text-sm text-muted-foreground">Diet, dislikes, budget, etc.</p>
+                </div>
                 <Textarea
                   id="additionalNotes"
                   placeholder="Any specific preferences, dietary restrictions, budget range, etc."
                   value={formData.additionalNotes}
                   onChange={(e) => handleChange('additionalNotes', e.target.value)}
+                  className="w-full min-h-[80px] py-3 px-4 rounded-lg border border-input hover:border-primary/50 focus:border-primary transition-all duration-200 resize-none"
                 />
               </div>
               

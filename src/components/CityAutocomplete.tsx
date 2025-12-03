@@ -10,6 +10,7 @@ interface CityAutocompleteProps {
   onCitySelect: (city: string, state: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
 }
 
 interface AutocompleteResult {
@@ -24,7 +25,8 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   onValueChange,
   onCitySelect,
   placeholder = "Start typing a city name...",
-  disabled = false
+  disabled = false,
+  className
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
@@ -105,7 +107,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           onBlur={handleInputBlur}
           placeholder={placeholder}
           disabled={disabled || isLoading}
-          className="pl-10 pr-10"
+          className={`pl-10 pr-10 ${className || ''}`}
         />
         {value && (
           <Button
