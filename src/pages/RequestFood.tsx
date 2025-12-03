@@ -347,9 +347,12 @@ const RequestFood = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-3 px-4 rounded-lg border-input hover:bg-accent/50 hover:border-primary/50 transition-all duration-200"
+                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-3 px-4 rounded-lg border border-muted-foreground/30 hover:bg-accent/50 hover:border-muted-foreground/50 transition-all duration-200"
                     >
-                      <span className="flex-1 truncate text-sm">
+                      <span className={cn(
+                        "flex-1 truncate text-sm",
+                        formData.cuisineStyles.length === 0 && "text-muted-foreground"
+                      )}>
                         {formData.cuisineStyles.length > 0
                           ? formData.cuisineStyles.length === 1
                             ? formData.cuisineStyles[0]
@@ -402,7 +405,7 @@ const RequestFood = () => {
                     handleChange('locationState', state);
                   }}
                   placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-input hover:border-primary/50 focus:border-primary transition-all duration-200"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-muted-foreground/30 hover:border-muted-foreground/50 focus:border-muted-foreground/50 transition-all duration-200 placeholder:text-muted-foreground"
                 />
               </div>
               
@@ -438,7 +441,7 @@ const RequestFood = () => {
                   placeholder="Neighborhood, street, or specific area"
                   value={formData.locationAddress}
                   onChange={(e) => handleChange('locationAddress', e.target.value)}
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-input hover:border-primary/50 focus:border-primary transition-all duration-200"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-muted-foreground/30 hover:border-muted-foreground/50 focus:border-muted-foreground/50 transition-all duration-200 placeholder:text-muted-foreground"
                 />
                 {formData.lat && formData.lng && (
                   <div className="text-sm text-green-600 flex items-center">
@@ -458,7 +461,7 @@ const RequestFood = () => {
                   placeholder="Any specific preferences, dietary restrictions, budget range, etc."
                   value={formData.additionalNotes}
                   onChange={(e) => handleChange('additionalNotes', e.target.value)}
-                  className="w-full min-h-[80px] py-3 px-4 rounded-lg border border-input hover:border-primary/50 focus:border-primary transition-all duration-200 resize-none"
+                  className="w-full min-h-[80px] py-3 px-4 rounded-lg border border-muted-foreground/30 hover:border-muted-foreground/50 focus:border-muted-foreground/50 transition-all duration-200 resize-none placeholder:text-muted-foreground"
                 />
               </div>
               
