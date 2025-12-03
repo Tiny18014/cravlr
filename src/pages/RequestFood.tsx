@@ -324,7 +324,7 @@ const RequestFood = () => {
                         "px-4 py-2 rounded-full text-sm font-medium transition-all border-2",
                         formData.flavorMoods.includes(mood)
                           ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-primary border-primary hover:bg-primary/10"
+                          : "bg-background text-foreground border-primary hover:bg-primary/10"
                       )}
                     >
                       {mood}
