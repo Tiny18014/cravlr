@@ -27,6 +27,7 @@ const AuthFoodlover = () => {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
@@ -37,6 +38,11 @@ const AuthFoodlover = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  // Clear error when user types or switches form
+  useEffect(() => {
+    setLoginError(null);
+  }, [email, password, isLogin]);
 
   const toggleCuisine = (cuisine: string) => {
     setSelectedCuisines(prev => 
@@ -64,11 +70,10 @@ const AuthFoodlover = () => {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          toast({
-            title: "Login Failed",
-            description: error.message,
-            variant: "destructive",
-          });
+          clearValidating();
+          setLoginError('Invalid email or password. Please try again.');
+          setPassword('');
+          return;
         } else {
           console.log('🍕 Food Lover login successful, checking user type...');
           
@@ -195,6 +200,12 @@ const AuthFoodlover = () => {
         </CardHeader>
         
         <CardContent>
+          {loginError && isLogin && (
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive font-medium">{loginError}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">
