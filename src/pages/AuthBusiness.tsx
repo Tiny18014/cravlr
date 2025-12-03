@@ -17,6 +17,7 @@ const AuthBusiness = () => {
   const [displayName, setDisplayName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
@@ -29,6 +30,11 @@ const AuthBusiness = () => {
     }
   }, [user, navigate]);
 
+  // Clear error when user types or switches form
+  useEffect(() => {
+    setLoginError(null);
+  }, [email, password, isLogin]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -37,11 +43,10 @@ const AuthBusiness = () => {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          toast({
-            title: "Login Failed",
-            description: error.message,
-            variant: "destructive",
-          });
+          clearValidating();
+          setLoginError('Invalid email or password. Please try again.');
+          setPassword('');
+          return;
         } else {
           console.log('🏢 Business login successful, checking business claims...');
           
@@ -179,6 +184,12 @@ const AuthBusiness = () => {
                 <Badge variant="secondary" className="text-xs">Business Email</Badge>
                 <Badge variant="secondary" className="text-xs">Manual Review</Badge>
               </div>
+            </div>
+          )}
+
+          {loginError && isLogin && (
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive font-medium">{loginError}</p>
             </div>
           )}
 
