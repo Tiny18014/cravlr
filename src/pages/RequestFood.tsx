@@ -351,7 +351,7 @@ const RequestFood = () => {
                     >
                       <span className={cn(
                         "flex-1 truncate text-sm",
-                        formData.cuisineStyles.length === 0 ? "text-primary" : "text-primary"
+                        formData.cuisineStyles.length === 0 ? "text-muted-foreground" : "text-foreground"
                       )}>
                         {formData.cuisineStyles.length > 0
                           ? formData.cuisineStyles.length === 1
@@ -405,7 +405,7 @@ const RequestFood = () => {
                     handleChange('locationState', state);
                   }}
                   placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-primary placeholder:text-primary"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               
@@ -441,7 +441,7 @@ const RequestFood = () => {
                   placeholder="Neighborhood, street, or specific area"
                   value={formData.locationAddress}
                   onChange={(e) => handleChange('locationAddress', e.target.value)}
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-primary placeholder:text-primary"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-foreground placeholder:text-muted-foreground"
                 />
                 {formData.lat && formData.lng && (
                   <div className="text-sm text-green-600 flex items-center">
@@ -461,7 +461,7 @@ const RequestFood = () => {
                   placeholder="Any specific preferences, dietary restrictions, budget range, etc."
                   value={formData.additionalNotes}
                   onChange={(e) => handleChange('additionalNotes', e.target.value)}
-                  className="w-full min-h-[80px] py-3 px-4 rounded-2xl border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 resize-none text-primary placeholder:text-primary"
+                  className="w-full min-h-[80px] py-3 px-4 rounded-2xl border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 resize-none text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               
