@@ -63,27 +63,38 @@ serve(async (req) => {
       );
     }
 
-    // Verify that the caller is the requester for this recommendation
-    const { data: request, error: requestError } = await supabase
-      .from('food_requests')
-      .select('requester_id')
-      .eq('id', recommendation.request_id)
-      .single();
+    // Authorization check based on action type
+    if (action === 'create') {
+      // For 'create' action, the recommender triggers their own points
+      if (recommendation.recommender_id !== user.id) {
+        console.error(`User ${user.id} attempted to award create points for recommendation ${recommendationId} owned by recommender ${recommendation.recommender_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Not authorized to award points for this recommendation' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // For feedback actions, only the requester can trigger point awards
+      const { data: request, error: requestError } = await supabase
+        .from('food_requests')
+        .select('requester_id')
+        .eq('id', recommendation.request_id)
+        .single();
 
-    if (requestError || !request) {
-      return new Response(
-        JSON.stringify({ error: 'Associated request not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (requestError || !request) {
+        return new Response(
+          JSON.stringify({ error: 'Associated request not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    // Authorization check: only the requester can trigger point awards
-    if (request.requester_id !== user.id) {
-      console.error(`User ${user.id} attempted to award points for recommendation ${recommendationId} owned by ${request.requester_id}`);
-      return new Response(
-        JSON.stringify({ error: 'Not authorized to award points for this recommendation' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (request.requester_id !== user.id) {
+        console.error(`User ${user.id} attempted to award feedback points for recommendation ${recommendationId} owned by requester ${request.requester_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Not authorized to award points for this recommendation' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     let pointsToAward = 0;
