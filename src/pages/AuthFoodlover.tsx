@@ -7,13 +7,25 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Mail } from 'lucide-react';
+import { ArrowLeft, Users, Mail, ChevronDown, Check } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+
+const CUISINE_OPTIONS = [
+  'American', 'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian', 'Thai',
+  'Mediterranean', 'Middle Eastern', 'Korean', 'Vietnamese', 'French', 'Spanish',
+  'African', 'Latin/Caribbean', 'Brazilian', 'BBQ', 'Seafood', 'Pizza & Pasta',
+  'Bakery/Desserts', 'Vegan/Vegetarian'
+];
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
@@ -26,8 +38,26 @@ const AuthFoodlover = () => {
     }
   }, [user, navigate]);
 
+  const toggleCuisine = (cuisine: string) => {
+    setSelectedCuisines(prev => 
+      prev.includes(cuisine) 
+        ? prev.filter(c => c !== cuisine)
+        : [...prev, cuisine]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isLogin && selectedCuisines.length === 0) {
+      toast({
+        title: "Cuisine Required",
+        description: "Please select at least one cuisine you specialize in.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -99,10 +129,13 @@ const AuthFoodlover = () => {
               console.error('Error assigning roles:', roleError);
             }
 
-            // Update profile with display name
+            // Update profile with display name and cuisine expertise
             const { error: profileError } = await supabase
               .from('profiles')
-              .update({ display_name: displayName })
+              .update({ 
+                display_name: displayName,
+                cuisine_expertise: selectedCuisines
+              })
               .eq('id', user.id);
 
             if (profileError) {
@@ -209,6 +242,64 @@ const AuthFoodlover = () => {
                 </p>
               )}
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label>Your Food Expertise <span className="text-destructive">*</span></Label>
+                <Popover open={cuisineDropdownOpen} onOpenChange={setCuisineDropdownOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={cuisineDropdownOpen}
+                      className="w-full justify-between font-normal h-auto min-h-10"
+                    >
+                      <span className="truncate text-left flex-1">
+                        {selectedCuisines.length === 0 
+                          ? "Select cuisines you specialize in..."
+                          : selectedCuisines.length <= 3
+                            ? selectedCuisines.join(', ')
+                            : `${selectedCuisines.slice(0, 3).join(', ')} +${selectedCuisines.length - 3} more`
+                        }
+                      </span>
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-background border" align="start">
+                    <div className="max-h-60 overflow-y-auto p-2">
+                      {CUISINE_OPTIONS.map((cuisine) => (
+                        <div
+                          key={cuisine}
+                          className={cn(
+                            "flex items-center space-x-2 px-2 py-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
+                            selectedCuisines.includes(cuisine) && "bg-primary/10"
+                          )}
+                          onClick={() => toggleCuisine(cuisine)}
+                        >
+                          <Checkbox
+                            id={cuisine}
+                            checked={selectedCuisines.includes(cuisine)}
+                            onCheckedChange={() => toggleCuisine(cuisine)}
+                          />
+                          <label
+                            htmlFor={cuisine}
+                            className="text-sm font-medium leading-none cursor-pointer flex-1"
+                          >
+                            {cuisine}
+                          </label>
+                          {selectedCuisines.includes(cuisine) && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">
+                  Select at least one cuisine (required)
+                </p>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading} size="lg">
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
