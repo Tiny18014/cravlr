@@ -7,6 +7,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// HTML escape function to prevent XSS attacks
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -192,6 +204,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     } else {
       // If no maps URL, return a success page or restaurant info
+      // Escape restaurant name to prevent XSS attacks
+      const safeRestaurantName = escapeHtml(referralLink.restaurant_name || 'Restaurant');
+      
       return new Response(
         `
         <!DOCTYPE html>
@@ -208,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
         <body>
           <div class="container">
             <h1>📍 Restaurant Recommendation</h1>
-            <div class="restaurant">${referralLink.restaurant_name}</div>
+            <div class="restaurant">${safeRestaurantName}</div>
             <div class="message">Thank you for checking out this recommendation!</div>
             <div class="message">Visit them and enjoy your meal! 🍽️</div>
           </div>
