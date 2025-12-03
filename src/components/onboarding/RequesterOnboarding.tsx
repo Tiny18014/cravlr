@@ -5,9 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, Utensils, ChevronDown, Check } from 'lucide-react';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+
+const CUISINE_OPTIONS = [
+  'American', 'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian', 'Thai',
+  'Mediterranean', 'Middle Eastern', 'Korean', 'Vietnamese', 'French', 'Spanish',
+  'African', 'Latin/Caribbean', 'Brazilian', 'BBQ', 'Seafood', 'Pizza & Pasta',
+  'Bakery/Desserts', 'Vegan/Vegetarian'
+];
 
 interface RequesterOnboardingProps {
   onComplete?: () => void;
@@ -25,6 +35,8 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
   const [locationLng, setLocationLng] = useState<number | null>(null);
   const [requestRange, setRequestRange] = useState<'nearby' | '5mi' | '10mi' | '15mi'>('nearby');
   const [hasExistingLocation, setHasExistingLocation] = useState(false);
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -118,7 +130,24 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
     setStep(step + 1);
   };
 
+  const toggleCuisine = (cuisine: string) => {
+    setSelectedCuisines(prev => 
+      prev.includes(cuisine) 
+        ? prev.filter(c => c !== cuisine)
+        : [...prev, cuisine]
+    );
+  };
+
   const handleComplete = async () => {
+    if (selectedCuisines.length === 0) {
+      toast({
+        title: "Cuisine Required",
+        description: "Please select at least one cuisine you specialize in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -129,6 +158,7 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
         .from('profiles')
         .update({
           location_city: locationCity,
+          cuisine_expertise: selectedCuisines,
         })
         .eq('id', user.id);
 
@@ -162,7 +192,7 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
 
   const renderStepIndicator = () => (
     <div className="flex justify-center gap-2 mb-6">
-      {[1, 2].map((s) => (
+      {[1, 2, 3].map((s) => (
         <div
           key={s}
           className={`h-2 w-12 rounded-full transition-colors ${
@@ -181,14 +211,17 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
           <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center mx-auto">
             {step === 1 && <MapPin className="h-6 w-6 text-primary-foreground" />}
             {step === 2 && <Search className="h-6 w-6 text-primary-foreground" />}
+            {step === 3 && <Utensils className="h-6 w-6 text-primary-foreground" />}
           </div>
           <CardTitle className="text-2xl font-bold">
             {step === 1 && 'Set Your Location'}
             {step === 2 && 'Default Request Range'}
+            {step === 3 && 'Your Food Expertise'}
           </CardTitle>
           <p className="text-muted-foreground text-sm">
             {step === 1 && 'Where are you located?'}
             {step === 2 && 'How far should we search for recommendations?'}
+            {step === 3 && 'What cuisines do you specialize in?'}
           </p>
         </CardHeader>
 
@@ -273,6 +306,63 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
             </div>
           )}
 
+          {step === 3 && (
+            <div className="space-y-4">
+              <Popover open={cuisineDropdownOpen} onOpenChange={setCuisineDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={cuisineDropdownOpen}
+                    className="w-full justify-between font-normal h-auto min-h-10"
+                  >
+                    <span className="truncate text-left flex-1">
+                      {selectedCuisines.length === 0 
+                        ? "Select cuisines you specialize in..."
+                        : selectedCuisines.length <= 3
+                          ? selectedCuisines.join(', ')
+                          : `${selectedCuisines.slice(0, 3).join(', ')} +${selectedCuisines.length - 3} more`
+                      }
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-background border" align="start">
+                  <div className="max-h-60 overflow-y-auto p-2">
+                    {CUISINE_OPTIONS.map((cuisine) => (
+                      <div
+                        key={cuisine}
+                        className={cn(
+                          "flex items-center space-x-2 px-2 py-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
+                          selectedCuisines.includes(cuisine) && "bg-primary/10"
+                        )}
+                        onClick={() => toggleCuisine(cuisine)}
+                      >
+                        <Checkbox
+                          id={cuisine}
+                          checked={selectedCuisines.includes(cuisine)}
+                          onCheckedChange={() => toggleCuisine(cuisine)}
+                        />
+                        <label
+                          htmlFor={cuisine}
+                          className="text-sm font-medium leading-none cursor-pointer flex-1"
+                        >
+                          {cuisine}
+                        </label>
+                        {selectedCuisines.includes(cuisine) && (
+                          <Check className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Select at least one cuisine (required)
+              </p>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-4">
             {step > 1 && (
               <Button
@@ -283,7 +373,7 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
                 Back
               </Button>
             )}
-            {step < 2 ? (
+            {step < 3 ? (
               <Button
                 onClick={handleNextStep}
                 className="flex-1"
