@@ -321,10 +321,10 @@ const RequestFood = () => {
                       type="button"
                       onClick={() => toggleFlavorMood(mood)}
                       className={cn(
-                        "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                        "px-4 py-2 rounded-full text-sm font-medium transition-all border-2",
                         formData.flavorMoods.includes(mood)
                           ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground"
+                          : "bg-background text-primary border-primary hover:bg-primary/10"
                       )}
                     >
                       {mood}
@@ -347,11 +347,11 @@ const RequestFood = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-3 px-4 rounded-lg border-input hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 transition-all duration-200"
                     >
                       <span className={cn(
                         "flex-1 truncate text-sm",
-                        formData.cuisineStyles.length === 0 && "text-muted-foreground"
+                        formData.cuisineStyles.length === 0 ? "text-primary" : "text-primary"
                       )}>
                         {formData.cuisineStyles.length > 0
                           ? formData.cuisineStyles.length === 1
@@ -360,7 +360,7 @@ const RequestFood = () => {
                           : "Select cuisines..."}
                       </span>
                       <ChevronDown className={cn(
-                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                        "h-4 w-4 shrink-0 text-primary transition-transform duration-200",
                         cuisineDropdownOpen && "rotate-180"
                       )} />
                     </Button>
@@ -405,7 +405,7 @@ const RequestFood = () => {
                     handleChange('locationState', state);
                   }}
                   placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-input hover:bg-accent/50 focus:border-ring transition-all duration-200 placeholder:text-muted-foreground"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-primary placeholder:text-primary"
                 />
               </div>
               
@@ -421,16 +421,16 @@ const RequestFood = () => {
                     size="sm"
                     onClick={getCurrentLocation}
                     disabled={isGeolocating}
-                    className="text-sm rounded-lg"
+                    className="text-sm rounded-full border-2 border-primary text-primary hover:bg-primary/10"
                   >
                     {isGeolocating ? (
                       <>
-                        <MapPin className="h-4 w-4 mr-2 animate-pulse" />
+                        <MapPin className="h-4 w-4 mr-2 animate-pulse text-primary" />
                         Getting location...
                       </>
                     ) : (
                       <>
-                        <Navigation className="h-4 w-4 mr-2" />
+                        <Navigation className="h-4 w-4 mr-2 text-primary" />
                         Use my location
                       </>
                     )}
@@ -441,7 +441,7 @@ const RequestFood = () => {
                   placeholder="Neighborhood, street, or specific area"
                   value={formData.locationAddress}
                   onChange={(e) => handleChange('locationAddress', e.target.value)}
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-lg border border-input hover:bg-accent/50 focus:border-ring transition-all duration-200 placeholder:text-muted-foreground"
+                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-primary placeholder:text-primary"
                 />
                 {formData.lat && formData.lng && (
                   <div className="text-sm text-green-600 flex items-center">
@@ -461,7 +461,7 @@ const RequestFood = () => {
                   placeholder="Any specific preferences, dietary restrictions, budget range, etc."
                   value={formData.additionalNotes}
                   onChange={(e) => handleChange('additionalNotes', e.target.value)}
-                  className="w-full min-h-[80px] py-3 px-4 rounded-lg border border-input hover:bg-accent/50 focus:border-ring transition-all duration-200 resize-none placeholder:text-muted-foreground"
+                  className="w-full min-h-[80px] py-3 px-4 rounded-2xl border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 resize-none text-primary placeholder:text-primary"
                 />
               </div>
               
