@@ -304,6 +304,8 @@ export type Database = {
           persona: string | null
           points_this_month: number | null
           points_total: number | null
+          recommender_paused: boolean | null
+          recommender_paused_at: string | null
           search_range: string | null
           streak_count: number
           total_points: number
@@ -322,6 +324,8 @@ export type Database = {
           persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
+          recommender_paused?: boolean | null
+          recommender_paused_at?: string | null
           search_range?: string | null
           streak_count?: number
           total_points?: number
@@ -340,6 +344,8 @@ export type Database = {
           persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
+          recommender_paused?: boolean | null
+          recommender_paused_at?: string | null
           search_range?: string | null
           streak_count?: number
           total_points?: number
@@ -805,6 +811,7 @@ export type Database = {
         Args: { p_action_type: string; p_ip_address: string; p_user_id: string }
         Returns: undefined
       }
+      self_assign_initial_roles: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "requester" | "recommender" | "admin"
