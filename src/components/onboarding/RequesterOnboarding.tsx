@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, Search, Utensils, ChevronDown, Check } from 'lucide-react';
+import { MapPin, Search, Utensils } from 'lucide-react';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { useUserRoles } from '@/hooks/useUserRoles';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const CUISINE_OPTIONS = [
@@ -36,7 +34,6 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
   const [requestRange, setRequestRange] = useState<'nearby' | '5mi' | '10mi' | '15mi'>('nearby');
   const [hasExistingLocation, setHasExistingLocation] = useState(false);
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -308,58 +305,28 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
 
           {step === 3 && (
             <div className="space-y-4">
-              <Popover open={cuisineDropdownOpen} onOpenChange={setCuisineDropdownOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={cuisineDropdownOpen}
-                    className="w-full justify-between font-normal h-auto min-h-10"
+              <div className="flex flex-wrap gap-2">
+                {CUISINE_OPTIONS.map((cuisine) => (
+                  <button
+                    key={cuisine}
+                    type="button"
+                    onClick={() => toggleCuisine(cuisine)}
+                    className={cn(
+                      "px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors",
+                      selectedCuisines.includes(cuisine)
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-primary bg-background text-foreground hover:bg-muted"
+                    )}
                   >
-                    <span className="truncate text-left flex-1">
-                      {selectedCuisines.length === 0 
-                        ? "Select cuisines you specialize in..."
-                        : selectedCuisines.length <= 3
-                          ? selectedCuisines.join(', ')
-                          : `${selectedCuisines.slice(0, 3).join(', ')} +${selectedCuisines.length - 3} more`
-                      }
-                    </span>
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-background border" align="start">
-                  <div className="max-h-60 overflow-y-auto p-2">
-                    {CUISINE_OPTIONS.map((cuisine) => (
-                      <div
-                        key={cuisine}
-                        className={cn(
-                          "flex items-center space-x-2 px-2 py-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
-                          selectedCuisines.includes(cuisine) && "bg-primary/10"
-                        )}
-                        onClick={() => toggleCuisine(cuisine)}
-                      >
-                        <Checkbox
-                          id={cuisine}
-                          checked={selectedCuisines.includes(cuisine)}
-                          onCheckedChange={() => toggleCuisine(cuisine)}
-                        />
-                        <label
-                          htmlFor={cuisine}
-                          className="text-sm font-medium leading-none cursor-pointer flex-1"
-                        >
-                          {cuisine}
-                        </label>
-                        {selectedCuisines.includes(cuisine) && (
-                          <Check className="h-4 w-4 text-primary" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <p className="text-xs text-muted-foreground">
-                Select at least one cuisine (required)
-              </p>
+                    {cuisine}
+                  </button>
+                ))}
+              </div>
+              {selectedCuisines.length === 0 && (
+                <p className="text-xs text-destructive">
+                  Select at least one cuisine
+                </p>
+              )}
             </div>
           )}
 
