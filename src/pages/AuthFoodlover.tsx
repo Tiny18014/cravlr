@@ -7,11 +7,10 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Star, Mail } from 'lucide-react';
+import { ArrowLeft, Users, Mail } from 'lucide-react';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<'requester' | 'recommender' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -23,11 +22,9 @@ const AuthFoodlover = () => {
 
   useEffect(() => {
     if (user) {
-      // Food lovers always go to the main app
       navigate('/');
     }
   }, [user, navigate]);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +42,6 @@ const AuthFoodlover = () => {
         } else {
           console.log('🍕 Food Lover login successful, checking user type...');
           
-          // Check if user has business claims - food lovers should NOT have any
           const { data: businessClaims, error: claimsError } = await supabase
             .from('business_claims')
             .select('id, status')
@@ -83,17 +79,7 @@ const AuthFoodlover = () => {
           navigate('/');
         }
       } else {
-        // Signup flow
-        if (!selectedRole) {
-          toast({
-            title: "Please select a role",
-            description: "Choose whether you want to request or recommend food.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
+        // Signup flow - all users get both requester and recommender roles
         const { error } = await signUp(email, password, displayName, 'regular');
         if (error) {
           toast({
@@ -106,14 +92,11 @@ const AuthFoodlover = () => {
           const { data: { user } } = await supabase.auth.getUser();
           
           if (user) {
-            // Assign role to user_roles table
-            const { error: roleError } = await supabase.rpc('assign_user_role', {
-              _user_id: user.id,
-              _role: selectedRole
-            });
+            // Assign both requester and recommender roles using self-assignment function
+            const { error: roleError } = await supabase.rpc('self_assign_initial_roles');
 
             if (roleError) {
-              console.error('Error assigning role:', roleError);
+              console.error('Error assigning roles:', roleError);
             }
 
             // Update profile with display name
@@ -129,15 +112,10 @@ const AuthFoodlover = () => {
 
           toast({
             title: "Account Created!",
-            description: `Welcome to Cravlr! Let's set up your ${selectedRole} profile.`,
+            description: "Welcome to Cravlr! You can now request and recommend food.",
           });
 
-          // Route to onboarding based on role
-          if (selectedRole === 'requester') {
-            navigate('/onboarding/requester');
-          } else {
-            navigate('/onboarding/recommender');
-          }
+          navigate('/onboarding/requester');
         }
       }
     } catch (error) {
@@ -151,67 +129,6 @@ const AuthFoodlover = () => {
     }
   };
 
-
-  // Show role selection if signing up and no role selected yet
-  if (!isLogin && !selectedRole) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center space-y-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/welcome')} className="absolute left-4 top-4">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center mx-auto">
-              <Users className="h-6 w-6 text-primary-foreground" />
-            </div>
-            
-            <CardTitle className="text-2xl font-bold">
-              Choose Your Role
-            </CardTitle>
-            
-            <p className="text-muted-foreground">
-              How would you like to use Cravlr?
-            </p>
-          </CardHeader>
-          
-          <CardContent className="space-y-3">
-            <Button 
-              onClick={() => setSelectedRole('requester')}
-              className="w-full h-auto py-4 flex flex-col items-start gap-2"
-              variant="outline"
-            >
-              <span className="font-semibold text-lg">Sign up as Food Requester</span>
-              <span className="text-sm text-muted-foreground font-normal">
-                Get personalized food recommendations from locals
-              </span>
-            </Button>
-            
-            <Button 
-              onClick={() => setSelectedRole('recommender')}
-              className="w-full h-auto py-4 flex flex-col items-start gap-2"
-              variant="outline"
-            >
-              <span className="font-semibold text-lg">Sign up as Food Recommender</span>
-              <span className="text-sm text-muted-foreground font-normal">
-                Share your favorite spots and earn rewards
-              </span>
-            </Button>
-
-            <div className="text-center pt-4">
-              <Button
-                variant="ghost"
-                onClick={() => setIsLogin(true)}
-                className="text-sm"
-              >
-                Already have an account? Sign in
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] px-4">
       <Card className="w-full max-w-md">
@@ -220,13 +137,7 @@ const AuthFoodlover = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => {
-                if (!isLogin && selectedRole) {
-                  setSelectedRole(null);
-                } else {
-                  navigate('/welcome');
-                }
-              }} 
+              onClick={() => navigate('/welcome')} 
               className="absolute left-4 top-4"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -237,16 +148,14 @@ const AuthFoodlover = () => {
           </div>
           
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? 'Sign In' : `${selectedRole === 'requester' ? 'Food Requester' : 'Food Recommender'} Sign Up`}
+            {isLogin ? 'Sign In' : 'Create Account'}
           </CardTitle>
           
           <div className="space-y-2">
             <p className="text-muted-foreground">
               {isLogin 
                 ? 'Welcome back! Sign in to continue your foodie journey' 
-                : selectedRole === 'requester'
-                  ? 'Get trusted recommendations from food lovers in your area'
-                  : 'Share your expertise and help others discover great food'
+                : 'Join Cravlr to request and recommend great food'
               }
             </p>
           </div>
@@ -301,7 +210,6 @@ const AuthFoodlover = () => {
               )}
             </div>
 
-
             <Button type="submit" className="w-full" disabled={loading} size="lg">
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
             </Button>
@@ -311,10 +219,7 @@ const AuthFoodlover = () => {
             <div className="text-center">
               <Button
                 variant="ghost"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  if (!isLogin) setSelectedRole(null);
-                }}
+                onClick={() => setIsLogin(!isLogin)}
                 className="text-sm"
               >
                 {isLogin 

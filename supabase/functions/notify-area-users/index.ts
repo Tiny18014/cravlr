@@ -110,14 +110,15 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     // Find users in the same geographic area who are eligible for notifications
-    // First try to find users in the same city/state
+    // Exclude users who have paused recommender mode or disabled notifications
     const { data: nearbyUsers, error: usersError } = await supabase
       .from('profiles')
-      .select('id, display_name, notify_recommender')
+      .select('id, display_name, notify_recommender, recommender_paused')
       .eq('location_city', request.location_city)
       .eq('location_state', request.location_state)
       .neq('id', request.requester_id) // Don't notify the requester
-      .eq('notify_recommender', true); // Only get users who want recommender notifications
+      .eq('notify_recommender', true) // Only get users who want recommender notifications
+      .or('recommender_paused.is.null,recommender_paused.eq.false'); // Exclude paused recommenders
 
     if (usersError) {
       console.error('Error fetching nearby users:', usersError);

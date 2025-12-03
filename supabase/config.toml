@@ -1,1 +1,13 @@
 project_id = "ioqogdxfmapcijmqjcpb"
+
+[functions.track-referral-click]
+verify_jwt = false
+
+[functions.places-photo]
+verify_jwt = false
+
+[functions.process-visit-reminders]
+verify_jwt = false
+
+[functions.check-paused-recommenders]
+verify_jwt = false

@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, MapPin, Save, MessageSquareHeart, Bell } from 'lucide-react';
+import { User, MapPin, Save, MessageSquareHeart, Bell, Utensils } from 'lucide-react';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +31,7 @@ const profileFormSchema = z.object({
     message: "State is required.",
   }),
   notify_recommender: z.boolean(),
+  recommender_paused: z.boolean(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -55,6 +56,7 @@ const Profile = () => {
       location_city: '',
       location_state: '',
       notify_recommender: true,
+      recommender_paused: false,
     },
   });
 
@@ -94,6 +96,7 @@ const Profile = () => {
           location_city: profile.location_city || '',
           location_state: profile.location_state || '',
           notify_recommender: profile.notify_recommender ?? true,
+          recommender_paused: profile.recommender_paused ?? false,
         });
       }
     } catch (error) {
@@ -114,6 +117,11 @@ const Profile = () => {
     console.log("💾 Submitting profile form:", values);
     setSaving(true);
     try {
+      // If recommender_paused changed to true, set the paused_at timestamp
+      const recommenderPausedAt = values.recommender_paused 
+        ? new Date().toISOString() 
+        : null;
+
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -122,6 +130,8 @@ const Profile = () => {
           location_city: values.location_city,
           location_state: values.location_state,
           notify_recommender: values.notify_recommender,
+          recommender_paused: values.recommender_paused,
+          recommender_paused_at: recommenderPausedAt,
           updated_at: new Date().toISOString(),
         });
 
@@ -132,12 +142,13 @@ const Profile = () => {
 
       console.log("✅ Profile updated successfully");
       
-      // Reset form with new values to clear dirty state
       form.reset(values);
 
       toast({
         title: "Profile updated",
-        description: "Your profile has been successfully updated.",
+        description: values.recommender_paused 
+          ? "Recommender mode paused. You won't receive new requests."
+          : "Your profile has been successfully updated.",
       });
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -227,6 +238,41 @@ const Profile = () => {
                     Your location helps us show you relevant food requests and recommendations in your area.
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Recommender Mode Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Utensils className="h-5 w-5" />
+                  Recommender Mode
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="recommender_paused"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Pause Recommender Mode
+                        </FormLabel>
+                        <FormDescription>
+                          When paused, you won't receive new food requests from others. 
+                          You can still browse and make requests yourself.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
