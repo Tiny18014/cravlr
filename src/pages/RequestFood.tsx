@@ -5,23 +5,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation, ChevronDown, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+
+const FLAVOR_MOODS = [
+  'Spicy', 'Sweet', 'Savory/Umami', 'Sour/Tangy', 'Salty', 'Fresh/Light', 'Rich/Creamy', 'Anything'
+] as const;
+
+const CUISINE_OPTIONS = [
+  'Anything',
+  'American', 'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian', 'Thai',
+  'Mediterranean', 'Middle Eastern', 'Korean', 'Vietnamese', 'French', 'Spanish',
+  'African', 'Latin/Caribbean', 'Brazilian', 'BBQ', 'Seafood', 'Pizza & Pasta',
+  'Desserts/Bakeries', 'Vegan/Vegetarian'
+] as const;
 
 const requestSchema = z.object({
-  foodType: z.string()
-    .trim()
-    .min(1, 'Food type is required')
-    .max(100, 'Food type must be less than 100 characters')
-    .regex(/^[a-zA-Z0-9\s,\-'&]+$/, 'Food type contains invalid characters'),
+  flavorMoods: z.array(z.string()).min(1, 'Select at least one flavor mood'),
+  cuisineStyles: z.array(z.string()).min(1, 'Select at least one cuisine style'),
   locationCity: z.string()
     .trim()
     .min(1, 'City is required')
@@ -62,7 +73,8 @@ const RequestFood = () => {
   const [locationInput, setLocationInput] = useState('');
   
   const [formData, setFormData] = useState({
-    foodType: '',
+    flavorMoods: [] as string[],
+    cuisineStyles: [] as string[],
     locationCity: '',
     locationState: '',
     locationAddress: '',
@@ -71,6 +83,25 @@ const RequestFood = () => {
     lat: null as number | null,
     lng: null as number | null
   });
+  const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
+
+  const toggleFlavorMood = (mood: string) => {
+    setFormData(prev => ({
+      ...prev,
+      flavorMoods: prev.flavorMoods.includes(mood)
+        ? prev.flavorMoods.filter(m => m !== mood)
+        : [...prev.flavorMoods, mood]
+    }));
+  };
+
+  const toggleCuisine = (cuisine: string) => {
+    setFormData(prev => ({
+      ...prev,
+      cuisineStyles: prev.cuisineStyles.includes(cuisine)
+        ? prev.cuisineStyles.filter(c => c !== cuisine)
+        : [...prev.cuisineStyles, cuisine]
+    }));
+  };
 
   // Get user's current location
   const getCurrentLocation = async () => {
@@ -137,7 +168,8 @@ const RequestFood = () => {
 
       // Validate input with zod schema
       const validationResult = requestSchema.safeParse({
-        foodType: formData.foodType,
+        flavorMoods: formData.flavorMoods,
+        cuisineStyles: formData.cuisineStyles,
         locationCity: formData.locationCity,
         locationState: formData.locationState,
         locationAddress: formData.locationAddress || undefined,
@@ -180,11 +212,14 @@ const RequestFood = () => {
         }
       }
 
+      // Build food_type string from selections
+      const foodTypeString = `${validated.flavorMoods.join(', ')} | ${validated.cuisineStyles.join(', ')}`;
+
       const { data, error } = await supabase
         .from('food_requests')
         .insert([{
           requester_id: user.id,
-          food_type: validated.foodType,
+          food_type: foodTypeString,
           location_city: validated.locationCity,
           location_state: validated.locationState,
           location_address: validated.locationAddress || null,
@@ -273,15 +308,78 @@ const RequestFood = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="foodType">What type of food?</Label>
-                <Input
-                  id="foodType"
-                  placeholder="e.g., Italian, Tacos, Sushi, BBQ..."
-                  value={formData.foodType}
-                  onChange={(e) => handleChange('foodType', e.target.value)}
-                  required
-                />
+              {/* Flavor Mood Section */}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Flavor Mood</h3>
+                  <p className="text-sm text-muted-foreground">Select the taste profile you're craving.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {FLAVOR_MOODS.map((mood) => (
+                    <button
+                      key={mood}
+                      type="button"
+                      onClick={() => toggleFlavorMood(mood)}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-all border",
+                        formData.flavorMoods.includes(mood)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-secondary-foreground border-border hover:border-primary/50"
+                      )}
+                    >
+                      {mood}
+                    </button>
+                  ))}
+                </div>
+                {formData.flavorMoods.length === 0 && (
+                  <p className="text-xs text-destructive">Select at least one flavor mood</p>
+                )}
+              </div>
+
+              {/* Cuisine Style Section */}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Cuisine Style</h3>
+                  <p className="text-sm text-muted-foreground">Choose the cuisine you prefer (optional).</p>
+                </div>
+                <Popover open={cuisineDropdownOpen} onOpenChange={setCuisineDropdownOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-2"
+                    >
+                      <span className="flex-1 truncate">
+                        {formData.cuisineStyles.length > 0
+                          ? formData.cuisineStyles.length === 1
+                            ? formData.cuisineStyles[0]
+                            : `${formData.cuisineStyles.length} cuisines selected`
+                          : "Select cuisines..."}
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover" align="start">
+                    <div className="max-h-[300px] overflow-y-auto p-2">
+                      {CUISINE_OPTIONS.map((cuisine) => (
+                        <div
+                          key={cuisine}
+                          className="flex items-center space-x-3 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+                          onClick={() => toggleCuisine(cuisine)}
+                        >
+                          <Checkbox
+                            checked={formData.cuisineStyles.includes(cuisine)}
+                            onCheckedChange={() => toggleCuisine(cuisine)}
+                          />
+                          <span className="text-sm">{cuisine}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {formData.cuisineStyles.length === 0 && (
+                  <p className="text-xs text-destructive">Select at least one cuisine style</p>
+                )}
               </div>
               
               <div className="space-y-4">
@@ -421,7 +519,7 @@ const RequestFood = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !formData.foodType || !formData.locationCity || !formData.locationState}
+                  disabled={isSubmitting || formData.flavorMoods.length === 0 || formData.cuisineStyles.length === 0 || !formData.locationCity || !formData.locationState}
                   className="flex-1"
                 >
                   {isSubmitting ? 'Creating...' : 'Post Request'}
