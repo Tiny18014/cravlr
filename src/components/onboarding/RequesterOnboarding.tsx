@@ -306,21 +306,28 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
           {step === 3 && (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                {CUISINE_OPTIONS.map((cuisine) => (
-                  <button
-                    key={cuisine}
-                    type="button"
-                    onClick={() => toggleCuisine(cuisine)}
-                    className={cn(
-                      "px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors",
-                      selectedCuisines.includes(cuisine)
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-primary bg-background text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {cuisine}
-                  </button>
-                ))}
+                {CUISINE_OPTIONS.map((cuisine) => {
+                  const isSelected = selectedCuisines.includes(cuisine);
+                  return (
+                    <button
+                      key={cuisine}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleCuisine(cuisine);
+                      }}
+                      className={cn(
+                        "px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors cursor-pointer",
+                        isSelected
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-primary bg-background text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {cuisine}
+                    </button>
+                  );
+                })}
               </div>
               {selectedCuisines.length === 0 && (
                 <p className="text-xs text-destructive">
