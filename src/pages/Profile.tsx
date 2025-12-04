@@ -229,8 +229,8 @@ const Profile = () => {
                     value={locationInput}
                     onValueChange={setLocationInput}
                     onCitySelect={(city, state) => {
-                      form.setValue('location_city', city);
-                      form.setValue('location_state', state);
+                      form.setValue('location_city', city, { shouldDirty: true });
+                      form.setValue('location_state', state, { shouldDirty: true });
                     }}
                     placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
                   />
