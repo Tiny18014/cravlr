@@ -61,6 +61,9 @@ const Profile = () => {
     },
   });
 
+  // Destructure to trigger re-renders on state change
+  const { isDirty, isValid } = form.formState;
+
   useEffect(() => {
     if (!user) {
       navigate('/auth');
@@ -338,15 +341,15 @@ const Profile = () => {
 
             {/* Save Button */}
             <div className="flex items-center justify-between">
-              {form.formState.isDirty && (
+              {isDirty && (
                 <p className="text-sm text-muted-foreground">
                   You have unsaved changes
                 </p>
               )}
-              <div className={form.formState.isDirty ? "" : "ml-auto"}>
+              <div className={isDirty ? "" : "ml-auto"}>
                 <Button 
                   type="submit" 
-                  disabled={saving || !form.formState.isDirty} 
+                  disabled={saving || !isDirty} 
                   className="flex items-center gap-2"
                 >
                   <Save className="h-4 w-4" />
