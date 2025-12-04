@@ -24,12 +24,8 @@ const profileFormSchema = z.object({
   display_name: z.string().min(2, {
     message: "Display name must be at least 2 characters.",
   }),
-  location_city: z.string().min(2, {
-    message: "City is required.",
-  }),
-  location_state: z.string().min(2, {
-    message: "State is required.",
-  }),
+  location_city: z.string().optional().or(z.literal('')),
+  location_state: z.string().optional().or(z.literal('')),
   notify_recommender: z.boolean(),
   recommender_paused: z.boolean(),
 });
@@ -189,7 +185,9 @@ const Profile = () => {
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            console.error("❌ Form validation errors:", errors);
+          })} className="space-y-6">
             {/* Personal Information */}
             <Card>
               <CardHeader>
