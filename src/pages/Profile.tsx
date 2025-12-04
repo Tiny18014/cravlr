@@ -51,6 +51,7 @@ const Profile = () => {
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
+    mode: 'onChange',
     defaultValues: {
       display_name: '',
       location_city: '',
