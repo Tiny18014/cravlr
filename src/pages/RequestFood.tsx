@@ -395,27 +395,10 @@ const RequestFood = () => {
               </div>
               
               <div className="space-y-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Location</h3>
-                  <p className="text-sm text-muted-foreground">Enter your city.</p>
-                </div>
-                <CityAutocomplete
-                  value={locationInput}
-                  onValueChange={setLocationInput}
-                  onCitySelect={(city, state) => {
-                    handleChange('locationCity', city);
-                    handleChange('locationState', state);
-                  }}
-                  placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
-              
-              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">Specific Area</h3>
-                    <p className="text-sm text-muted-foreground">Neighborhood or street (optional).</p>
+                    <h3 className="text-lg font-semibold text-foreground">Location</h3>
+                    <p className="text-sm text-muted-foreground">Enter your city.</p>
                   </div>
                   {/* GPS button only shown for India and Nepal */}
                   {isGpsEnabled && (
@@ -441,11 +424,14 @@ const RequestFood = () => {
                     </Button>
                   )}
                 </div>
-                <Input
-                  id="locationAddress"
-                  placeholder="Neighborhood, street, or specific area"
-                  value={formData.locationAddress}
-                  onChange={(e) => handleChange('locationAddress', e.target.value)}
+                <CityAutocomplete
+                  value={locationInput}
+                  onValueChange={setLocationInput}
+                  onCitySelect={(city, state) => {
+                    handleChange('locationCity', city);
+                    handleChange('locationState', state);
+                  }}
+                  placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
                   className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-foreground placeholder:text-muted-foreground"
                 />
                 {formData.lat && formData.lng && (
