@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,9 @@ const CUISINE_OPTIONS = [
   'African', 'Latin/Caribbean', 'Brazilian', 'BBQ', 'Seafood', 'Pizza & Pasta',
   'Desserts/Bakeries', 'Vegan/Vegetarian'
 ] as const;
+
+// Countries where GPS is enabled
+const GPS_ENABLED_COUNTRIES = ['IN', 'NP']; // India and Nepal
 
 const requestSchema = z.object({
   flavorMoods: z.array(z.string()).min(1, 'Select at least one flavor mood'),
@@ -71,6 +74,8 @@ const RequestFood = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
+  const [isDetectingCountry, setIsDetectingCountry] = useState(true);
   
   const [formData, setFormData] = useState({
     flavorMoods: [] as string[],
@@ -84,6 +89,47 @@ const RequestFood = () => {
     lng: null as number | null
   });
   const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
+
+  // Detect user's country on page load
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        // Try to get rough location for country detection
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 3600000 // 1 hour cache for country detection
+          });
+        });
+
+        const { latitude, longitude } = position.coords;
+        
+        // Use reverse geocoding to detect country
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=3&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const countryCode = data.address?.country_code?.toUpperCase();
+          console.log('🌍 Detected country:', countryCode);
+          setDetectedCountry(countryCode || null);
+        }
+      } catch (error) {
+        console.log('📍 Country detection failed, GPS will be disabled:', error);
+        setDetectedCountry(null);
+      } finally {
+        setIsDetectingCountry(false);
+      }
+    };
+
+    detectCountry();
+  }, []);
+
+  // Check if GPS is enabled for current country
+  const isGpsEnabled = detectedCountry && GPS_ENABLED_COUNTRIES.includes(detectedCountry);
 
   const toggleFlavorMood = (mood: string) => {
     setFormData(prev => ({
@@ -415,26 +461,29 @@ const RequestFood = () => {
                     <h3 className="text-lg font-semibold text-foreground">Specific Area</h3>
                     <p className="text-sm text-muted-foreground">Neighborhood or street (optional).</p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={getCurrentLocation}
-                    disabled={isGeolocating}
-                    className="text-sm rounded-full border-2 border-primary text-primary hover:bg-primary/10"
-                  >
-                    {isGeolocating ? (
-                      <>
-                        <MapPin className="h-4 w-4 mr-2 animate-pulse text-primary" />
-                        Getting location...
-                      </>
-                    ) : (
-                      <>
-                        <Navigation className="h-4 w-4 mr-2 text-primary" />
-                        Use my location
-                      </>
-                    )}
-                  </Button>
+                  {/* GPS button only shown for India and Nepal */}
+                  {isGpsEnabled && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={getCurrentLocation}
+                      disabled={isGeolocating || isDetectingCountry}
+                      className="text-sm rounded-full border-2 border-primary text-primary hover:bg-primary/10"
+                    >
+                      {isGeolocating ? (
+                        <>
+                          <MapPin className="h-4 w-4 mr-2 animate-pulse text-primary" />
+                          Getting location...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="h-4 w-4 mr-2 text-primary" />
+                          Use my location
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
                 <Input
                   id="locationAddress"
