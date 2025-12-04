@@ -400,29 +400,26 @@ const RequestFood = () => {
                     <h3 className="text-lg font-semibold text-foreground">Location</h3>
                     <p className="text-sm text-muted-foreground">Enter your city.</p>
                   </div>
-                  {/* GPS button only shown for India and Nepal */}
-                  {isGpsEnabled && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={getCurrentLocation}
-                      disabled={isGeolocating || isDetectingCountry}
-                      className="text-sm rounded-full border-2 border-primary text-primary hover:bg-primary/10"
-                    >
-                      {isGeolocating ? (
-                        <>
-                          <MapPin className="h-4 w-4 mr-2 animate-pulse text-primary" />
-                          Getting location...
-                        </>
-                      ) : (
-                        <>
-                          <Navigation className="h-4 w-4 mr-2 text-primary" />
-                          Use my location
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={getCurrentLocation}
+                    disabled={isGeolocating}
+                    className="text-sm rounded-full border-2 border-primary text-primary hover:bg-primary/10"
+                  >
+                    {isGeolocating ? (
+                      <>
+                        <MapPin className="h-4 w-4 mr-2 animate-pulse text-primary" />
+                        Getting location...
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="h-4 w-4 mr-2 text-primary" />
+                        Use my location
+                      </>
+                    )}
+                  </Button>
                 </div>
                 <CityAutocomplete
                   value={locationInput}
