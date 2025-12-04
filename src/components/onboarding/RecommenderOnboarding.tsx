@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MapPin, ChefHat, Target } from 'lucide-react';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 
 const CUISINE_OPTIONS = [
   'African', 'Italian', 'Indian', 'Nepali', 'Mexican',
@@ -34,6 +35,7 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const { addRole } = useUserRoles();
+  const { isGpsEnabled, isDetecting: isDetectingCountry } = useGpsCountryDetection();
   const searchParams = new URLSearchParams(window.location.search);
   const upgradeMode = isUpgrade || searchParams.get('upgrade') === 'true';
 
@@ -208,23 +210,27 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
         <CardContent className="space-y-6">
           {step === 1 && (
             <div className="space-y-4">
-              <Button
-                onClick={requestLocationPermission}
-                disabled={loading}
-                className="w-full"
-                size="lg"
-              >
-                {loading ? 'Getting location...' : 'Use GPS Location'}
-              </Button>
+              {isGpsEnabled && (
+                <>
+                  <Button
+                    onClick={requestLocationPermission}
+                    disabled={loading || isDetectingCountry}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {loading ? 'Getting location...' : 'Use GPS Location'}
+                  </Button>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="space-y-2">
                 <Label>Type your city</Label>

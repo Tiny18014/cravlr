@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { MapPin, Utensils, Target, Check } from 'lucide-react';
+import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 
 const CUISINE_OPTIONS = [
   'African',
@@ -46,6 +47,7 @@ const UserOnboarding = () => {
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isGpsEnabled, isDetecting: isDetectingCountry } = useGpsCountryDetection();
   const navigate = useNavigate();
 
   const requestLocationPermission = async () => {
@@ -239,10 +241,10 @@ const UserOnboarding = () => {
           {/* Step 1: Location */}
           {step === 1 && (
             <div className="space-y-4">
-              {!gpsAttempted && (
+              {!gpsAttempted && isGpsEnabled && (
                 <Button
                   onClick={requestLocationPermission}
-                  disabled={locationLoading}
+                  disabled={locationLoading || isDetectingCountry}
                   className="w-full bg-gradient-to-r from-[#FF6A3D] to-[#FF3B30] text-white font-poppins font-semibold"
                   size="lg"
                 >
