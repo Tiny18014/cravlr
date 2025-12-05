@@ -10,21 +10,6 @@ const Welcome = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Subtle food-themed background illustrations */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.04]">
-        <div className="absolute top-20 left-10 text-primary transform -rotate-12">
-          <Utensils size={120} />
-        </div>
-        <div className="absolute bottom-32 right-16 text-primary transform rotate-45">
-          <Sparkles size={100} />
-        </div>
-        <div className="absolute top-1/3 right-10 text-primary transform -rotate-6">
-          <Star size={80} />
-        </div>
-        <div className="absolute bottom-20 left-20 text-primary transform rotate-12">
-          <Trophy size={90} />
-        </div>
-      </div>
 
       <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
         <div className="max-w-5xl w-full space-y-10">
