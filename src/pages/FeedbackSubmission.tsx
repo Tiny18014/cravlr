@@ -19,6 +19,20 @@ export default function FeedbackSubmission() {
   const [thumbsUp, setThumbsUp] = useState<boolean | null>(null);
   const [comment, setComment] = useState('');
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      setDisplayName(profile?.display_name || user.email?.split('@')[0] || 'User');
+    };
+    fetchUserProfile();
+  }, [user]);
 
   useEffect(() => {
     fetchRecommendation();
@@ -116,7 +130,7 @@ export default function FeedbackSubmission() {
       <div className="min-h-screen bg-background">
         <DashboardHeader 
           onSignOut={signOut}
-          userName={user?.email?.split('@')[0] || 'User'}
+          userName={displayName || 'User'}
         />
         <div className="container mx-auto px-4 py-8">
           <p className="text-center text-muted-foreground">Loading...</p>
@@ -129,7 +143,7 @@ export default function FeedbackSubmission() {
     <div className="min-h-screen bg-background">
       <DashboardHeader 
         onSignOut={signOut}
-        userName={user?.email?.split('@')[0] || 'User'}
+        userName={displayName || 'User'}
       />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Card className="p-8">

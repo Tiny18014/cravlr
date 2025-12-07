@@ -201,12 +201,14 @@ const BrowseRequests = () => {
     try {
       setLoading(true);
       
-      // Query for active requests (disable radius filter for testing)
+      // Query for active requests that haven't expired
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('food_requests')
         .select('*')
         .eq('status', 'active')
         .neq('requester_id', user.id) // Hide your own requests
+        .gt('expire_at', now) // Only non-expired requests
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -327,7 +329,7 @@ const BrowseRequests = () => {
             <p className="text-muted-foreground">Tap a request to share your favorite spot.</p>
           </div>
 
-          {/* Quick summary */}
+          {/* Quick summary - only count non-expired requests */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
               {loading ? "Loading..." : `${requests.length} active request${requests.length !== 1 ? 's' : ''} available to help with`}
