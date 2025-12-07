@@ -9,13 +9,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation, ChevronDown, Check } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 
@@ -24,11 +22,22 @@ const FLAVOR_MOODS = [
 ] as const;
 
 const CUISINE_OPTIONS = [
-  'Anything',
-  'American', 'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian', 'Thai',
-  'Mediterranean', 'Middle Eastern', 'Korean', 'Vietnamese', 'French', 'Spanish',
-  'African', 'Latin/Caribbean', 'Brazilian', 'BBQ', 'Seafood', 'Pizza & Pasta',
-  'Desserts/Bakeries', 'Vegan/Vegetarian'
+  'Chinese',
+  'Italian',
+  'Japanese',
+  'Indian',
+  'American',
+  'Mexican',
+  'French',
+  'Thai',
+  'Spanish',
+  'Korean',
+  'Vietnamese',
+  'Mediterranean',
+  'Middle Eastern',
+  'Turkish',
+  'Brazilian',
+  'Nepalese'
 ] as const;
 
 const requestSchema = z.object({
@@ -72,6 +81,7 @@ const RequestFood = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  const [otherCuisine, setOtherCuisine] = useState('');
   const { isGpsEnabled, isDetecting: isDetectingCountry } = useGpsCountryDetection();
   
   const [formData, setFormData] = useState({
@@ -81,11 +91,10 @@ const RequestFood = () => {
     locationState: '',
     locationAddress: '',
     additionalNotes: '',
-    responseWindow: 2, // Default: Instant (2 minutes) - most popular
+    responseWindow: 2,
     lat: null as number | null,
     lng: null as number | null
   });
-  const [cuisineDropdownOpen, setCuisineDropdownOpen] = useState(false);
 
   const toggleFlavorMood = (mood: string) => {
     setFormData(prev => ({
@@ -105,6 +114,13 @@ const RequestFood = () => {
     }));
   };
 
+  const selectAnything = () => {
+    setFormData(prev => ({
+      ...prev,
+      cuisineStyles: ['Anything']
+    }));
+  };
+
   // Get user's current location
   const getCurrentLocation = async () => {
     setIsGeolocating(true);
@@ -113,12 +129,11 @@ const RequestFood = () => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutes
+          maximumAge: 300000
         });
       });
 
       const { latitude, longitude } = position.coords;
-      console.log('📍 GPS location captured:', { lat: latitude, lng: longitude });
       
       setFormData(prev => ({
         ...prev,
@@ -145,17 +160,14 @@ const RequestFood = () => {
   // Geocode the address to get coordinates
   const geocodeAddress = async (city: string, state: string, address?: string) => {
     try {
-      console.log('🗺️ Geocoding address:', { city, state, address });
       const { data, error } = await supabase.functions.invoke('geocode', {
         body: { city, state, address }
       });
 
       if (error) throw error;
-
-      console.log('✅ Geocoding successful:', data);
       return data;
     } catch (error) {
-      console.error('❌ Geocoding failed:', error);
+      console.error('Geocoding failed:', error);
       return null;
     }
   };
@@ -167,11 +179,15 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
+      // Include "Other" cuisine if typed
+      let finalCuisineStyles = [...formData.cuisineStyles];
+      if (otherCuisine.trim() && !finalCuisineStyles.includes(otherCuisine.trim())) {
+        finalCuisineStyles.push(otherCuisine.trim());
+      }
 
-      // Validate input with zod schema
       const validationResult = requestSchema.safeParse({
         flavorMoods: formData.flavorMoods,
-        cuisineStyles: formData.cuisineStyles,
+        cuisineStyles: finalCuisineStyles,
         locationCity: formData.locationCity,
         locationState: formData.locationState,
         locationAddress: formData.locationAddress || undefined,
@@ -196,9 +212,7 @@ const RequestFood = () => {
       let lat = validated.lat;
       let lng = validated.lng;
 
-      // If we don't have GPS coordinates, try to geocode the address
       if (!lat || !lng) {
-        console.log('🗺️ No GPS coordinates, attempting geocoding...');
         const geocodeResult = await geocodeAddress(
           validated.locationCity,
           validated.locationState,
@@ -208,13 +222,9 @@ const RequestFood = () => {
         if (geocodeResult) {
           lat = geocodeResult.lat;
           lng = geocodeResult.lng;
-          console.log('✅ Using geocoded coordinates:', { lat, lng });
-        } else {
-          console.log('⚠️ Geocoding failed, proceeding without coordinates');
         }
       }
 
-      // Build food_type string from selections
       const foodTypeString = `${validated.flavorMoods.join(', ')} | ${validated.cuisineStyles.join(', ')}`;
 
       const { data, error } = await supabase
@@ -234,19 +244,12 @@ const RequestFood = () => {
 
       if (error) throw error;
 
-      console.log('✅ Request created:', {
-        id: data.id
-      });
-
-      // Notify users in the area about the new request
       try {
-        console.log('📧 Notifying area users about new request:', data.id);
         await supabase.functions.invoke('notify-area-users', {
           body: { requestId: data.id }
         });
       } catch (notificationError) {
         console.error('Error notifying area users:', notificationError);
-        // Don't fail the request creation if notifications fail
       }
 
       toast({
@@ -256,10 +259,7 @@ const RequestFood = () => {
           : "Your food request has been posted with city-level matching.",
       });
       
-      // Reset feedback flags for new request flow
       feedbackSessionManager.onNewRequestCreated();
-      
-      // Navigate to the results page
       navigate(`/requests/${data.id}/results`);
     } catch (error) {
       console.error('Error creating request:', error);
@@ -279,11 +279,11 @@ const RequestFood = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="text-center max-w-sm w-full">
           <h2 className="text-xl font-semibold mb-2">Please sign in</h2>
           <p className="text-muted-foreground mb-4">You need to be signed in to create a food request.</p>
-          <Button onClick={() => navigate('/auth')}>
+          <Button onClick={() => navigate('/auth')} className="w-full sm:w-auto">
             Sign In
           </Button>
         </div>
@@ -293,40 +293,41 @@ const RequestFood = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="shrink-0">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Request Food</h1>
+          <h1 className="text-xl font-semibold truncate">Request Food</h1>
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center">What are you craving?</CardTitle>
+      <main className="container mx-auto px-4 py-6 pb-24">
+        <Card className="max-w-3xl mx-auto border-border/50">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl sm:text-3xl">What are you craving today?</CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">Tell us your preferences and we'll find the best recommendations</p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
               {/* Flavor Mood Section */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Flavor Mood</h3>
-                  <p className="text-sm text-muted-foreground">Select a taste profile.</p>
+                  <p className="text-sm text-muted-foreground">Select your taste preference</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                   {FLAVOR_MOODS.map((mood) => (
                     <button
                       key={mood}
                       type="button"
                       onClick={() => toggleFlavorMood(mood)}
                       className={cn(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-all border-2",
+                        "px-3 py-2.5 rounded-xl text-sm font-medium transition-all border-2 text-center",
                         formData.flavorMoods.includes(mood)
                           ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-foreground border-primary hover:bg-primary/10"
+                          : "bg-background text-foreground border-border hover:border-primary hover:bg-primary/5"
                       )}
                     >
                       {mood}
@@ -339,66 +340,65 @@ const RequestFood = () => {
               </div>
 
               {/* Cuisine Style Section */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Cuisine Style</h3>
-                  <p className="text-sm text-muted-foreground">Choose your preferred cuisine.</p>
+                  <p className="text-sm text-muted-foreground">Choose your preferred cuisine(s)</p>
                 </div>
-                <Popover open={cuisineDropdownOpen} onOpenChange={setCuisineDropdownOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
+                
+                {/* Cuisine Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3">
+                  {CUISINE_OPTIONS.map((cuisine) => (
+                    <button
+                      key={cuisine}
                       type="button"
-                      variant="outline"
-                      className="w-full justify-between text-left font-normal h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 transition-all duration-200"
+                      onClick={() => toggleCuisine(cuisine)}
+                      className={cn(
+                        "px-3 py-3 rounded-xl text-sm font-medium transition-all border-2 text-center min-h-[48px]",
+                        formData.cuisineStyles.includes(cuisine)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border hover:border-primary hover:bg-primary/5"
+                      )}
                     >
-                      <span className={cn(
-                        "flex-1 truncate text-sm",
-                        formData.cuisineStyles.length === 0 ? "text-muted-foreground" : "text-foreground"
-                      )}>
-                        {formData.cuisineStyles.length > 0
-                          ? formData.cuisineStyles.length === 1
-                            ? formData.cuisineStyles[0]
-                            : `${formData.cuisineStyles.length} cuisines selected`
-                          : "Select cuisines..."}
-                      </span>
-                      <ChevronDown className={cn(
-                        "h-4 w-4 shrink-0 text-primary transition-transform duration-200",
-                        cuisineDropdownOpen && "rotate-180"
-                      )} />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent 
-                    className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover border border-input shadow-lg rounded-lg overflow-hidden" 
-                    align="start"
+                      {cuisine}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Anything Button & Other Input */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={selectAnything}
+                    className={cn(
+                      "px-4 py-3 rounded-xl text-sm font-semibold transition-all border-2 text-center",
+                      formData.cuisineStyles.includes('Anything') && formData.cuisineStyles.length === 1
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-accent text-accent-foreground border-primary hover:bg-primary hover:text-primary-foreground"
+                    )}
                   >
-                    <div className="max-h-[280px] overflow-y-auto p-1.5">
-                      {CUISINE_OPTIONS.map((cuisine) => (
-                        <div
-                          key={cuisine}
-                          className="flex items-center space-x-3 px-3 py-2.5 hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer transition-colors duration-150"
-                          onClick={() => toggleCuisine(cuisine)}
-                        >
-                          <Checkbox
-                            checked={formData.cuisineStyles.includes(cuisine)}
-                            onCheckedChange={() => toggleCuisine(cuisine)}
-                            className="border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                          <span className="text-sm text-foreground">{cuisine}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {formData.cuisineStyles.length === 0 && (
-                  <p className="text-xs text-destructive">Choose at least one cuisine before submitting.</p>
+                    🌍 Anything
+                  </button>
+                  <Input
+                    type="text"
+                    placeholder="Other (type here)"
+                    value={otherCuisine}
+                    onChange={(e) => setOtherCuisine(e.target.value)}
+                    className="h-12 rounded-xl border-2 border-border focus:border-primary text-sm"
+                  />
+                </div>
+
+                {formData.cuisineStyles.length === 0 && !otherCuisine.trim() && (
+                  <p className="text-xs text-destructive">Choose at least one cuisine or type your preference</p>
                 )}
               </div>
               
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Location Section */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Location</h3>
-                    <p className="text-sm text-muted-foreground">Enter your city.</p>
+                    <p className="text-sm text-muted-foreground">Enter your city or use GPS</p>
                   </div>
                   <Button
                     type="button"
@@ -406,16 +406,16 @@ const RequestFood = () => {
                     size="sm"
                     onClick={getCurrentLocation}
                     disabled={isGeolocating}
-                    className="text-sm rounded-full border-2 border-primary text-primary hover:bg-primary/10"
+                    className="shrink-0 rounded-xl border-2 border-primary text-primary hover:bg-primary/10"
                   >
                     {isGeolocating ? (
                       <>
-                        <MapPin className="h-4 w-4 mr-2 animate-pulse text-primary" />
+                        <MapPin className="h-4 w-4 mr-2 animate-pulse" />
                         Getting location...
                       </>
                     ) : (
                       <>
-                        <Navigation className="h-4 w-4 mr-2 text-primary" />
+                        <Navigation className="h-4 w-4 mr-2" />
                         Use my location
                       </>
                     )}
@@ -429,17 +429,18 @@ const RequestFood = () => {
                     handleChange('locationState', state);
                   }}
                   placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  className="w-full h-auto min-h-[44px] py-3 px-4 rounded-full border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 text-foreground placeholder:text-muted-foreground"
+                  className="h-12 rounded-xl border-2 border-border focus:border-primary"
                 />
                 {formData.lat && formData.lng && (
-                  <div className="text-sm text-green-600 flex items-center">
-                    <MapPin className="h-4 w-4 mr-1" />
+                  <div className="text-sm text-green-600 flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
+                    <MapPin className="h-4 w-4" />
                     GPS location captured for precise matching
                   </div>
                 )}
               </div>
               
-              <div className="space-y-3">
+              {/* Additional Preferences */}
+              <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Additional Preferences</h3>
                   <p className="text-sm text-muted-foreground">Diet, dislikes, budget, etc.</p>
@@ -449,83 +450,95 @@ const RequestFood = () => {
                   placeholder="Any specific preferences, dietary restrictions, budget range, etc."
                   value={formData.additionalNotes}
                   onChange={(e) => handleChange('additionalNotes', e.target.value)}
-                  className="w-full min-h-[80px] py-3 px-4 rounded-2xl border-2 border-primary hover:bg-primary/10 focus:border-primary transition-all duration-200 resize-none text-foreground placeholder:text-muted-foreground"
+                  className="min-h-[100px] rounded-xl border-2 border-border focus:border-primary resize-none"
                 />
               </div>
               
-               <div>
-                <Label>How fast do you need recommendations?</Label>
+              {/* Response Time */}
+              <div className="space-y-4">
+                <Label className="text-lg font-semibold">How fast do you need recommendations?</Label>
                 <RadioGroup
                   value={formData.responseWindow.toString()}
                   onValueChange={(value) => handleChange('responseWindow', parseInt(value))}
-                  className="mt-3"
+                  className="grid gap-3"
                 >
-                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-purple-500/30 bg-purple-500/10">
+                  <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-purple-200 bg-purple-50/50 hover:bg-purple-100/50 transition-colors">
                     <RadioGroupItem value="1" id="lightning" />
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2 flex-1">
                       <Zap className="h-4 w-4 text-purple-500" />
-                      <Label htmlFor="lightning" className="cursor-pointer">
-                        <span className="font-medium text-purple-500">🚀 Lightning</span> - 1 minute
+                      <Label htmlFor="lightning" className="cursor-pointer flex-1">
+                        <span className="font-medium text-purple-600">🚀 Lightning</span>
+                        <span className="text-muted-foreground ml-2">- 1 minute</span>
                       </Label>
                     </div>
-                    <Badge variant="secondary" className="ml-auto text-xs">Testing</Badge>
+                    <Badge variant="secondary" className="text-xs shrink-0">Testing</Badge>
                   </div>
-                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-red-500/30 bg-red-500/10">
+                  
+                  <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-200 bg-red-50/50 hover:bg-red-100/50 transition-colors">
                     <RadioGroupItem value="2" id="instant" />
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2 flex-1">
                       <Zap className="h-4 w-4 text-red-500" />
-                      <Label htmlFor="instant" className="cursor-pointer">
-                        <span className="font-medium text-red-500">⚡ Instant</span> - 2 minutes
+                      <Label htmlFor="instant" className="cursor-pointer flex-1">
+                        <span className="font-medium text-red-500">⚡ Instant</span>
+                        <span className="text-muted-foreground ml-2">- 2 minutes</span>
                       </Label>
                     </div>
-                    <Badge variant="secondary" className="ml-auto text-xs">Most Popular</Badge>
+                    <Badge variant="secondary" className="text-xs shrink-0">Most Popular</Badge>
                   </div>
-                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-destructive/20 bg-destructive/5">
+                  
+                  <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-orange-200 bg-orange-50/50 hover:bg-orange-100/50 transition-colors">
                     <RadioGroupItem value="5" id="quick" />
-                    <div className="flex items-center space-x-2">
-                      <Zap className="h-4 w-4 text-destructive" />
-                      <Label htmlFor="quick" className="cursor-pointer">
-                        <span className="font-medium text-destructive">Quick</span> - 5 minutes
+                    <div className="flex items-center gap-2 flex-1">
+                      <Zap className="h-4 w-4 text-orange-500" />
+                      <Label htmlFor="quick" className="cursor-pointer flex-1">
+                        <span className="font-medium text-orange-500">Quick</span>
+                        <span className="text-muted-foreground ml-2">- 5 minutes</span>
                       </Label>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-orange-500/20 bg-orange-500/5">
+                  
+                  <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-amber-200 bg-amber-50/50 hover:bg-amber-100/50 transition-colors">
                     <RadioGroupItem value="30" id="soon" />
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4 text-orange-500" />
-                      <Label htmlFor="soon" className="cursor-pointer">
-                        <span className="font-medium text-orange-500">Soon</span> - 30 minutes
+                    <div className="flex items-center gap-2 flex-1">
+                      <Clock className="h-4 w-4 text-amber-600" />
+                      <Label htmlFor="soon" className="cursor-pointer flex-1">
+                        <span className="font-medium text-amber-600">Soon</span>
+                        <span className="text-muted-foreground ml-2">- 30 minutes</span>
                       </Label>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-muted-foreground/20 bg-muted/50">
+                  
+                  <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-border bg-muted/30 hover:bg-muted/50 transition-colors">
                     <RadioGroupItem value="120" id="extended" />
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2 flex-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <Label htmlFor="extended" className="cursor-pointer">
-                        <span className="font-medium">Extended</span> - 2 hours
+                      <Label htmlFor="extended" className="cursor-pointer flex-1">
+                        <span className="font-medium">Extended</span>
+                        <span className="text-muted-foreground ml-2">- 2 hours</span>
                       </Label>
                     </div>
                   </div>
                 </RadioGroup>
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                
+                <div className="p-4 bg-blue-50 rounded-xl text-sm text-blue-700 border border-blue-200">
                   💡 <strong>Tip:</strong> Shorter windows get more urgent responses from nearby locals!
                 </div>
               </div>
               
-              <div className="flex gap-4">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/')}
-                  className="flex-1"
+                  className="flex-1 h-12 rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || formData.flavorMoods.length === 0 || formData.cuisineStyles.length === 0 || !formData.locationCity || !formData.locationState}
-                  className="flex-1"
+                  disabled={isSubmitting || formData.flavorMoods.length === 0 || (formData.cuisineStyles.length === 0 && !otherCuisine.trim()) || !formData.locationCity || !formData.locationState}
+                  className="flex-1 h-12 rounded-xl"
                 >
                   {isSubmitting ? 'Creating...' : 'Post Request'}
                 </Button>

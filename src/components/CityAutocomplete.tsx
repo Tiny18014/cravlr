@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface CityAutocompleteProps {
   value: string;
@@ -31,41 +32,57 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const searchCities = async () => {
-      if (value.length >= 2) {
-        setIsLoading(true);
-        try {
-          const { data, error } = await supabase.functions.invoke('places-autocomplete', {
-            body: { input: value }
-          });
+    // Clear any existing debounce timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
 
-          if (error) {
-            console.error('Error fetching cities:', error);
-            setSuggestions([]);
-            setIsOpen(false);
-            return;
-          }
+    // Only search if we have at least 2 characters
+    if (value.length < 2) {
+      setSuggestions([]);
+      setIsOpen(false);
+      setIsLoading(false);
+      return;
+    }
 
-          const results = data || [];
-          setSuggestions(results.slice(0, 8));
-          setIsOpen(results.length > 0);
-        } catch (error) {
-          console.error('Error searching cities:', error);
+    // Show loading state immediately for feedback
+    setIsLoading(true);
+
+    // Debounce the actual API call (400ms delay)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('places-autocomplete', {
+          body: { input: value }
+        });
+
+        if (error) {
+          console.error('Error fetching cities:', error);
           setSuggestions([]);
           setIsOpen(false);
-        } finally {
-          setIsLoading(false);
+          return;
         }
-      } else {
+
+        const results = data || [];
+        setSuggestions(results.slice(0, 8));
+        setIsOpen(results.length > 0);
+      } catch (error) {
+        console.error('Error searching cities:', error);
         setSuggestions([]);
         setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
       }
     };
-
-    const timeoutId = setTimeout(searchCities, 300); // Debounce API calls
-    return () => clearTimeout(timeoutId);
   }, [value]);
 
   const handleInputChange = (newValue: string) => {
@@ -77,6 +94,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     onValueChange(displayValue);
     onCitySelect(result.city, result.state);
     setIsOpen(false);
+    setSuggestions([]);
   };
 
   const handleInputFocus = () => {
@@ -87,65 +105,68 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
 
   const handleInputBlur = () => {
     // Delay closing to allow for clicks on suggestions
-    setTimeout(() => setIsOpen(false), 150);
+    setTimeout(() => setIsOpen(false), 200);
   };
 
   const clearInput = () => {
     onValueChange('');
     onCitySelect('', '');
     setIsOpen(false);
+    setSuggestions([]);
+    inputRef.current?.focus();
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
+          ref={inputRef}
           value={value}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           placeholder={placeholder}
-          disabled={disabled || isLoading}
-          className={`pl-10 pr-10 ${className || ''}`}
+          disabled={disabled}
+          className={cn(
+            "pl-10 pr-10 h-12 text-base",
+            className
+          )}
         />
-        {value && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-            onClick={clearInput}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        )}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+          {isLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          {value && !isLoading && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 hover:bg-transparent"
+              onClick={clearInput}
+            >
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </Button>
+          )}
+        </div>
       </div>
       
-      {isLoading && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg">
-          <div className="px-4 py-3 text-muted-foreground flex items-center gap-2">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-            <span>Searching cities...</span>
-          </div>
-        </div>
-      )}
-      
       {isOpen && suggestions.length > 0 && !isLoading && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.placeId}-${index}`}
-              className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors"
+              type="button"
+              className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
               onMouseDown={(e) => {
-                e.preventDefault(); // Prevent input blur
+                e.preventDefault();
                 handleCitySelect(suggestion);
               }}
             >
               <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="font-medium">{suggestion.city}</div>
-                <div className="text-sm text-muted-foreground">{suggestion.state}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{suggestion.city}</div>
+                <div className="text-sm text-muted-foreground truncate">{suggestion.state}</div>
               </div>
             </button>
           ))}
