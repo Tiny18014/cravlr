@@ -499,6 +499,57 @@ export type Database = {
           },
         ]
       }
+      recommender_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          recommendation_id: string | null
+          recommender_id: string
+          restaurant_name: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          recommendation_id?: string | null
+          recommender_id: string
+          restaurant_name: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          recommendation_id?: string | null
+          recommender_id?: string
+          restaurant_name?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommender_notifications_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommender_notifications_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "view_business_commissions"
+            referencedColumns: ["recommendation_id"]
+          },
+        ]
+      }
       referral_clicks: {
         Row: {
           clicked_at: string

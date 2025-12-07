@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Clock, Star, TrendingUp, FileText, Clock3, MessageCircle, Award } from 'lucide-react';
+import { MapPin, Clock, Star, TrendingUp, FileText, Clock3, MessageCircle, Award, CheckCircle, XCircle } from 'lucide-react';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { DashboardBottomNav } from '@/components/DashboardBottomNav';
 
@@ -29,9 +29,20 @@ interface Recommendation {
   notes?: string;
   confidence_score: number;
   created_at: string;
+  status: string;
   food_requests?: {
     food_type: string;
   };
+}
+
+interface RecommenderNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  restaurant_name: string;
+  read: boolean;
+  created_at: string;
 }
 
 interface ReceivedRecommendation {
@@ -51,6 +62,7 @@ const Dashboard = () => {
   const [myRequests, setMyRequests] = useState<FoodRequest[]>([]);
   const [myRecommendations, setMyRecommendations] = useState<Recommendation[]>([]);
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
+  const [recommenderNotifications, setRecommenderNotifications] = useState<RecommenderNotification[]>([]);
   const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState('');
@@ -90,15 +102,27 @@ const Dashboard = () => {
         recommendation_count: req.recommendations?.[0]?.count || 0
       })) || []);
 
-      // Fetch recommendations made
+      // Fetch recommendations made with status
       const { data: recommendations, error: recError } = await supabase
         .from('recommendations')
-        .select('*, food_requests(food_type)')
+        .select('id, restaurant_name, restaurant_address, notes, confidence_score, created_at, status, food_requests(food_type)')
         .eq('recommender_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (recError) throw recError;
       setMyRecommendations(recommendations || []);
+
+      // Fetch recommender notifications (unread first)
+      const { data: notifications, error: notifError } = await supabase
+        .from('recommender_notifications')
+        .select('*')
+        .eq('recommender_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!notifError && notifications) {
+        setRecommenderNotifications(notifications);
+      }
 
       // Fetch recommendations received - count only
       const { data: receivedCount, error: receivedError } = await supabase
@@ -143,6 +167,19 @@ const Dashboard = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    const { error } = await supabase
+      .from('recommender_notifications')
+      .update({ read: true })
+      .eq('id', notificationId);
+
+    if (!error) {
+      setRecommenderNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    }
   };
 
   if (!user) return null;
@@ -278,6 +315,33 @@ const Dashboard = () => {
             </Button>
           </div>
 
+          {/* Notifications for recommenders */}
+          {recommenderNotifications.filter(n => !n.read).length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Recent Updates</h2>
+              {recommenderNotifications.filter(n => !n.read).slice(0, 3).map((notif) => (
+                <Card 
+                  key={notif.id} 
+                  className={`border-l-4 cursor-pointer transition-opacity hover:opacity-80 ${notif.type === 'accepted' ? 'border-l-green-500 bg-green-50/50 dark:bg-green-950/20' : 'border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20'}`}
+                  onClick={() => markNotificationAsRead(notif.id)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{notif.type === 'accepted' ? '🎉' : '📝'}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground">{notif.restaurant_name}</p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground">
+                        Dismiss
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {myRecommendations.length === 0 ? (
             <Card className="border-border/50">
               <CardContent className="text-center py-12">
@@ -296,9 +360,22 @@ const Dashboard = () => {
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <h3 className="text-base font-semibold text-foreground mb-1">
-                            {rec.restaurant_name}
-                          </h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-base font-semibold text-foreground">
+                              {rec.restaurant_name}
+                            </h3>
+                            {/* Status Badge */}
+                            {rec.status === 'accepted' && (
+                              <Badge className="bg-green-500 text-white text-xs">
+                                Accepted
+                              </Badge>
+                            )}
+                            {rec.status === 'declined' && (
+                              <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                                Declined
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             For: {rec.food_requests?.food_type || 'Unknown request'}
                           </p>
