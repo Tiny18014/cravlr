@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Building2, Shield, Phone, Mail, ShieldCheck } from 'lucide-react';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { Separator } from '@/components/ui/separator';
 
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -275,6 +277,15 @@ const AuthBusiness = () => {
             <Button type="submit" className="w-full" disabled={loading} size="lg">
               {loading ? 'Loading...' : (isLogin ? 'Sign In to Dashboard' : 'Create & Verify Business Account')}
             </Button>
+
+            <div className="relative my-6">
+              <Separator />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
+                or
+              </span>
+            </div>
+
+            <GoogleSignInButton />
             
             {!isLogin && (
               <div className="text-center">

@@ -22,6 +22,7 @@ import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
 import AuthFoodlover from "./pages/AuthFoodlover";
 import AuthBusiness from "./pages/AuthBusiness";
+import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import UserOnboarding from "./pages/UserOnboarding";
 import { RecommenderOnboarding } from "./components/onboarding/RecommenderOnboarding";
 import { RequesterOnboarding } from "./components/onboarding/RequesterOnboarding";
@@ -103,6 +104,7 @@ const AppContent = () => {
               <Route path="/auth" element={<RouteGuard requiresAuth={false}><Auth /></RouteGuard>} />
               <Route path="/auth/foodlover" element={<RouteGuard requiresAuth={false}><AuthFoodlover /></RouteGuard>} />
               <Route path="/auth/business" element={<RouteGuard requiresAuth={false}><AuthBusiness /></RouteGuard>} />
+              <Route path="/auth/google/callback" element={<RouteGuard requiresAuth={false}><GoogleAuthCallback /></RouteGuard>} />
               <Route path="/onboarding" element={<RouteGuard requiresAuth={true}><UserOnboarding /></RouteGuard>} />
               <Route path="/onboarding/recommender" element={<RouteGuard requiresAuth={true}><RecommenderOnboarding /></RouteGuard>} />
               <Route path="/onboarding/requester" element={<RouteGuard requiresAuth={true}><RequesterOnboarding /></RouteGuard>} />

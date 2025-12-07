@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Users, Mail } from 'lucide-react';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { Separator } from '@/components/ui/separator';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -232,6 +234,15 @@ const AuthFoodlover = () => {
             <Button type="submit" className="w-full" disabled={loading} size="lg">
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
             </Button>
+
+            <div className="relative my-6">
+              <Separator />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
+                or
+              </span>
+            </div>
+
+            <GoogleSignInButton />
           </form>
 
           <div className="mt-6 space-y-4">
