@@ -117,7 +117,9 @@ const RequestFood = () => {
   const selectAnything = () => {
     setFormData(prev => ({
       ...prev,
-      cuisineStyles: ['Anything']
+      cuisineStyles: prev.cuisineStyles.includes('Anything') && prev.cuisineStyles.length === 1
+        ? []
+        : ['Anything']
     }));
   };
 
