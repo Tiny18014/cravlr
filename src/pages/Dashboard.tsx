@@ -53,6 +53,7 @@ const Dashboard = () => {
   const [receivedRecommendations, setReceivedRecommendations] = useState<ReceivedRecommendation[]>([]);
   const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
   const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -60,7 +61,18 @@ const Dashboard = () => {
       return;
     }
     fetchDashboardData();
+    fetchUserProfile();
   }, [user, navigate]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    setDisplayName(profile?.display_name || user.email?.split('@')[0] || 'User');
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -160,7 +172,7 @@ const Dashboard = () => {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
         <DashboardHeader 
           onSignOut={signOut} 
-          userName={user?.email?.split('@')[0] || "User"} 
+          userName={displayName || "User"} 
         />
 
         <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
@@ -252,7 +264,7 @@ const Dashboard = () => {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
         <DashboardHeader 
           onSignOut={signOut} 
-          userName={user?.email?.split('@')[0] || "User"} 
+          userName={displayName || "User"} 
         />
 
         <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
@@ -326,7 +338,7 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
       <DashboardHeader 
         onSignOut={signOut} 
-        userName={user?.email?.split('@')[0] || "User"} 
+        userName={displayName || "User"} 
       />
 
       <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">

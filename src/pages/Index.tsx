@@ -153,9 +153,22 @@ function BottomNav() {
 function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [userName, setUserName] = useState(user?.email?.split('@')[0] || "there");
+  const [userName, setUserName] = useState('');
   const [isRecommenderModalOpen, setIsRecommenderModalOpen] = useState(false);
   const { hasRole } = useUserRoles();
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      setUserName(profile?.display_name || user.email?.split('@')[0] || 'User');
+    };
+    fetchUserProfile();
+  }, [user]);
 
   const handleRecommendClick = () => {
     if (hasRole('recommender')) {
