@@ -15,9 +15,9 @@ const Welcome = () => {
         <div className="max-w-5xl w-full space-y-10">
           {/* Header */}
           <div className="text-center space-y-6">
-            <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-primary text-primary-foreground shadow-lg mx-auto">
+            <div className="relative inline-flex items-center justify-center h-20 w-20 rounded-full bg-primary text-primary-foreground shadow-lg mx-auto">
               <Utensils className="h-9 w-9" strokeWidth={2.5} />
-              <MapPin className="h-5 w-5 absolute translate-x-3 translate-y-3" strokeWidth={2.5} />
+              <MapPin className="h-5 w-5 absolute bottom-2 right-2" strokeWidth={2.5} />
             </div>
             <div className="space-y-3">
               <h1 className="text-4xl md:text-5xl font-semibold text-foreground tracking-tight">
@@ -108,6 +108,9 @@ const Welcome = () => {
                     <div className="relative">
                       <div className="h-20 w-20 bg-primary-light rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform p-5">
                         <Store className="h-10 w-10 text-primary" strokeWidth={2} />
+                      </div>
+                      <div className="absolute -top-2 -right-2 h-8 w-8 bg-primary rounded-full flex items-center justify-center animate-pulse">
+                        <BarChart3 className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
                       </div>
                     </div>
                   </div>
