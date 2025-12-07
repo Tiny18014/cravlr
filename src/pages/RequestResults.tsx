@@ -431,11 +431,12 @@ const RequestResults = () => {
     }
     
     try {
-      // Call edge function to mark request as ignored
-      const { error } = await supabase.functions.invoke('request-accept-ignore', {
+      // Call edge function to decline recommendation and notify recommender
+      const { error } = await supabase.functions.invoke('handle-recommendation-decline', {
         body: {
+          recommendationId: group.recommendationId,
           requestId: request.id,
-          action: 'ignore'
+          restaurantName: group.name
         }
       });
 

@@ -12,10 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔍 log-visit-intent called');
+    console.log('🚫 handle-recommendation-decline called');
     
     const authHeader = req.headers.get('Authorization');
-    console.log('🔍 Auth header present:', !!authHeader);
     
     if (!authHeader) {
       console.error('❌ No auth header');
@@ -43,11 +42,10 @@ serve(async (req) => {
     const { 
       recommendationId, 
       requestId, 
-      restaurantName, 
-      placeId 
+      restaurantName 
     } = await req.json();
     
-    console.log('🔍 Request body:', { recommendationId, requestId, restaurantName, placeId });
+    console.log('🔍 Request body:', { recommendationId, requestId, restaurantName });
 
     // Validate required fields
     if (!recommendationId || !requestId || !restaurantName) {
@@ -80,7 +78,7 @@ serve(async (req) => {
 
     if (requestData.requester_id !== user.id) {
       return new Response(
-        JSON.stringify({ error: 'Not authorized to log intent for this request' }),
+        JSON.stringify({ error: 'Not authorized to decline this recommendation' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -99,50 +97,21 @@ serve(async (req) => {
       );
     }
 
-    // Get referral_link_id and commission_rate if they exist
-    const { data: referralLinkData } = await supabaseAdmin
-      .from('referral_links')
-      .select('id, commission_rate')
-      .eq('recommendation_id', recommendationId)
-      .maybeSingle();
-
-    console.log('📊 Referral link data:', referralLinkData);
-
-    // Insert the visit intent (clicked_at is automatically set by default)
-    const { error: insertError } = await supabaseAdmin
-      .from('referral_clicks')
-      .insert({
-        recommendation_id: recommendationId,
-        request_id: requestId,
-        requester_id: user.id,
-        recommender_id: recommendationData.recommender_id,
-        referral_link_id: referralLinkData?.id || null,
-        restaurant_name: restaurantName,
-        commission_rate: referralLinkData?.commission_rate || 10.00,
-        converted: false,
-        commission_paid: false
-      });
-
-    console.log('✅ Insert result:', insertError ? 'ERROR' : 'SUCCESS');
-    if (insertError) {
-      console.error('❌ Insert error details:', insertError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to log visit intent' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Update recommendation status to 'accepted'
+    // Update recommendation status to 'declined'
     const { error: updateError } = await supabaseAdmin
       .from('recommendations')
-      .update({ status: 'accepted' })
+      .update({ status: 'declined' })
       .eq('id', recommendationId);
 
     if (updateError) {
       console.error('❌ Error updating recommendation status:', updateError);
-    } else {
-      console.log('✅ Recommendation status updated to accepted');
+      return new Response(
+        JSON.stringify({ error: 'Failed to update recommendation status' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    console.log('✅ Recommendation status updated to declined');
 
     // Create notification for the recommender
     const { error: notifError } = await supabaseAdmin
@@ -150,9 +119,9 @@ serve(async (req) => {
       .insert({
         recommender_id: recommendationData.recommender_id,
         recommendation_id: recommendationId,
-        type: 'accepted',
-        title: 'Your recommendation was accepted!',
-        message: `Someone is going to ${restaurantName} based on your recommendation! 🎉`,
+        type: 'declined',
+        title: 'Your recommendation was declined',
+        message: `Your recommendation for ${restaurantName} wasn't selected this time.`,
         restaurant_name: restaurantName,
         read: false
       });
@@ -160,7 +129,7 @@ serve(async (req) => {
     if (notifError) {
       console.error('❌ Error creating recommender notification:', notifError);
     } else {
-      console.log('✅ Recommender notification created for acceptance');
+      console.log('✅ Recommender notification created for decline');
     }
 
     return new Response(
