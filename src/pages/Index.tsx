@@ -186,7 +186,7 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background">
       <DashboardHeader onSignOut={onSignOut} userName={userName} />
-      <main className="flex-1 flex flex-col justify-center space-y-8">
+      <main className="flex-1 flex flex-col justify-center space-y-8 pb-24">
         <HeroCard onRecommendClick={handleRecommendClick} />
         <HowItWorks />
       </main>

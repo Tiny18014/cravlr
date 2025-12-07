@@ -205,7 +205,7 @@ const SendRecommendation = () => {
 
           const currentStreak = profileData?.streak_count || 0;
           const currentPoints = profileData?.total_points || 0;
-          const pointsToAdd = 10;
+          const pointsToAdd = 5;
           const newStreak = currentStreak + 1;
           const newPoints = currentPoints + pointsToAdd;
 
