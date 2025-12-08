@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { UnifiedNotificationProvider } from "@/contexts/UnifiedNotificationContext";
 import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisplay";
 import { OneSignalInit } from "@/components/OneSignalInit";
@@ -65,7 +66,9 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppContent />
+        <UserProfileProvider>
+          <AppContent />
+        </UserProfileProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

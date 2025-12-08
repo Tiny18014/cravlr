@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
@@ -47,10 +47,19 @@ const requestSchema = z.object({
     .trim()
     .min(1, 'City is required')
     .max(100, 'City name is too long'),
+  // Region/State/Province - optional, free-form text for global support
   locationState: z.string()
     .trim()
-    .length(2, 'State must be a 2-letter code')
-    .regex(/^[A-Z]{2}$/, 'Invalid state code'),
+    .max(150, 'Region name is too long')
+    .optional()
+    .or(z.literal('')),
+  // Country code - optional, ISO-3166-1 alpha-2 if provided
+  countryCode: z.string()
+    .trim()
+    .length(2, 'Country code must be 2 letters')
+    .regex(/^[A-Z]{2}$/, 'Invalid country code')
+    .optional()
+    .or(z.literal('')),
   locationAddress: z.string()
     .trim()
     .max(200, 'Address is too long')
@@ -89,6 +98,7 @@ const RequestFood = () => {
     cuisineStyles: [] as string[],
     locationCity: '',
     locationState: '',
+    countryCode: '',
     locationAddress: '',
     additionalNotes: '',
     responseWindow: 2,
@@ -191,7 +201,8 @@ const RequestFood = () => {
         flavorMoods: formData.flavorMoods,
         cuisineStyles: finalCuisineStyles,
         locationCity: formData.locationCity,
-        locationState: formData.locationState,
+        locationState: formData.locationState || undefined,
+        countryCode: formData.countryCode || undefined,
         locationAddress: formData.locationAddress || undefined,
         additionalNotes: formData.additionalNotes || undefined,
         responseWindow: formData.responseWindow,
@@ -235,9 +246,12 @@ const RequestFood = () => {
           requester_id: user.id,
           food_type: foodTypeString,
           location_city: validated.locationCity,
-          location_state: validated.locationState,
+          location_state: validated.locationState || null,
           location_address: validated.locationAddress || null,
           additional_notes: validated.additionalNotes || null,
+          lat: lat,
+          lng: lng,
+          country_code: validated.countryCode || null,
           status: 'active',
           expire_at: new Date(Date.now() + validated.responseWindow * 60 * 1000).toISOString()
         }])
@@ -397,46 +411,34 @@ const RequestFood = () => {
               
               {/* Location Section */}
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Location</h3>
-                    <p className="text-sm text-muted-foreground">Enter your city or use GPS</p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={getCurrentLocation}
-                    disabled={isGeolocating}
-                    className="shrink-0 rounded-xl border-2 border-primary text-primary hover:bg-primary/10"
-                  >
-                    {isGeolocating ? (
-                      <>
-                        <MapPin className="h-4 w-4 mr-2 animate-pulse" />
-                        Getting location...
-                      </>
-                    ) : (
-                      <>
-                        <Navigation className="h-4 w-4 mr-2" />
-                        Use my location
-                      </>
-                    )}
-                  </Button>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Location</h3>
+                  <p className="text-sm text-muted-foreground">Search for your city, neighborhood, or use GPS</p>
                 </div>
-                <CityAutocomplete
+                <LocationAutocomplete
                   value={locationInput}
                   onValueChange={setLocationInput}
-                  onCitySelect={(city, state) => {
-                    handleChange('locationCity', city);
-                    handleChange('locationState', state);
+                  onLocationSelect={(location: NormalizedLocation) => {
+                    handleChange('locationCity', location.city || location.displayLabel);
+                    handleChange('locationState', location.region || '');
+                    handleChange('countryCode', location.countryCode || '');
+                    if (location.lat && location.lng) {
+                      setFormData(prev => ({
+                        ...prev,
+                        lat: location.lat,
+                        lng: location.lng
+                      }));
+                    }
                   }}
-                  placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
-                  className="h-12 rounded-xl border-2 border-border focus:border-primary"
+                  placeholder="Search city, neighborhood, or address..."
+                  showGpsButton={true}
+                  showMapPicker={true}
+                  includeRestaurants={false}
                 />
                 {formData.lat && formData.lng && (
-                  <div className="text-sm text-green-600 flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
+                  <div className="text-sm text-green-600 flex items-center gap-2 bg-green-50 dark:bg-green-950/30 rounded-lg px-3 py-2">
                     <MapPin className="h-4 w-4" />
-                    GPS location captured for precise matching
+                    Location captured for precise matching
                   </div>
                 )}
               </div>
