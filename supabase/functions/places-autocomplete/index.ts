@@ -17,7 +17,9 @@ interface AutocompleteResult {
   description: string;
   placeId: string;
   city: string;
-  state: string;
+  state: string; // For backward compatibility - now contains region/state
+  country?: string;
+  countryCode?: string;
 }
 
 serve(async (req) => {
@@ -78,12 +80,11 @@ serve(async (req) => {
 
     console.log(`Fetching autocomplete for: ${input}`);
 
-    // Use Google Places Autocomplete API with US restriction and city/locality types
+    // Use Google Places Autocomplete API - NO country restriction for global support
     const autocompleteUrl = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
     autocompleteUrl.searchParams.set('input', input);
     autocompleteUrl.searchParams.set('key', GOOGLE_API_KEY!);
-    autocompleteUrl.searchParams.set('components', 'country:us'); // Restrict to US only
-    autocompleteUrl.searchParams.set('types', '(cities)'); // Only cities
+    autocompleteUrl.searchParams.set('types', '(regions)'); // Cities, regions, countries
     autocompleteUrl.searchParams.set('language', 'en');
 
     const response = await fetch(autocompleteUrl.toString());
@@ -96,36 +97,41 @@ serve(async (req) => {
       });
     }
 
-    // Process results to extract city and state
+    // Process results to extract city, state/region, and country
     const results: AutocompleteResult[] = data.predictions.map((prediction: any) => {
-      const terms = prediction.terms || [];
       const description = prediction.description;
+      const terms = prediction.terms || [];
       
-      // Extract city and state from the description
-      // Format is usually "City, State, Country" or "City, State"
-      const parts = description.split(', ');
+      // Extract components from terms
+      // Terms are ordered from most specific to least specific
+      // e.g., ["Kathmandu", "Bagmati Province", "Nepal"]
       let city = '';
       let state = '';
+      let country = '';
       
-      if (parts.length >= 2) {
-        city = parts[0];
-        state = parts[1];
-        
-        // Handle state abbreviations and full names
-        if (state.includes('USA')) {
-          state = parts[parts.length - 2]; // Get the state before "USA"
-        }
+      if (terms.length >= 1) {
+        city = terms[0].value;
+      }
+      if (terms.length >= 2) {
+        // Could be state/region or country
+        state = terms[1].value;
+      }
+      if (terms.length >= 3) {
+        country = terms[terms.length - 1].value;
+      } else if (terms.length === 2) {
+        // Two terms: city, country
+        country = terms[1].value;
+        state = ''; // No state for small countries
       }
 
       return {
         description,
         placeId: prediction.place_id,
         city: city.trim(),
-        state: state.trim()
+        state: state.trim(),
+        country: country.trim(),
       };
-    }).filter((result: AutocompleteResult) => 
-      result.city && result.state && !result.state.includes('USA')
-    );
+    }).filter((result: AutocompleteResult) => result.city);
 
     // Cache results
     cache.set(cacheKey, {
