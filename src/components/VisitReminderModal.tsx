@@ -39,38 +39,35 @@ export const VisitReminderModal = ({
 
       if (error) throw error;
 
+      onDismiss?.();
+      onOpenChange(false);
+
       if (response === 'visited') {
         toast({
           title: 'Great!',
           description: 'Please share your feedback',
         });
-        onDismiss?.();
-        onOpenChange(false);
-        navigate(`/feedback/${recommendationId}`);
+        // Navigate to feedback form, then will return to dashboard
+        navigate(`/feedback/${recommendationId}`, { state: { returnTo: '/dashboard' } });
+      } else if (response === 'not_visited') {
+        toast({
+          title: 'Thanks for letting us know',
+          description: 'We appreciate your feedback!',
+        });
+        // Navigate to feedback form for "didn't visit" feedback, then return to dashboard
+        navigate(`/feedback/${recommendationId}`, { state: { returnTo: '/dashboard', didNotVisit: true } });
       } else if (response === 'remind_3h' || response === 'maybe_later') {
         toast({
           title: 'Reminder set',
           description: "We'll remind you again in 3 hours",
         });
-        onDismiss?.();
-        onOpenChange(false);
-        navigate(`/request-results/${requestId}`);
+        navigate('/dashboard');
       } else if (response === 'no_reminder') {
         toast({
           title: 'Got it',
-          description: 'No problem! Thanks for letting us know',
+          description: 'No problem!',
         });
-        onDismiss?.();
-        onOpenChange(false);
         navigate('/dashboard');
-      } else if (response === 'not_visited') {
-        toast({
-          title: 'Thanks for letting us know',
-          description: 'Maybe next time!',
-        });
-        onDismiss?.();
-        onOpenChange(false);
-        navigate('/');
       }
     } catch (error) {
       console.error('Error handling visit response:', error);
