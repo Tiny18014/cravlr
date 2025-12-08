@@ -233,25 +233,37 @@ const SendRecommendation = () => {
 
           if (shouldShowFeedback && hasNotGivenFeedbackRecently) {
             // Wait 1.5 seconds after streak popup before showing feedback modal
+            // Don't redirect until feedback modal is closed
             setTimeout(() => {
               setShowFeedbackModal(true);
             }, 1500);
+            
+            // Skip automatic redirect - will be handled by feedback modal close
+          } else {
+            // No feedback modal, redirect after 2.5 seconds
+            setTimeout(() => {
+              navigate('/browse-requests');
+            }, 2500);
           }
         } catch (streakError) {
           console.error('Error updating streak:', streakError);
           // Don't block the success flow if streak update fails
+          // Still redirect on error
+          setTimeout(() => {
+            navigate('/browse-requests');
+          }, 2500);
         }
+      } else {
+        // Not showing streak popup, redirect after 2.5 seconds
+        setTimeout(() => {
+          navigate('/browse-requests');
+        }, 2500);
       }
 
       toast({
         title: "✅ Recommendation sent!",
         description: "Your recommendation has been shared with the requester.",
       });
-
-      // Redirect to browse requests after 2.5 seconds
-      setTimeout(() => {
-        navigate('/browse-requests');
-      }, 2500);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
@@ -469,7 +481,15 @@ const SendRecommendation = () => {
 
       <AppFeedbackSurvey
         open={showFeedbackModal}
-        onOpenChange={setShowFeedbackModal}
+        onOpenChange={(open) => {
+          setShowFeedbackModal(open);
+          // When feedback modal closes, navigate away
+          if (!open) {
+            setTimeout(() => {
+              navigate('/browse-requests');
+            }, 500);
+          }
+        }}
         role="recommender"
         sourceAction="streak_milestone_feedback"
       />
