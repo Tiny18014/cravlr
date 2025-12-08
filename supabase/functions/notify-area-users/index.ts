@@ -109,26 +109,68 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('id', request.requester_id)
       .single();
 
-    // Find users in the same geographic area who are eligible for notifications
-    // Exclude users who have paused recommender mode or disabled notifications
-    const { data: nearbyUsers, error: usersError } = await supabase
-      .from('profiles')
-      .select('id, display_name, notify_recommender, recommender_paused')
-      .eq('location_city', request.location_city)
-      .eq('location_state', request.location_state)
-      .neq('id', request.requester_id) // Don't notify the requester
-      .eq('notify_recommender', true) // Only get users who want recommender notifications
-      .or('recommender_paused.is.null,recommender_paused.eq.false'); // Exclude paused recommenders
+    // Find users who are eligible for notifications
+    // Use geo-based matching if coordinates are available, otherwise fall back to city matching
+    const hasCoordinates = request.lat && request.lng;
+    
+    let eligibleUsers: any[] = [];
+    
+    if (hasCoordinates) {
+      // Get all active recommenders with location data
+      const { data: potentialUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state')
+        .neq('id', request.requester_id)
+        .eq('notify_recommender', true)
+        .or('recommender_paused.is.null,recommender_paused.eq.false');
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw new Error('Failed to find users');
+      }
+      
+      // Filter by distance
+      eligibleUsers = (potentialUsers || []).filter(u => {
+        // If user has profile coordinates, use geo matching
+        if (u.profile_lat && u.profile_lng) {
+          const distance = calculateDistance(
+            request.lat, 
+            request.lng, 
+            u.profile_lat, 
+            u.profile_lng
+          );
+          const radius = u.notification_radius_km || 20;
+          return distance <= radius;
+        }
+        
+        // Fall back to city matching if no coordinates
+        return u.location_city?.toLowerCase() === request.location_city?.toLowerCase();
+      });
+      
+      console.log(`📍 Geo-based matching: Found ${eligibleUsers.length} users within radius`);
+    } else {
+      // Fall back to city-based matching
+      const { data: nearbyUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, display_name, notify_recommender, recommender_paused, location_city, location_state')
+        .ilike('location_city', request.location_city)
+        .neq('id', request.requester_id)
+        .eq('notify_recommender', true)
+        .or('recommender_paused.is.null,recommender_paused.eq.false');
 
-    if (usersError) {
-      console.error('Error fetching nearby users:', usersError);
-      throw new Error('Failed to find nearby users');
+      if (usersError) {
+        console.error('Error fetching nearby users:', usersError);
+        throw new Error('Failed to find nearby users');
+      }
+      
+      eligibleUsers = nearbyUsers || [];
+      console.log(`📍 City-based matching: Found ${eligibleUsers.length} users in ${request.location_city}`);
     }
 
-    if (!nearbyUsers || nearbyUsers.length === 0) {
-      console.log('No nearby users found in the area');
+    if (eligibleUsers.length === 0) {
+      console.log('No eligible users found');
       return new Response(JSON.stringify({ 
-        message: 'No nearby users found',
+        message: 'No eligible users found',
         notificationsSent: 0 
       }), {
         status: 200,
@@ -136,19 +178,22 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`Found ${nearbyUsers.length} eligible users to notify`);
+    console.log(`Found ${eligibleUsers.length} eligible users to notify`);
 
     // Send notification emails to all eligible users
-    const emailPromises = nearbyUsers.map(async (user) => {
+    const emailPromises = eligibleUsers.map(async (targetUser) => {
       // Get user's email from auth.users using service role key
-      const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(user.id);
+      const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
       
       if (authUserError || !authUser?.user?.email) {
-        console.log(`No email found for user ${user.id}`);
+        console.log(`No email found for user ${targetUser.id}`);
         return null;
       }
       
       const emailTo = authUser.user.email;
+      const locationDisplay = request.location_state 
+        ? `${request.location_city}, ${request.location_state}`
+        : request.location_city;
 
       try {
         const emailResponse = await resend.emails.send({
@@ -159,14 +204,14 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h1 style="color: #2563eb;">🍽️ New Food Request in Your Area!</h1>
               
-              <p>Hi ${user.display_name || 'there'}!</p>
+              <p>Hi ${targetUser.display_name || 'there'}!</p>
               
-              <p>Someone near you is looking for a great <strong>${request.food_type}</strong> spot in ${request.location_city}, ${request.location_state}!</p>
+              <p>Someone near you is looking for a great <strong>${request.food_type}</strong> spot in ${locationDisplay}!</p>
               
               <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h2 style="color: #1e40af; margin-top: 0;">📍 Request Details</h2>
                 <p><strong>Food Type:</strong> ${request.food_type}</p>
-                <p><strong>Location:</strong> ${request.location_city}, ${request.location_state}</p>
+                <p><strong>Location:</strong> ${locationDisplay}</p>
                 ${request.location_address ? `<p><strong>Near:</strong> ${request.location_address}</p>` : ''}
                 ${request.additional_notes ? `<p><strong>Notes:</strong> ${request.additional_notes}</p>` : ''}
                 <p><strong>Requested by:</strong> ${requesterProfile?.display_name || 'A fellow foodie'}</p>
@@ -183,7 +228,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               
               <p style="margin-top: 30px; font-size: 12px; color: #666;">
-                You received this because you're registered in the ${request.location_city}, ${request.location_state} area. 
+                You received this because you're registered near ${locationDisplay}. 
                 Update your notification preferences in your profile settings.
               </p>
               
@@ -211,7 +256,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ 
       success: true,
       notificationsSent: successfulEmails,
-      totalEligibleUsers: nearbyUsers.length
+      totalEligibleUsers: eligibleUsers.length
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
