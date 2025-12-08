@@ -52,28 +52,97 @@ serve(async (req) => {
       );
     }
 
-    const { address, city, state, zip } = await req.json();
-    console.log('📍 Geocoding request:', { address, city, state, zip });
+    const body = await req.json();
+    const { address, city, state, zip, lat, lng } = body;
+    
+    console.log('📍 Geocoding request:', { address, city, state, zip, lat, lng });
 
-    // Build the address string for geocoding
+    // If lat/lng provided, do reverse geocoding
+    if (lat !== undefined && lng !== undefined) {
+      console.log('🔄 Performing reverse geocoding');
+      
+      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&language=en`;
+      const response = await fetch(geocodeUrl);
+      const data = await response.json();
+
+      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        console.error('❌ Reverse geocoding failed:', data.status, data.error_message);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Could not reverse geocode coordinates',
+            details: data.error_message || 'No results found'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Extract city, state/region, country from address components
+      const result = data.results[0];
+      let cityName = '';
+      let stateName = '';
+      let countryName = '';
+      let countryCode = '';
+      let postalCode = '';
+
+      for (const component of result.address_components || []) {
+        const types = component.types || [];
+        if (types.includes('locality') || types.includes('postal_town')) {
+          cityName = component.long_name;
+        }
+        if (types.includes('administrative_area_level_1')) {
+          stateName = component.short_name; // Use short for backward compatibility
+        }
+        if (types.includes('country')) {
+          countryName = component.long_name;
+          countryCode = component.short_name;
+        }
+        if (types.includes('postal_code')) {
+          postalCode = component.long_name;
+        }
+      }
+
+      console.log('✅ Reverse geocoding successful:', { cityName, stateName, countryName });
+
+      return new Response(
+        JSON.stringify({
+          lat,
+          lng,
+          city: cityName,
+          state: stateName,
+          country: countryName,
+          countryCode,
+          postalCode,
+          formatted_address: result.formatted_address,
+          place_id: result.place_id
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Forward geocoding - build the address string
     let addressQuery = '';
     if (address) {
       addressQuery = address;
     } else if (city && state) {
       addressQuery = `${city}, ${state}`;
+    } else if (city) {
+      addressQuery = city;
     } else if (zip) {
       addressQuery = zip;
     } else {
       return new Response(
-        JSON.stringify({ error: 'Need at least city/state, zip, or full address' }),
+        JSON.stringify({ error: 'Need at least city, zip, or full address' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('🔍 Geocoding address:', addressQuery);
+    console.log('🔍 Forward geocoding address:', addressQuery);
 
-    // Call Google Geocoding API
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressQuery)}&key=${GOOGLE_API_KEY}`;
+    // Call Google Geocoding API (no country restriction for global support)
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressQuery)}&key=${GOOGLE_API_KEY}&language=en`;
     
     const response = await fetch(geocodeUrl);
     const data = await response.json();
@@ -91,6 +160,26 @@ serve(async (req) => {
 
     const result = data.results[0];
     const location = result.geometry.location;
+
+    // Extract additional info from address components
+    let cityName = '';
+    let stateName = '';
+    let countryName = '';
+    let countryCode = '';
+
+    for (const component of result.address_components || []) {
+      const types = component.types || [];
+      if (types.includes('locality') || types.includes('postal_town')) {
+        cityName = component.long_name;
+      }
+      if (types.includes('administrative_area_level_1')) {
+        stateName = component.short_name;
+      }
+      if (types.includes('country')) {
+        countryName = component.long_name;
+        countryCode = component.short_name;
+      }
+    }
     
     console.log('✅ Geocoding successful:', {
       lat: location.lat,
@@ -102,6 +191,10 @@ serve(async (req) => {
       JSON.stringify({
         lat: location.lat,
         lng: location.lng,
+        city: cityName,
+        state: stateName,
+        country: countryName,
+        countryCode,
         formatted_address: result.formatted_address,
         place_id: result.place_id
       }),

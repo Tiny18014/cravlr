@@ -10,21 +10,20 @@ const corsHeaders = {
 
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY');
 console.log('API Key Status:', GOOGLE_API_KEY ? 'LOADED' : 'MISSING');
-console.log('API Key Length:', GOOGLE_API_KEY ? GOOGLE_API_KEY.length : 0);
 
-const DEFAULT_RADIUS_KM = 5;
+const DEFAULT_RADIUS_KM = 10;
 const MAX_RESULTS = 20;
 const CACHE_TTL_MIN = 15;
 
 // Simple in-memory cache
 const cache = new Map();
 
-// Rate limiting cache: key is "userId:minute", value is request count
+// Rate limiting cache
 const rateLimitCache = new Map<string, number>();
 const RATE_LIMIT_REQUESTS_PER_MINUTE = 20;
 
 interface SearchRequest {
-  zip?: string;
+  location?: string; // Can be city name, postal code, or address (global)
   lat?: number;
   lng?: number;
   query?: string;
@@ -35,7 +34,7 @@ interface AutocompleteRequest {
   input: string;
   lat?: number;
   lng?: number;
-  zip?: string;
+  location?: string;
   radiusKm?: number;
   sessionToken?: string;
 }
@@ -61,70 +60,71 @@ interface AutocompleteResult {
   description: string;
 }
 
-// Helper function to fetch and log Google API responses
 async function fetchJSON(url: string) {
   const res = await fetch(url);
   const json = await res.json();
-  console.log('GOOGLE RESP:', { url, http: res.status, status: json.status, err: json.error_message });
+  console.log('GOOGLE RESP:', { url: url.split('?')[0], http: res.status, status: json.status, err: json.error_message });
   return { ok: res.ok, json };
 }
 
-async function geocodeIfNeeded(zip?: string, lat?: number, lng?: number) {
+async function geocodeIfNeeded(location?: string, lat?: number, lng?: number) {
   if (lat != null && lng != null) return { lat, lng };
-  if (!zip) return undefined;
-  return await geocodeZip(zip);
+  if (!location) return undefined;
+  return await geocodeLocation(location);
 }
 
-async function geocodeZip(zip: string) {
+// Global geocoding - no country restriction
+async function geocodeLocation(location: string) {
   if (!GOOGLE_API_KEY) throw new Error('Google API key not configured');
 
-  // First try as-is, biased to US
   const base = `https://maps.googleapis.com/maps/api/geocode/json`;
   const params = new URLSearchParams({
-    address: zip,
+    address: location,
     key: GOOGLE_API_KEY!,
-    components: 'country:US',
+    language: 'en',
   });
 
   let { json } = await fetchJSON(`${base}?${params.toString()}`);
 
   if (json.status === 'OK' && json.results?.length) {
     const loc = json.results[0].geometry.location;
-    console.log(`Successfully geocoded "${zip}" to: ${loc.lat}, ${loc.lng}`);
+    console.log(`Successfully geocoded "${location}" to: ${loc.lat}, ${loc.lng}`);
     return { lat: loc.lat, lng: loc.lng };
   }
 
-  // Retry with city-only if the user passed "City, State" or "ZIP, USA"
-  if (zip.includes(',')) {
-    const cityOnly = zip.split(',')[0].trim();
-    if (cityOnly) {
-      console.log(`Retrying geocoding with city only: ${cityOnly}`);
-      const retry = new URLSearchParams({ address: cityOnly, key: GOOGLE_API_KEY!, components: 'country:US' });
+  // Retry with just the first part if location contains comma
+  if (location.includes(',')) {
+    const firstPart = location.split(',')[0].trim();
+    if (firstPart) {
+      console.log(`Retrying geocoding with: ${firstPart}`);
+      const retry = new URLSearchParams({ address: firstPart, key: GOOGLE_API_KEY!, language: 'en' });
       ({ json } = await fetchJSON(`${base}?${retry.toString()}`));
       if (json.status === 'OK' && json.results?.length) {
         const loc = json.results[0].geometry.location;
-        console.log(`Successfully geocoded city "${cityOnly}" to: ${loc.lat}, ${loc.lng}`);
+        console.log(`Successfully geocoded "${firstPart}" to: ${loc.lat}, ${loc.lng}`);
         return { lat: loc.lat, lng: loc.lng };
       }
     }
   }
 
   console.error('Geocoding failed:', json.status, json.error_message || 'No error details');
-  throw new Error(`Could not geocode location "${zip}": ${json.status || 'Unknown error'}`);
+  throw new Error(`Could not geocode location "${location}": ${json.status || 'Unknown error'}`);
 }
 
+// Global autocomplete - no country restriction
 async function autocompletePlaces(req: AutocompleteRequest): Promise<AutocompleteResult[]> {
-  const { input, lat, lng, zip, radiusKm = DEFAULT_RADIUS_KM, sessionToken } = req;
+  const { input, lat, lng, location, radiusKm = DEFAULT_RADIUS_KM, sessionToken } = req;
   if (!GOOGLE_API_KEY) throw new Error('Google API key not configured');
   if (!input?.trim()) return [];
 
-  const coords = await geocodeIfNeeded(zip, lat, lng);
+  const coords = await geocodeIfNeeded(location, lat, lng);
   const params = new URLSearchParams({
     input: input.trim(),
     key: GOOGLE_API_KEY!,
     types: 'establishment',
-    components: 'country:us',
+    language: 'en',
   });
+  
   if (coords) {
     params.set('location', `${coords.lat},${coords.lng}`);
     params.set('radius', String(Math.round(radiusKm * 1000)));
@@ -133,7 +133,6 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
 
   const { json } = await fetchJSON(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
   
-  // ZERO_RESULTS is a valid response - just means no matches found
   if (json.status === 'ZERO_RESULTS') {
     console.log('Autocomplete returned zero results for:', input);
     return [];
@@ -158,7 +157,7 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
 async function searchPlaces(lat: number, lng: number, query: string, radiusKm: number): Promise<PlaceResult[]> {
   const radiusMeters = Math.round(radiusKm * 1000);
 
-  // Nearby Search: prefer matching name
+  // Nearby Search
   const nearbyUrl =
     `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}` +
     `&radius=${radiusMeters}&type=restaurant&name=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}`;
@@ -173,7 +172,13 @@ async function searchPlaces(lat: number, lng: number, query: string, radiusKm: n
     ({ json } = await fetchJSON(textUrl));
   }
 
-  if (json.status && json.status !== 'OK') {
+  // Handle ZERO_RESULTS gracefully
+  if (json.status === 'ZERO_RESULTS') {
+    console.log('Search returned zero results for:', query);
+    return [];
+  }
+
+  if (json.status && json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
     throw new Error(`Places search failed: ${json.status} ${json.error_message || ''}`);
   }
   
@@ -196,7 +201,7 @@ async function searchPlaces(lat: number, lng: number, query: string, radiusKm: n
 }
 
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371e3; // Earth's radius in meters
+  const R = 6371e3;
   const φ1 = lat1 * Math.PI/180;
   const φ2 = lat2 * Math.PI/180;
   const Δφ = (lat2-lat1) * Math.PI/180;
@@ -250,7 +255,7 @@ serve(async (req) => {
 
   console.log('Authenticated user:', user.id);
 
-  // Rate limiting: check requests per minute
+  // Rate limiting
   const currentMinute = Math.floor(Date.now() / 60000);
   const rateLimitKey = `${user.id}:${currentMinute}`;
   const requestCount = rateLimitCache.get(rateLimitKey) || 0;
@@ -263,10 +268,9 @@ serve(async (req) => {
     });
   }
 
-  // Increment rate limit counter
   rateLimitCache.set(rateLimitKey, requestCount + 1);
 
-  // Clean up old rate limit entries (older than 2 minutes)
+  // Clean old rate limit entries
   const twoMinutesAgo = currentMinute - 2;
   for (const key of rateLimitCache.keys()) {
     const keyMinute = parseInt(key.split(':')[1]);
@@ -280,7 +284,7 @@ serve(async (req) => {
       console.log('Routing to autocomplete handler');
       const body = await req.json() as AutocompleteRequest;
       console.log('Autocomplete request:', body);
-      const cacheKey = `ac:${body.input}:${body.lat ?? ''}:${body.lng ?? ''}:${body.zip ?? ''}:${body.radiusKm ?? DEFAULT_RADIUS_KM}`;
+      const cacheKey = `ac:${body.input}:${body.lat ?? ''}:${body.lng ?? ''}:${body.location ?? ''}:${body.radiusKm ?? DEFAULT_RADIUS_KM}`;
       
       const cached = cache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MIN * 60 * 1000) {
@@ -303,12 +307,10 @@ serve(async (req) => {
     console.log('Routing to search handler');
     const body = await req.json() as SearchRequest;
     console.log('Search request:', body);
-    const { zip, lat, lng, query = '', radiusKm = DEFAULT_RADIUS_KM } = body;
+    const { location, lat, lng, query = '', radiusKm = DEFAULT_RADIUS_KM } = body;
 
-    // Generate cache key
-    const cacheKey = `search:${lat || zip}-${lng || ''}-${query}-${radiusKm}`;
+    const cacheKey = `search:${lat || location}-${lng || ''}-${query}-${radiusKm}`;
     
-    // Check cache
     const cached = cache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MIN * 60 * 1000) {
       console.log('Returning cached search results');
@@ -320,17 +322,17 @@ serve(async (req) => {
     let searchLat = lat;
     let searchLng = lng;
 
-    // Geocode ZIP if lat/lng not provided
+    // Geocode location if lat/lng not provided
     if (!searchLat || !searchLng) {
-      if (!zip) {
-        return new Response(JSON.stringify({ error: 'Either lat/lng or zip is required' }), {
+      if (!location) {
+        return new Response(JSON.stringify({ error: 'Either lat/lng or location is required' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
       try {
-        const coords = await geocodeZip(zip);
+        const coords = await geocodeLocation(location);
         searchLat = coords.lat;
         searchLng = coords.lng;
       } catch (error: any) {
@@ -344,7 +346,7 @@ serve(async (req) => {
 
     const results = await searchPlaces(searchLat!, searchLng!, query, radiusKm);
     
-    // Sort by distance (asc), then rating (desc), then reviews (desc)
+    // Sort by distance, rating, reviews
     results.sort((a, b) => {
       if (a.distanceMeters && b.distanceMeters) {
         if (a.distanceMeters !== b.distanceMeters) {
@@ -360,11 +362,7 @@ serve(async (req) => {
       return 0;
     });
 
-    // Cache results
-    cache.set(cacheKey, {
-      data: results,
-      timestamp: Date.now()
-    });
+    cache.set(cacheKey, { data: results, timestamp: Date.now() });
 
     console.log(`Found ${results.length} restaurants`);
     
