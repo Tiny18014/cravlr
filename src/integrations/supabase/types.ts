@@ -225,6 +225,78 @@ export type Database = {
         }
         Relationships: []
       }
+      locations: {
+        Row: {
+          admin_hierarchy: Json | null
+          city: string | null
+          continent: string | null
+          country_code: string | null
+          country_name: string | null
+          county: string | null
+          created_at: string
+          formatted_address: string
+          house_number: string | null
+          id: string
+          lat: number
+          lng: number
+          neighborhood: string | null
+          place_label: string | null
+          postal_code: string | null
+          raw_provider_response: Json | null
+          region: string | null
+          source: string
+          street: string | null
+          suburb: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_hierarchy?: Json | null
+          city?: string | null
+          continent?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          county?: string | null
+          created_at?: string
+          formatted_address: string
+          house_number?: string | null
+          id?: string
+          lat: number
+          lng: number
+          neighborhood?: string | null
+          place_label?: string | null
+          postal_code?: string | null
+          raw_provider_response?: Json | null
+          region?: string | null
+          source?: string
+          street?: string | null
+          suburb?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_hierarchy?: Json | null
+          city?: string | null
+          continent?: string | null
+          country_code?: string | null
+          country_name?: string | null
+          county?: string | null
+          created_at?: string
+          formatted_address?: string
+          house_number?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          neighborhood?: string | null
+          place_label?: string | null
+          postal_code?: string | null
+          raw_provider_response?: Json | null
+          region?: string | null
+          source?: string
+          street?: string | null
+          suburb?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -265,6 +337,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      places: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          formatted_address: string
+          id: string
+          lat: number
+          lng: number
+          name: string
+          neighborhood: string | null
+          price_level: number | null
+          provider: string
+          provider_place_id: string
+          rating: number | null
+          raw_provider_response: Json | null
+          suburb: string | null
+          types: Json | null
+          updated_at: string
+          user_ratings_total: number | null
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          formatted_address: string
+          id?: string
+          lat: number
+          lng: number
+          name: string
+          neighborhood?: string | null
+          price_level?: number | null
+          provider?: string
+          provider_place_id: string
+          rating?: number | null
+          raw_provider_response?: Json | null
+          suburb?: string | null
+          types?: Json | null
+          updated_at?: string
+          user_ratings_total?: number | null
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          formatted_address?: string
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          neighborhood?: string | null
+          price_level?: number | null
+          provider?: string
+          provider_place_id?: string
+          rating?: number | null
+          raw_provider_response?: Json | null
+          suburb?: string | null
+          types?: Json | null
+          updated_at?: string
+          user_ratings_total?: number | null
+        }
+        Relationships: []
       }
       points_events: {
         Row: {
@@ -716,6 +851,41 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "food_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_current_locations: {
+        Row: {
+          created_at: string
+          id: string
+          is_from_gps: boolean | null
+          location_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_from_gps?: boolean | null
+          location_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_from_gps?: boolean | null
+          location_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_current_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]

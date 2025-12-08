@@ -1,27 +1,51 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, X, Loader2, Navigation, Building2, Utensils } from 'lucide-react';
+import { MapPin, X, Loader2, Navigation, Building2, Utensils, Map } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+// Full normalized location with administrative hierarchy
+export interface AdminLevel {
+  level: string;
+  name: string;
+  code?: string;
+}
 
 export interface NormalizedLocation {
-  type: 'area' | 'place';
+  id?: string;
+  type: 'area' | 'place' | 'address';
   displayLabel: string;
   formattedAddress: string;
   lat: number;
   lng: number;
+  // Full administrative hierarchy
+  continent?: string;
   countryName?: string;
   countryCode?: string;
-  stateOrRegion?: string;
-  cityOrLocality?: string;
+  region?: string;
+  county?: string;
+  city?: string;
+  suburb?: string;
+  neighborhood?: string;
+  street?: string;
+  houseNumber?: string;
   postalCode?: string;
+  adminHierarchy?: AdminLevel[];
+  viewport?: {
+    northeast: { lat: number; lng: number };
+    southwest: { lat: number; lng: number };
+  };
+  source?: 'google_geocoding' | 'google_places' | 'osm_nominatim' | 'manual_map_pick';
+  // For places (restaurants)
   providerPlaceId?: string;
   name?: string;
   categories?: string[];
   rating?: number;
   priceLevel?: number;
+  userRatingsTotal?: number;
 }
 
 interface LocationAutocompleteProps {
@@ -32,6 +56,7 @@ interface LocationAutocompleteProps {
   disabled?: boolean;
   className?: string;
   showGpsButton?: boolean;
+  showMapPicker?: boolean;
   includeRestaurants?: boolean;
   onGpsLocation?: (location: NormalizedLocation) => void;
 }
@@ -44,6 +69,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   disabled = false,
   className,
   showGpsButton = true,
+  showMapPicker = true,
   includeRestaurants = true,
   onGpsLocation,
 }) => {
@@ -52,6 +78,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showMapModal, setShowMapModal] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -107,7 +134,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         }
 
         const results = data?.data || [];
-        setSuggestions(results.slice(0, 8));
+        setSuggestions(results.slice(0, 10));
         setIsOpen(results.length > 0);
       } catch (error) {
         console.error('Error searching locations:', error);
@@ -116,7 +143,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       } finally {
         setIsLoading(false);
       }
-    }, 400);
+    }, 350);
 
     return () => {
       if (debounceRef.current) {
@@ -134,6 +161,19 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     onLocationSelect(location);
     setIsOpen(false);
     setSuggestions([]);
+
+    // Save to user's current location
+    saveUserLocation(location, false);
+  };
+
+  const saveUserLocation = async (location: NormalizedLocation, isFromGps: boolean) => {
+    try {
+      await supabase.functions.invoke('user-location', {
+        body: { location, isFromGps },
+      });
+    } catch (error) {
+      console.error('Failed to save user location:', error);
+    }
   };
 
   const handleInputFocus = () => {
@@ -169,7 +209,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000,
           maximumAge: 300000,
         });
       });
@@ -178,7 +218,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
       // Reverse geocode to get location details
       const { data, error } = await supabase.functions.invoke('location-from-coordinates', {
-        body: { lat: latitude, lng: longitude }
+        body: { lat: latitude, lng: longitude, source: 'gps' }
       });
 
       if (error) throw error;
@@ -193,9 +233,16 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           lng: location.lng,
           countryName: location.countryName,
           countryCode: location.countryCode,
-          stateOrRegion: location.stateOrRegion,
-          cityOrLocality: location.cityOrLocality,
+          region: location.region,
+          county: location.county,
+          city: location.city,
+          suburb: location.suburb,
+          neighborhood: location.neighborhood,
+          street: location.street,
+          houseNumber: location.houseNumber,
           postalCode: location.postalCode,
+          adminHierarchy: location.adminHierarchy,
+          source: location.source,
         };
 
         onValueChange(location.displayLabel);
@@ -229,37 +276,77 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     }
   };
 
+  const handleMapLocationSelect = (location: NormalizedLocation) => {
+    onValueChange(location.displayLabel);
+    onLocationSelect(location);
+    setShowMapModal(false);
+
+    toast({
+      title: "Location set",
+      description: `Set to ${location.displayLabel}`,
+    });
+  };
+
   const getLocationIcon = (location: NormalizedLocation) => {
     if (location.type === 'place') {
       return <Utensils className="h-4 w-4 text-primary flex-shrink-0" />;
     }
+    if (location.type === 'address') {
+      return <MapPin className="h-4 w-4 text-primary flex-shrink-0" />;
+    }
     return <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />;
+  };
+
+  const getLocationTypeLabel = (location: NormalizedLocation) => {
+    if (location.type === 'place') return 'Restaurant';
+    if (location.type === 'address') return 'Address';
+    if (location.neighborhood) return 'Neighborhood';
+    if (location.suburb) return 'Area';
+    if (location.city) return 'City';
+    if (location.region) return 'Region';
+    return 'Location';
   };
 
   return (
     <div className="space-y-2">
-      {showGpsButton && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleUseGps}
-          disabled={isGeolocating || disabled}
-          className="w-full sm:w-auto rounded-xl border-2 border-primary text-primary hover:bg-primary/10"
-        >
-          {isGeolocating ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Getting location...
-            </>
-          ) : (
-            <>
-              <Navigation className="h-4 w-4 mr-2" />
-              Use my location
-            </>
-          )}
-        </Button>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {showGpsButton && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleUseGps}
+            disabled={isGeolocating || disabled}
+            className="rounded-xl border-2 border-primary text-primary hover:bg-primary/10"
+          >
+            {isGeolocating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Getting location...
+              </>
+            ) : (
+              <>
+                <Navigation className="h-4 w-4 mr-2" />
+                Use my location
+              </>
+            )}
+          </Button>
+        )}
+
+        {showMapPicker && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowMapModal(true)}
+            disabled={disabled}
+            className="rounded-xl border-2 border-muted-foreground/30 text-muted-foreground hover:bg-muted/10"
+          >
+            <Map className="h-4 w-4 mr-2" />
+            Pick on map
+          </Button>
+        )}
+      </div>
 
       <div className="relative w-full">
         <div className="relative">
@@ -273,7 +360,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
-              "pl-10 pr-10 h-12 text-base",
+              "pl-10 pr-10 h-12 text-base rounded-full border-2 border-primary",
               className
             )}
           />
@@ -318,18 +405,261 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
                     )}
                   </div>
                   <div className="text-sm text-muted-foreground truncate">
-                    {suggestion.type === 'place' ? suggestion.formattedAddress : (
-                      [suggestion.stateOrRegion, suggestion.countryName].filter(Boolean).join(', ')
-                    )}
+                    {suggestion.type === 'place' 
+                      ? suggestion.formattedAddress 
+                      : [suggestion.region, suggestion.countryName].filter(Boolean).join(', ')
+                    }
                   </div>
-                  {suggestion.type === 'place' && (
-                    <div className="text-xs text-primary mt-0.5">Restaurant</div>
-                  )}
+                  <div className="text-xs text-primary mt-0.5">
+                    {getLocationTypeLabel(suggestion)}
+                  </div>
                 </div>
               </button>
             ))}
           </div>
         )}
+      </div>
+
+      {/* Map Picker Modal */}
+      <Dialog open={showMapModal} onOpenChange={setShowMapModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Pick your location on the map</DialogTitle>
+          </DialogHeader>
+          <MapLocationPicker 
+            onLocationSelect={handleMapLocationSelect}
+            initialCoords={userCoords}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// Map Location Picker Component
+interface MapLocationPickerProps {
+  onLocationSelect: (location: NormalizedLocation) => void;
+  initialCoords?: { lat: number; lng: number } | null;
+}
+
+const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
+  onLocationSelect,
+  initialCoords,
+) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  const [marker, setMarker] = useState<any>(null);
+  const [currentLocation, setCurrentLocation] = useState<NormalizedLocation | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const { toast } = useToast();
+  const throttleRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Default to world view or user's location
+  const defaultCenter = initialCoords || { lat: 20, lng: 0 };
+  const defaultZoom = initialCoords ? 14 : 2;
+
+  // Load Google Maps script
+  useEffect(() => {
+    const loadGoogleMaps = () => {
+      if (window.google?.maps) {
+        setMapLoaded(true);
+        return;
+      }
+
+      // Check if script is already loading
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        const checkLoaded = setInterval(() => {
+          if (window.google?.maps) {
+            setMapLoaded(true);
+            clearInterval(checkLoaded);
+          }
+        }, 100);
+        return;
+      }
+
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        console.error('Google Maps API key not configured');
+        toast({
+          title: "Map unavailable",
+          description: "Map picker is not configured. Please use text search instead.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => setMapLoaded(true);
+      script.onerror = () => {
+        toast({
+          title: "Map failed to load",
+          description: "Please use text search instead.",
+          variant: "destructive",
+        });
+      };
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMaps();
+  }, [toast]);
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current || mapInstance) return;
+
+    const google = (window as any).google;
+    if (!google?.maps) return;
+
+    const map = new google.maps.Map(mapRef.current, {
+      center: defaultCenter,
+      zoom: defaultZoom,
+      mapTypeControl: false,
+      fullscreenControl: false,
+      streetViewControl: false,
+    });
+
+    const newMarker = new google.maps.Marker({
+      position: defaultCenter,
+      map,
+      draggable: true,
+      animation: google.maps.Animation.DROP,
+    });
+
+    // Handle marker drag
+    newMarker.addListener('dragend', () => {
+      const pos = newMarker.getPosition();
+      if (pos) {
+        throttledReverseGeocode(pos.lat(), pos.lng());
+      }
+    });
+
+    // Handle map click
+    map.addListener('click', (e: any) => {
+      if (e.latLng) {
+        newMarker.setPosition(e.latLng);
+        throttledReverseGeocode(e.latLng.lat(), e.latLng.lng());
+      }
+    });
+
+    setMapInstance(map);
+    setMarker(newMarker);
+
+    // Initial reverse geocode if we have coords
+    if (initialCoords) {
+      throttledReverseGeocode(initialCoords.lat, initialCoords.lng);
+    }
+  }, [mapLoaded, defaultCenter, defaultZoom]);
+
+  const throttledReverseGeocode = useCallback((lat: number, lng: number) => {
+    if (throttleRef.current) {
+      clearTimeout(throttleRef.current);
+    }
+
+    throttleRef.current = setTimeout(() => {
+      reverseGeocode(lat, lng);
+    }, 500);
+  }, []);
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('location-from-coordinates', {
+        body: { lat, lng, source: 'map_pick' }
+      });
+
+      if (error) throw error;
+
+      const location = data?.data;
+      if (location) {
+        setCurrentLocation({
+          type: 'area',
+          displayLabel: location.displayLabel,
+          formattedAddress: location.formattedAddress,
+          lat: location.lat,
+          lng: location.lng,
+          countryName: location.countryName,
+          countryCode: location.countryCode,
+          region: location.region,
+          county: location.county,
+          city: location.city,
+          suburb: location.suburb,
+          neighborhood: location.neighborhood,
+          street: location.street,
+          houseNumber: location.houseNumber,
+          postalCode: location.postalCode,
+          adminHierarchy: location.adminHierarchy,
+          source: 'manual_map_pick',
+        });
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+      setCurrentLocation(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (currentLocation) {
+      onLocationSelect(currentLocation);
+    }
+  };
+
+  if (!mapLoaded) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading map...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div 
+        ref={mapRef} 
+        className="w-full h-80 rounded-lg border border-border"
+        style={{ minHeight: '320px' }}
+      />
+      
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4" />
+          <span>Click or drag the pin to select your location</span>
+        </div>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Getting location details...</span>
+          </div>
+        )}
+
+        {currentLocation && !isLoading && (
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <div className="font-medium">{currentLocation.displayLabel}</div>
+            <div className="text-sm text-muted-foreground">{currentLocation.formattedAddress}</div>
+          </div>
+        )}
+
+        <Button
+          onClick={handleConfirm}
+          disabled={!currentLocation || isLoading}
+          className="w-full"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Getting location...
+            </>
+          ) : (
+            'Confirm Location'
+          )}
+        </Button>
       </div>
     </div>
   );
