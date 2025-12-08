@@ -191,37 +191,31 @@ const SendRecommendation = () => {
         }
       }
 
-      // Update streak and points for recommenders only
+      // Update streak for recommenders (points are handled by edge function)
       if (hasRole('recommender')) {
         try {
-          // Fetch current streak, points, and last feedback date
+          // Fetch current streak and last feedback date
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('streak_count, total_points, last_feedback_date')
+            .select('streak_count, last_feedback_date')
             .eq('id', user.id)
             .single();
 
           if (profileError) throw profileError;
 
           const currentStreak = profileData?.streak_count || 0;
-          const currentPoints = profileData?.total_points || 0;
-          const pointsToAdd = 5;
           const newStreak = currentStreak + 1;
-          const newPoints = currentPoints + pointsToAdd;
 
-          // Update streak and points
+          // Update streak only (points are updated by process-recommendation-points edge function)
           const { error: updateError } = await supabase
             .from('profiles')
-            .update({
-              streak_count: newStreak,
-              total_points: newPoints
-            })
+            .update({ streak_count: newStreak })
             .eq('id', user.id);
 
           if (updateError) throw updateError;
 
-          // Show streak popup
-          setStreakData({ streakCount: newStreak, points: pointsToAdd });
+          // Show streak popup with points awarded by edge function
+          setStreakData({ streakCount: newStreak, points: 5 });
           setShowStreakPopup(true);
 
           // Check if we should show feedback modal

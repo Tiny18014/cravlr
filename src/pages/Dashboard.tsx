@@ -135,16 +135,16 @@ const Dashboard = () => {
       }
       setReceivedRecommendations(receivedCount || []);
 
-      // Fetch user points
+      // Fetch user points (using points_total which is updated by edge function)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('total_points, points_this_month')
+        .select('points_total, points_this_month')
         .eq('id', user?.id)
         .maybeSingle();
 
       if (profile) {
         setUserPoints({
-          total: profile.total_points || 0,
+          total: profile.points_total || 0,
           thisMonth: profile.points_this_month || 0
         });
       }
