@@ -5,20 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, MapPin, Save, MessageSquareHeart, Bell, Utensils } from 'lucide-react';
+import { User, MapPin, Save, MessageSquareHeart, Bell, Utensils, Navigation } from 'lucide-react';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 import AccountDeletion from '@/components/AccountDeletion';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { RecommenderProgress } from '@/components/RecommenderProgress';
+import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
+import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, {
@@ -26,6 +29,10 @@ const profileFormSchema = z.object({
   }),
   location_city: z.string().optional().or(z.literal('')),
   location_state: z.string().optional().or(z.literal('')),
+  profile_lat: z.number().nullable().optional(),
+  profile_lng: z.number().nullable().optional(),
+  profile_country: z.string().optional().or(z.literal('')),
+  notification_radius_km: z.number().min(1).max(100).optional(),
   notify_recommender: z.boolean(),
   recommender_paused: z.boolean(),
 });
@@ -44,6 +51,7 @@ const Profile = () => {
   const [userName, setUserName] = useState('');
   const [userLevel, setUserLevel] = useState('Newbie');
   const [userPoints, setUserPoints] = useState(0);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -52,6 +60,10 @@ const Profile = () => {
       display_name: '',
       location_city: '',
       location_state: '',
+      profile_lat: null,
+      profile_lng: null,
+      profile_country: '',
+      notification_radius_km: 20,
       notify_recommender: true,
       recommender_paused: false,
     },
@@ -84,17 +96,22 @@ const Profile = () => {
       if (profile) {
         const locationDisplay = profile.location_city && profile.location_state 
           ? `${profile.location_city}, ${profile.location_state}`
-          : '';
+          : profile.location_city || '';
         
         setLocationInput(locationDisplay);
         setUserName(profile.display_name || user?.email?.split('@')[0] || 'User');
         setUserLevel(profile.level || 'Newbie');
         setUserPoints(profile.points_total || 0);
+        setProfileImageUrl((profile as any).profile_image_url || null);
         
         form.reset({
           display_name: profile.display_name || '',
           location_city: profile.location_city || '',
           location_state: profile.location_state || '',
+          profile_lat: (profile as any).profile_lat || null,
+          profile_lng: (profile as any).profile_lng || null,
+          profile_country: (profile as any).profile_country || '',
+          notification_radius_km: (profile as any).notification_radius_km || 20,
           notify_recommender: profile.notify_recommender ?? true,
           recommender_paused: profile.recommender_paused ?? false,
         });
@@ -129,6 +146,10 @@ const Profile = () => {
           display_name: values.display_name,
           location_city: values.location_city,
           location_state: values.location_state,
+          profile_lat: values.profile_lat,
+          profile_lng: values.profile_lng,
+          profile_country: values.profile_country,
+          notification_radius_km: values.notification_radius_km,
           notify_recommender: values.notify_recommender,
           recommender_paused: values.recommender_paused,
           recommender_paused_at: recommenderPausedAt,
@@ -177,6 +198,9 @@ const Profile = () => {
       <DashboardHeader onSignOut={signOut} userName={userName} />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
+        {/* Notification Permission Banner */}
+        <NotificationPermissionBanner className="mb-6" />
+
         {/* Recommender Progress - Only show for recommenders */}
         {hasRole('recommender') && (
           <div className="mb-6">
@@ -196,7 +220,24 @@ const Profile = () => {
                   Personal Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Profile Picture */}
+                <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4">
+                  <ProfilePictureUpload
+                    currentImageUrl={profileImageUrl}
+                    displayName={userName}
+                    onImageChange={setProfileImageUrl}
+                    size="lg"
+                  />
+                  <div className="text-center sm:text-left">
+                    <h3 className="font-medium">{userName}</h3>
+                    <p className="text-sm text-muted-foreground">{userLevel}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click the camera icon to change your photo
+                    </p>
+                  </div>
+                </div>
+
                 <FormField
                   control={form.control}
                   name="display_name"
@@ -221,25 +262,55 @@ const Profile = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
-                  Location
+                  Default Location
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="location-input">City and State</Label>
-                  <CityAutocomplete
+                  <Label htmlFor="location-input">Your Location</Label>
+                  <LocationAutocomplete
                     value={locationInput}
                     onValueChange={setLocationInput}
-                    onCitySelect={(city, state) => {
-                      form.setValue('location_city', city, { shouldDirty: true });
-                      form.setValue('location_state', state, { shouldDirty: true });
+                    onLocationSelect={(location: NormalizedLocation) => {
+                      form.setValue('location_city', location.city || '', { shouldDirty: true });
+                      form.setValue('location_state', location.region || '', { shouldDirty: true });
+                      form.setValue('profile_lat', location.lat, { shouldDirty: true });
+                      form.setValue('profile_lng', location.lng, { shouldDirty: true });
+                      form.setValue('profile_country', location.countryName || '', { shouldDirty: true });
                     }}
-                    placeholder="Type a city name (e.g., Charlotte, Austin, etc.)"
+                    placeholder="Search city, neighborhood, or use GPS..."
+                    showGpsButton={true}
+                    showMapPicker={true}
+                    includeRestaurants={false}
                   />
                   <p className="text-sm text-muted-foreground mt-2">
-                    Your location helps us show you relevant food requests and recommendations in your area.
+                    Your default location is used for matching food requests and sending nearby notifications.
                   </p>
                 </div>
+
+                {/* Notification Radius */}
+                <FormField
+                  control={form.control}
+                  name="notification_radius_km"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notification Radius: {field.value || 20} km</FormLabel>
+                      <FormControl>
+                        <Slider
+                          value={[field.value || 20]}
+                          onValueChange={(values) => field.onChange(values[0])}
+                          min={1}
+                          max={100}
+                          step={1}
+                          className="w-full"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Get notified about food requests within this distance from your location.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 

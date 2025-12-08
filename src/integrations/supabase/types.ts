@@ -86,13 +86,55 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          onesignal_player_id: string | null
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          onesignal_player_id?: string | null
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          onesignal_player_id?: string | null
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_requests: {
         Row: {
           additional_notes: string | null
+          country_code: string | null
           created_at: string
           expire_at: string
           food_type: string
           id: string
+          lat: number | null
+          lng: number | null
           location_address: string | null
           location_city: string
           location_state: string
@@ -102,10 +144,13 @@ export type Database = {
         }
         Insert: {
           additional_notes?: string | null
+          country_code?: string | null
           created_at?: string
           expire_at: string
           food_type: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           location_address?: string | null
           location_city: string
           location_state: string
@@ -115,10 +160,13 @@ export type Database = {
         }
         Update: {
           additional_notes?: string | null
+          country_code?: string | null
           created_at?: string
           expire_at?: string
           food_type?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           location_address?: string | null
           location_city?: string
           location_state?: string
@@ -297,6 +345,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          notification_type: string
+          payload: Json
+          processed_at: string | null
+          scheduled_for: string
+          status: string
+          target_user_ids: string[]
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          notification_type: string
+          payload: Json
+          processed_at?: string | null
+          scheduled_for?: string
+          status?: string
+          target_user_ids: string[]
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          notification_type?: string
+          payload?: Json
+          processed_at?: string | null
+          scheduled_for?: string
+          status?: string
+          target_user_ids?: string[]
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -435,10 +525,15 @@ export type Database = {
           level: string | null
           location_city: string | null
           location_state: string | null
+          notification_radius_km: number | null
           notify_recommender: boolean | null
           persona: string | null
           points_this_month: number | null
           points_total: number | null
+          profile_country: string | null
+          profile_image_url: string | null
+          profile_lat: number | null
+          profile_lng: number | null
           recommender_paused: boolean | null
           recommender_paused_at: string | null
           search_range: string | null
@@ -455,10 +550,15 @@ export type Database = {
           level?: string | null
           location_city?: string | null
           location_state?: string | null
+          notification_radius_km?: number | null
           notify_recommender?: boolean | null
           persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
+          profile_country?: string | null
+          profile_image_url?: string | null
+          profile_lat?: number | null
+          profile_lng?: number | null
           recommender_paused?: boolean | null
           recommender_paused_at?: string | null
           search_range?: string | null
@@ -475,10 +575,15 @@ export type Database = {
           level?: string | null
           location_city?: string | null
           location_state?: string | null
+          notification_radius_km?: number | null
           notify_recommender?: boolean | null
           persona?: string | null
           points_this_month?: number | null
           points_total?: number | null
+          profile_country?: string | null
+          profile_image_url?: string | null
+          profile_lat?: number | null
+          profile_lng?: number | null
           recommender_paused?: boolean | null
           recommender_paused_at?: string | null
           search_range?: string | null
