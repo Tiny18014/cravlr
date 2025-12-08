@@ -100,8 +100,8 @@ serve(async (req) => {
     let pointsToAward = 0;
 
     if (action === 'create') {
-      // Award +1 point for creating a recommendation
-      pointsToAward = 1;
+      // Award +5 points for creating a recommendation
+      pointsToAward = 5;
 
       // Schedule a visit reminder for 3 hours later
       const threeHoursLater = new Date(Date.now() + 3 * 60 * 60 * 1000);

@@ -478,7 +478,7 @@ const Dashboard = () => {
                   <MessageCircle className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-foreground">{receivedRecommendations.length}</p>
+                  <p className="text-2xl font-semibold text-foreground">{myRecommendations.length}</p>
                   <p className="text-xs text-muted-foreground">Recommendations</p>
                 </div>
               </div>
