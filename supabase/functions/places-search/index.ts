@@ -132,7 +132,16 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
   if (sessionToken) params.set('sessiontoken', sessionToken);
 
   const { json } = await fetchJSON(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
-  if (json.status !== 'OK') throw new Error(`Autocomplete failed: ${json.status} ${json.error_message || ''}`);
+  
+  // ZERO_RESULTS is a valid response - just means no matches found
+  if (json.status === 'ZERO_RESULTS') {
+    console.log('Autocomplete returned zero results for:', input);
+    return [];
+  }
+  
+  if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
+    throw new Error(`Autocomplete failed: ${json.status} ${json.error_message || ''}`);
+  }
 
   return (json.predictions || []).slice(0, MAX_RESULTS).map((p: any) => {
     const main = p.structured_formatting?.main_text ?? p.description;
