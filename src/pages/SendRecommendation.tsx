@@ -215,7 +215,7 @@ const SendRecommendation = () => {
           if (updateError) throw updateError;
 
           // Show streak popup with points awarded by edge function
-          setStreakData({ streakCount: newStreak, points: 5 });
+          setStreakData({ streakCount: newStreak, points: 1 });
           setShowStreakPopup(true);
 
           // Check if we should show feedback modal
