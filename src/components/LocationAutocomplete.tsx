@@ -445,7 +445,7 @@ interface MapLocationPickerProps {
 const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
   onLocationSelect,
   initialCoords,
-) => {
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [marker, setMarker] = useState<any>(null);
@@ -462,7 +462,7 @@ const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
   // Load Google Maps script
   useEffect(() => {
     const loadGoogleMaps = () => {
-      if (window.google?.maps) {
+      if ((window as any).google?.maps) {
         setMapLoaded(true);
         return;
       }
@@ -470,7 +470,7 @@ const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
       // Check if script is already loading
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
         const checkLoaded = setInterval(() => {
-          if (window.google?.maps) {
+          if ((window as any).google?.maps) {
             setMapLoaded(true);
             clearInterval(checkLoaded);
           }
