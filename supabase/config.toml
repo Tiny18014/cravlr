@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.check-paused-recommenders]
 verify_jwt = false
+
+[functions.user-location]
+verify_jwt = true

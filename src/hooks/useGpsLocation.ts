@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { NormalizedLocation } from '@/components/LocationAutocomplete';
+import { NormalizedLocation, AdminLevel } from '@/components/LocationAutocomplete';
 
 interface UseGpsLocationReturn {
   isGeolocating: boolean;
@@ -45,7 +45,7 @@ export const useGpsLocation = (): UseGpsLocationReturn => {
 
       // Call backend to reverse geocode
       const { data, error: apiError } = await supabase.functions.invoke('location-from-coordinates', {
-        body: { lat: latitude, lng: longitude }
+        body: { lat: latitude, lng: longitude, source: 'gps' }
       });
 
       if (apiError) {
@@ -65,9 +65,16 @@ export const useGpsLocation = (): UseGpsLocationReturn => {
         lng: locationData.lng,
         countryName: locationData.countryName,
         countryCode: locationData.countryCode,
-        stateOrRegion: locationData.stateOrRegion,
-        cityOrLocality: locationData.cityOrLocality,
+        region: locationData.region,
+        county: locationData.county,
+        city: locationData.city,
+        suburb: locationData.suburb,
+        neighborhood: locationData.neighborhood,
+        street: locationData.street,
+        houseNumber: locationData.houseNumber,
         postalCode: locationData.postalCode,
+        adminHierarchy: locationData.adminHierarchy,
+        source: locationData.source,
       };
 
       setGpsLocation(normalizedLocation);
@@ -115,5 +122,72 @@ export const useGpsLocation = (): UseGpsLocationReturn => {
     error,
     requestLocation,
     clearLocation,
+  };
+};
+
+// Hook to fetch user's saved location
+export const useUserLocation = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<NormalizedLocation | null>(null);
+
+  const fetchUserLocation = useCallback(async (): Promise<NormalizedLocation | null> => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('user-location', {
+        method: 'GET',
+      });
+
+      if (error) throw error;
+
+      if (data?.data) {
+        // Transform from snake_case to camelCase
+        const loc = data.data;
+        const normalized: NormalizedLocation = {
+          type: 'area',
+          displayLabel: loc.place_label || loc.city || 'Unknown',
+          formattedAddress: loc.formatted_address,
+          lat: loc.lat,
+          lng: loc.lng,
+          countryName: loc.country_name,
+          countryCode: loc.country_code,
+          region: loc.region,
+          county: loc.county,
+          city: loc.city,
+          suburb: loc.suburb,
+          neighborhood: loc.neighborhood,
+          street: loc.street,
+          houseNumber: loc.house_number,
+          postalCode: loc.postal_code,
+          adminHierarchy: loc.admin_hierarchy,
+          source: loc.source,
+        };
+        setUserLocation(normalized);
+        return normalized;
+      }
+      return null;
+    } catch (err) {
+      console.error('Failed to fetch user location:', err);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const saveUserLocation = useCallback(async (location: NormalizedLocation, isFromGps: boolean = false) => {
+    try {
+      await supabase.functions.invoke('user-location', {
+        body: { location, isFromGps },
+      });
+      setUserLocation(location);
+    } catch (err) {
+      console.error('Failed to save user location:', err);
+    }
+  }, []);
+
+  return {
+    isLoading,
+    userLocation,
+    fetchUserLocation,
+    saveUserLocation,
   };
 };
