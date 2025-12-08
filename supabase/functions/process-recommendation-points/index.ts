@@ -112,26 +112,38 @@ serve(async (req) => {
     }
 
     if (pointsToAward > 0) {
-      // Update recommender's total points
+      // Update recommender's total points and monthly points
       const { data: profile } = await supabase
         .from('profiles')
-        .select('points_total')
+        .select('points_total, points_this_month')
         .eq('id', recommendation.recommender_id)
         .single();
 
       const newTotal = (profile?.points_total || 0) + pointsToAward;
+      const newMonthly = (profile?.points_this_month || 0) + pointsToAward;
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
-        .update({ points_total: newTotal })
+        .update({ 
+          points_total: newTotal,
+          points_this_month: newMonthly
+        })
         .eq('id', recommendation.recommender_id);
 
+      if (updateError) {
+        console.error('Error updating profile points:', updateError);
+      }
+
       // Create points event
-      await supabase.from('points_events').insert({
+      const { error: eventError } = await supabase.from('points_events').insert({
         user_id: recommendation.recommender_id,
         points: pointsToAward,
         event_type: action === 'create' ? 'recommendation_created' : 'feedback_received',
       });
+
+      if (eventError) {
+        console.error('Error creating points event:', eventError);
+      }
     }
 
     console.log(`User ${user.id} awarded ${pointsToAward} points for recommendation ${recommendationId}`);
