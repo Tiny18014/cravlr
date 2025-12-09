@@ -16,6 +16,7 @@ import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
+import { DishTypeAutocomplete } from '@/components/DishTypeAutocomplete';
 
 const FLAVOR_MOODS = [
   'Spicy', 'Sweet', 'Savory/Umami', 'Sour/Tangy', 'Salty', 'Fresh/Light', 'Rich/Creamy', 'Anything'
@@ -41,6 +42,7 @@ const CUISINE_OPTIONS = [
 ] as const;
 
 const requestSchema = z.object({
+  dishType: z.string().optional(),
   flavorMoods: z.array(z.string()).min(1, 'Select at least one flavor mood'),
   cuisineStyles: z.array(z.string()).min(1, 'Select at least one cuisine style'),
   locationCity: z.string()
@@ -92,6 +94,8 @@ const RequestFood = () => {
   const [locationInput, setLocationInput] = useState('');
   const [otherCuisine, setOtherCuisine] = useState('');
   const { isGpsEnabled, isDetecting: isDetectingCountry } = useGpsCountryDetection();
+  
+  const [selectedDishType, setSelectedDishType] = useState<{ id: number; name: string } | null>(null);
   
   const [formData, setFormData] = useState({
     flavorMoods: [] as string[],
@@ -198,6 +202,7 @@ const RequestFood = () => {
       }
 
       const validationResult = requestSchema.safeParse({
+        dishType: selectedDishType?.name,
         flavorMoods: formData.flavorMoods,
         cuisineStyles: finalCuisineStyles,
         locationCity: formData.locationCity,
@@ -238,7 +243,8 @@ const RequestFood = () => {
         }
       }
 
-      const foodTypeString = `${validated.flavorMoods.join(', ')} | ${validated.cuisineStyles.join(', ')}`;
+      const dishPart = validated.dishType && validated.dishType !== 'Anything' ? `${validated.dishType} | ` : '';
+      const foodTypeString = `${dishPart}${validated.flavorMoods.join(', ')} | ${validated.cuisineStyles.join(', ')}`;
 
       const { data, error } = await supabase
         .from('food_requests')
@@ -327,6 +333,12 @@ const RequestFood = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Dish Type Section */}
+              <DishTypeAutocomplete 
+                value={selectedDishType} 
+                onSelect={setSelectedDishType} 
+              />
+
               {/* Flavor Mood Section */}
               <div className="space-y-4">
                 <div>
