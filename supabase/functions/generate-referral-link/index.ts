@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({
           success: true,
           referralCode: existingLink.referral_code,
-          referralUrl: `https://edazolwepxbdeniluamf.supabase.co/functions/v1/track-referral-click/${existingLink.referral_code}`
+          referralUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/track-referral-click/${existingLink.referral_code}`
         }),
         {
           status: 200,
@@ -186,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('✅ Created referral link:', referralCode);
 
     // Return the referral URL
-    const referralUrl = `https://edazolwepxbdeniluamf.supabase.co/functions/v1/track-referral-click/${referralCode}`;
+    const referralUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/track-referral-click/${referralCode}`;
 
     return new Response(
       JSON.stringify({
