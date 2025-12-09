@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Star } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
 import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
@@ -75,7 +75,7 @@ const SendRecommendation = () => {
     restaurantName: '',
     restaurantAddress: '',
     notes: '',
-    confidenceScore: [4], // Default to 4/5 (matching database constraint)
+    confidenceScore: [5], // Default to 5/5 (hidden from UI)
     placeId: '', // For Google Places integration
     mapsUrl: '' // For storing the Google Maps URL
   });
@@ -418,26 +418,6 @@ const SendRecommendation = () => {
                     )}
                   </div>
                   
-                  <div>
-                    <Label htmlFor="confidenceScore" className="flex items-center gap-2">
-                      <Star className="h-4 w-4" />
-                      Confidence Level: {formData.confidenceScore[0]}/5
-                    </Label>
-                    <div className="px-3 py-4">
-                      <Slider
-                        id="confidenceScore"
-                        min={1}
-                        max={5}
-                        step={1}
-                        value={formData.confidenceScore}
-                        onValueChange={(value) => handleChange('confidenceScore', value)}
-                        className="w-full"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      How confident are you in this recommendation? (1 = worth trying, 5 = absolutely amazing)
-                    </p>
-                  </div>
                   
                   <div>
                     <Label htmlFor="notes">Why do you recommend this place?</Label>
