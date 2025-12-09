@@ -2,49 +2,26 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Zap, Calendar, MapPin, Navigation } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Calendar, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
-import { cn } from '@/lib/utils';
-import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 import { DishTypeAutocomplete } from '@/components/DishTypeAutocomplete';
+import { FlavorMoodAutocomplete } from '@/components/FlavorMoodAutocomplete';
+import { CuisineAutocomplete } from '@/components/CuisineAutocomplete';
 
-const FLAVOR_MOODS = [
-  'Spicy', 'Sweet', 'Savory/Umami', 'Sour/Tangy', 'Salty', 'Fresh/Light', 'Rich/Creamy', 'Anything'
-] as const;
-
-const CUISINE_OPTIONS = [
-  'Chinese',
-  'Italian',
-  'Japanese',
-  'Indian',
-  'American',
-  'Mexican',
-  'French',
-  'Thai',
-  'Spanish',
-  'Korean',
-  'Vietnamese',
-  'Mediterranean',
-  'Middle Eastern',
-  'Turkish',
-  'Brazilian',
-  'Nepalese'
-] as const;
 
 const requestSchema = z.object({
   dishType: z.string().optional(),
-  flavorMoods: z.array(z.string()).min(1, 'Select at least one flavor mood'),
-  cuisineStyles: z.array(z.string()).min(1, 'Select at least one cuisine style'),
+  flavorMood: z.string().optional(),
+  cuisineStyle: z.string().optional(),
   locationCity: z.string()
     .trim()
     .min(1, 'City is required')
@@ -90,16 +67,13 @@ const RequestFood = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGeolocating, setIsGeolocating] = useState(false);
   const [locationInput, setLocationInput] = useState('');
-  const [otherCuisine, setOtherCuisine] = useState('');
-  const { isGpsEnabled, isDetecting: isDetectingCountry } = useGpsCountryDetection();
   
   const [selectedDishType, setSelectedDishType] = useState<{ id: number; name: string } | null>(null);
+  const [selectedFlavorMood, setSelectedFlavorMood] = useState<{ id: number; name: string } | null>(null);
+  const [selectedCuisine, setSelectedCuisine] = useState<{ id: number; name: string } | null>(null);
   
   const [formData, setFormData] = useState({
-    flavorMoods: [] as string[],
-    cuisineStyles: [] as string[],
     locationCity: '',
     locationState: '',
     countryCode: '',
@@ -110,68 +84,6 @@ const RequestFood = () => {
     lng: null as number | null
   });
 
-  const toggleFlavorMood = (mood: string) => {
-    setFormData(prev => ({
-      ...prev,
-      flavorMoods: prev.flavorMoods.includes(mood)
-        ? prev.flavorMoods.filter(m => m !== mood)
-        : [...prev.flavorMoods, mood]
-    }));
-  };
-
-  const toggleCuisine = (cuisine: string) => {
-    setFormData(prev => ({
-      ...prev,
-      cuisineStyles: prev.cuisineStyles.includes(cuisine)
-        ? prev.cuisineStyles.filter(c => c !== cuisine)
-        : [...prev.cuisineStyles, cuisine]
-    }));
-  };
-
-  const selectAnything = () => {
-    setFormData(prev => ({
-      ...prev,
-      cuisineStyles: prev.cuisineStyles.includes('Anything') && prev.cuisineStyles.length === 1
-        ? []
-        : ['Anything']
-    }));
-  };
-
-  // Get user's current location
-  const getCurrentLocation = async () => {
-    setIsGeolocating(true);
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000
-        });
-      });
-
-      const { latitude, longitude } = position.coords;
-      
-      setFormData(prev => ({
-        ...prev,
-        lat: latitude,
-        lng: longitude
-      }));
-
-      toast({
-        title: "Location captured",
-        description: "Using your current location for precise matching",
-      });
-    } catch (error) {
-      console.error('GPS error:', error);
-      toast({
-        title: "Location access denied",
-        description: "We'll use city-level matching instead",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeolocating(false);
-    }
-  };
 
   // Geocode the address to get coordinates
   const geocodeAddress = async (city: string, state: string, address?: string) => {
@@ -195,16 +107,10 @@ const RequestFood = () => {
     setIsSubmitting(true);
     
     try {
-      // Include "Other" cuisine if typed
-      let finalCuisineStyles = [...formData.cuisineStyles];
-      if (otherCuisine.trim() && !finalCuisineStyles.includes(otherCuisine.trim())) {
-        finalCuisineStyles.push(otherCuisine.trim());
-      }
-
       const validationResult = requestSchema.safeParse({
         dishType: selectedDishType?.name,
-        flavorMoods: formData.flavorMoods,
-        cuisineStyles: finalCuisineStyles,
+        flavorMood: selectedFlavorMood?.name,
+        cuisineStyle: selectedCuisine?.name,
         locationCity: formData.locationCity,
         locationState: formData.locationState || undefined,
         countryCode: formData.countryCode || undefined,
@@ -244,7 +150,9 @@ const RequestFood = () => {
       }
 
       const dishPart = validated.dishType && validated.dishType !== 'Anything' ? `${validated.dishType} | ` : '';
-      const foodTypeString = `${dishPart}${validated.flavorMoods.join(', ')} | ${validated.cuisineStyles.join(', ')}`;
+      const flavorPart = validated.flavorMood && validated.flavorMood !== 'Anything' ? validated.flavorMood : 'Any Flavor';
+      const cuisinePart = validated.cuisineStyle && validated.cuisineStyle !== 'Anything' ? validated.cuisineStyle : 'Any Cuisine';
+      const foodTypeString = `${dishPart}${flavorPart} | ${cuisinePart}`;
 
       const { data, error } = await supabase
         .from('food_requests')
@@ -340,86 +248,16 @@ const RequestFood = () => {
               />
 
               {/* Flavor Mood Section */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Flavor Mood</h3>
-                  <p className="text-sm text-muted-foreground">Select your taste preference</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                  {FLAVOR_MOODS.map((mood) => (
-                    <button
-                      key={mood}
-                      type="button"
-                      onClick={() => toggleFlavorMood(mood)}
-                      className={cn(
-                        "px-3 py-2.5 rounded-xl text-sm font-medium transition-all border-2 text-center",
-                        formData.flavorMoods.includes(mood)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-foreground border-border hover:border-primary hover:bg-primary/5"
-                      )}
-                    >
-                      {mood}
-                    </button>
-                  ))}
-                </div>
-                {formData.flavorMoods.length === 0 && (
-                  <p className="text-xs text-destructive">Select at least one flavor mood</p>
-                )}
-              </div>
+              <FlavorMoodAutocomplete 
+                value={selectedFlavorMood} 
+                onSelect={setSelectedFlavorMood} 
+              />
 
               {/* Cuisine Style Section */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Cuisine Style</h3>
-                  <p className="text-sm text-muted-foreground">Choose your preferred cuisine(s)</p>
-                </div>
-                
-                {/* Cuisine Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3">
-                  {CUISINE_OPTIONS.map((cuisine) => (
-                    <button
-                      key={cuisine}
-                      type="button"
-                      onClick={() => toggleCuisine(cuisine)}
-                      className={cn(
-                        "px-3 py-3 rounded-xl text-sm font-medium transition-all border-2 text-center min-h-[48px]",
-                        formData.cuisineStyles.includes(cuisine)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-foreground border-border hover:border-primary hover:bg-primary/5"
-                      )}
-                    >
-                      {cuisine}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Anything Button & Other Input */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={selectAnything}
-                    className={cn(
-                      "px-4 py-3 rounded-xl text-sm font-semibold transition-all border-2 text-center",
-                      formData.cuisineStyles.includes('Anything') && formData.cuisineStyles.length === 1
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-accent text-accent-foreground border-primary hover:bg-primary hover:text-primary-foreground"
-                    )}
-                  >
-                    🌍 Anything
-                  </button>
-                  <Input
-                    type="text"
-                    placeholder="Other (type here)"
-                    value={otherCuisine}
-                    onChange={(e) => setOtherCuisine(e.target.value)}
-                    className="h-12 rounded-xl border-2 border-border focus:border-primary text-sm"
-                  />
-                </div>
-
-                {formData.cuisineStyles.length === 0 && !otherCuisine.trim() && (
-                  <p className="text-xs text-destructive">Choose at least one cuisine or type your preference</p>
-                )}
-              </div>
+              <CuisineAutocomplete 
+                value={selectedCuisine} 
+                onSelect={setSelectedCuisine} 
+              />
               
               {/* Location Section */}
               <div className="space-y-4">
@@ -553,7 +391,7 @@ const RequestFood = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting || formData.flavorMoods.length === 0 || (formData.cuisineStyles.length === 0 && !otherCuisine.trim()) || !formData.locationCity || !formData.locationState}
+                  disabled={isSubmitting || !formData.locationCity}
                   className="flex-1 h-12 rounded-xl"
                 >
                   {isSubmitting ? 'Creating...' : 'Post Request'}
