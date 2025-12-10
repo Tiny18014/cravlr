@@ -89,12 +89,18 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     onValueChange(newValue);
   };
 
+  // Goal 2: Fix city selection - ensure single click registers
   const handleCitySelect = (result: AutocompleteResult) => {
-    const displayValue = `${result.city}, ${result.state}`;
-    onValueChange(displayValue);
-    onCitySelect(result.city, result.state);
+    // Immediately close dropdown and clear suggestions to prevent double-selection issues
     setIsOpen(false);
     setSuggestions([]);
+    
+    const displayValue = `${result.city}, ${result.state}`;
+    // Use requestAnimationFrame to ensure state updates happen after click event completes
+    requestAnimationFrame(() => {
+      onValueChange(displayValue);
+      onCitySelect(result.city, result.state);
+    });
   };
 
   const handleInputFocus = () => {
@@ -103,9 +109,14 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     }
   };
 
-  const handleInputBlur = () => {
-    // Delay closing to allow for clicks on suggestions
-    setTimeout(() => setIsOpen(false), 200);
+  const handleInputBlur = (e: React.FocusEvent) => {
+    // Check if the new focus target is within our dropdown
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget?.closest('.city-suggestions-dropdown')) {
+      return; // Don't close if clicking inside dropdown
+    }
+    // Short delay to allow click to register
+    setTimeout(() => setIsOpen(false), 100);
   };
 
   const clearInput = () => {
@@ -152,15 +163,21 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       </div>
       
       {isOpen && suggestions.length > 0 && !isLoading && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto">
+        <div className="city-suggestions-dropdown absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.placeId}-${index}`}
               type="button"
-              className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
-              onMouseDown={(e) => {
+              tabIndex={0}
+              className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl focus:bg-accent focus:outline-none"
+              onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 handleCitySelect(suggestion);
+              }}
+              onMouseDown={(e) => {
+                // Prevent input blur from firing before click
+                e.preventDefault();
               }}
             >
               <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />

@@ -41,6 +41,31 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Account deletion requested for user: ${user.id}`);
 
+    // Goal 4: Delete profile picture from storage first
+    try {
+      // List all files in the user's profile-pictures folder
+      const { data: files, error: listError } = await supabase.storage
+        .from('profile-pictures')
+        .list(user.id);
+
+      if (!listError && files && files.length > 0) {
+        const filePaths = files.map(file => `${user.id}/${file.name}`);
+        const { error: deleteStorageError } = await supabase.storage
+          .from('profile-pictures')
+          .remove(filePaths);
+
+        if (deleteStorageError) {
+          console.error('Error deleting profile pictures:', deleteStorageError);
+          // Continue with account deletion even if storage delete fails
+        } else {
+          console.log(`Deleted ${filePaths.length} profile picture(s) for user ${user.id}`);
+        }
+      }
+    } catch (storageError) {
+      console.error('Error accessing storage:', storageError);
+      // Continue with account deletion even if storage access fails
+    }
+
     // Delete user data in proper order (respecting foreign key constraints)
     
     // 1. Delete recommendation feedback
@@ -55,61 +80,97 @@ const handler = async (req: Request): Promise<Response> => {
       .delete()
       .eq('requester_id', user.id);
 
-    // 3. Delete points events
+    // 3. Delete recommender notifications
+    await supabase
+      .from('recommender_notifications')
+      .delete()
+      .eq('recommender_id', user.id);
+
+    // 4. Delete points events
     await supabase
       .from('points_events')
       .delete()
       .eq('user_id', user.id);
 
-    // 4. Delete referral clicks
+    // 5. Delete referral clicks
     await supabase
       .from('referral_clicks')
       .delete()
       .or(`requester_id.eq.${user.id},recommender_id.eq.${user.id}`);
 
-    // 5. Delete push subscriptions
+    // 6. Delete device tokens (push notification subscriptions)
     await supabase
-      .from('push_subscriptions')
+      .from('device_tokens')
       .delete()
       .eq('user_id', user.id);
 
-    // 6. Delete request user state
+    // 7. Delete request user state
     await supabase
       .from('request_user_state')
       .delete()
       .eq('user_id', user.id);
 
-    // 7. Delete business profiles
+    // 8. Delete user current locations
+    await supabase
+      .from('user_current_locations')
+      .delete()
+      .eq('user_id', user.id);
+
+    // 9. Delete business profiles
     await supabase
       .from('business_profiles')
       .delete()
       .eq('user_id', user.id);
 
-    // 8. Delete business claims
+    // 10. Delete business claims
     await supabase
       .from('business_claims')
       .delete()
       .eq('user_id', user.id);
 
-    // 9. Delete recommendations
+    // 11. Delete guru map likes
+    await supabase
+      .from('guru_map_likes')
+      .delete()
+      .eq('user_id', user.id);
+
+    // 12. Delete guru map places added by user
+    await supabase
+      .from('guru_map_places')
+      .delete()
+      .eq('added_by', user.id);
+
+    // 13. Delete guru maps created by user
+    await supabase
+      .from('guru_maps')
+      .delete()
+      .eq('created_by', user.id);
+
+    // 14. Delete recommendations
     await supabase
       .from('recommendations')
       .delete()
       .eq('recommender_id', user.id);
 
-    // 10. Delete food requests
+    // 15. Delete food requests
     await supabase
       .from('food_requests')
       .delete()
       .eq('requester_id', user.id);
 
-    // 11. Delete profile
+    // 16. Delete user roles
+    await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', user.id);
+
+    // 17. Delete profile
     await supabase
       .from('profiles')
       .delete()
       .eq('id', user.id);
 
-    // 12. Finally, delete the auth user using admin API
+    // 18. Finally, delete the auth user using admin API
     const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
 
     if (deleteError) {
