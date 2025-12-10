@@ -461,7 +461,7 @@ const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
 
   // Load Google Maps script
   useEffect(() => {
-    const loadGoogleMaps = () => {
+    const loadGoogleMaps = async () => {
       if ((window as any).google?.maps) {
         setMapLoaded(true);
         return;
@@ -478,30 +478,41 @@ const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
         return;
       }
 
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        console.error('Google Maps API key not configured');
+      try {
+        // Fetch API key from backend
+        const { data, error } = await supabase.functions.invoke('get-maps-config');
+        
+        if (error || !data?.apiKey) {
+          console.error('Failed to get maps config:', error);
+          toast({
+            title: "Map unavailable",
+            description: "Map picker is not configured. Please use text search instead.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.apiKey}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => setMapLoaded(true);
+        script.onerror = () => {
+          toast({
+            title: "Map failed to load",
+            description: "Please use text search instead.",
+            variant: "destructive",
+          });
+        };
+        document.head.appendChild(script);
+      } catch (err) {
+        console.error('Error loading maps:', err);
         toast({
           title: "Map unavailable",
-          description: "Map picker is not configured. Please use text search instead.",
+          description: "Could not load map. Please use text search instead.",
           variant: "destructive",
         });
-        return;
       }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => setMapLoaded(true);
-      script.onerror = () => {
-        toast({
-          title: "Map failed to load",
-          description: "Please use text search instead.",
-          variant: "destructive",
-        });
-      };
-      document.head.appendChild(script);
     };
 
     loadGoogleMaps();
