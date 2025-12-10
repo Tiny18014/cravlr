@@ -131,30 +131,65 @@ const ActionRow = ({
   );
 };
 
+// Haversine distance calculation
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+interface UserLocation {
+  city: string | null;
+  state: string | null;
+  lat: number | null;
+  lng: number | null;
+  radiusKm: number;
+}
+
 const BrowseRequests = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
 
   useEffect(() => {
     if (user) {
-      fetchRequests();
       fetchUserProfile();
     }
   }, [user]);
+
+  // Fetch requests only after we have user location
+  useEffect(() => {
+    if (user && userLocation !== null) {
+      fetchRequests();
+    }
+  }, [user, userLocation]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
     
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name')
+      .select('display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km')
       .eq('id', user.id)
       .single();
     
     setUserName(profile?.display_name || user.email?.split('@')[0] || 'User');
+    setUserLocation({
+      city: profile?.location_city || null,
+      state: profile?.location_state || null,
+      lat: profile?.profile_lat || null,
+      lng: profile?.profile_lng || null,
+      radiusKm: profile?.notification_radius_km || 20
+    });
   };
 
   // Add realtime subscription for new requests
@@ -201,23 +236,52 @@ const BrowseRequests = () => {
     try {
       setLoading(true);
       
+      // If user has no location set, show empty state
+      if (!userLocation?.city && !userLocation?.lat) {
+        console.log('🎯 User has no location set, showing empty state');
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+      
       // Query for active requests that haven't expired
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('food_requests')
         .select('*')
         .eq('status', 'active')
-        .neq('requester_id', user.id) // Hide your own requests
-        .gt('expire_at', now) // Only non-expired requests
+        .neq('requester_id', user.id)
+        .gt('expire_at', now)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      console.log(`🎯 Fetched ${data?.length || 0} active requests (excluding own requests)`);
+      // Filter by location - geo-based or city-based
+      const locationFilteredData = (data || []).filter(request => {
+        // Geo-based matching if both user and request have coordinates
+        if (userLocation.lat && userLocation.lng && request.lat && request.lng) {
+          const distance = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            request.lat,
+            request.lng
+          );
+          return distance <= userLocation.radiusKm;
+        }
+        
+        // Fall back to city-based matching
+        if (userLocation.city) {
+          return request.location_city?.toLowerCase() === userLocation.city.toLowerCase();
+        }
+        
+        return false;
+      });
+
+      console.log(`🎯 Fetched ${data?.length || 0} total requests, ${locationFilteredData.length} in user's area`);
 
       // For each request, get recommendation count, user state, and profile
       const enrichedRequests = await Promise.all(
-        (data || []).map(async (request) => {
+        locationFilteredData.map(async (request) => {
           // Get requester profile
           const { data: profile } = await supabase
             .from('profiles')
@@ -332,7 +396,11 @@ const BrowseRequests = () => {
           {/* Quick summary - only count non-expired requests */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              {loading ? "Loading..." : `${requests.length} active request${requests.length !== 1 ? 's' : ''} available to help with`}
+              {loading ? "Loading..." : 
+                userLocation?.city || userLocation?.lat 
+                  ? `${requests.length} active request${requests.length !== 1 ? 's' : ''} in your area`
+                  : "Set your location to see nearby requests"
+              }
             </p>
           </div>
 
@@ -341,12 +409,24 @@ const BrowseRequests = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <p>Loading nearby requests...</p>
             </div>
+          ) : !userLocation?.city && !userLocation?.lat ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <div className="text-6xl mb-4">📍</div>
+                <p className="text-muted-foreground mb-2">Set your location to see requests in your area.</p>
+                <p className="text-sm text-muted-foreground mb-4">Update your profile with your city to start helping locals.</p>
+                <Button onClick={() => navigate('/profile')}>
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Set My Location
+                </Button>
+              </CardContent>
+            </Card>
           ) : requests.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <div className="text-6xl mb-4">🚀</div>
-                <p className="text-muted-foreground mb-2">No food requests nearby right now.</p>
-                <p className="text-sm text-muted-foreground">Check back later to help food lovers in your area.</p>
+                <p className="text-muted-foreground mb-2">No food requests in {userLocation?.city || 'your area'} right now.</p>
+                <p className="text-sm text-muted-foreground">Check back later to help food lovers nearby.</p>
               </CardContent>
             </Card>
           ) : (
