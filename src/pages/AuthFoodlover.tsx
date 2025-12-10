@@ -49,7 +49,22 @@ const AuthFoodlover = () => {
         const { error } = await signIn(email, password);
         if (error) {
           clearValidating();
-          setLoginError('Invalid email or password. Please try again.');
+          // Goal 1: Differentiate between non-existent account vs wrong password
+          if (error.message?.toLowerCase().includes('invalid login credentials')) {
+            // Check if user exists by attempting password reset (doesn't reveal info to attacker)
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: `${window.location.origin}/auth/reset`,
+            });
+            // If reset succeeds, user exists -> wrong password. If fails, user doesn't exist.
+            if (resetError?.message?.toLowerCase().includes('user not found') || 
+                resetError?.message?.toLowerCase().includes('unable to validate')) {
+              setLoginError("Your account doesn't exist.");
+            } else {
+              setLoginError('Invalid password. Please try again.');
+            }
+          } else {
+            setLoginError(error.message || 'Invalid email or password. Please try again.');
+          }
           setLoading(false);
           return;
         } else {

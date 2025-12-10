@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,6 +68,7 @@ const RequestFood = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   const [selectedDishType, setSelectedDishType] = useState<{ id: number; name: string } | null>(null);
   const [selectedFlavorMood, setSelectedFlavorMood] = useState<{ id: number; name: string } | null>(null);
@@ -83,6 +84,48 @@ const RequestFood = () => {
     lat: null as number | null,
     lng: null as number | null
   });
+
+  // Goal 5: Prefill location from user profile
+  useEffect(() => {
+    const loadUserLocation = async () => {
+      if (!user?.id) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('location_city, location_state, profile_lat, profile_lng, profile_country')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (profile?.location_city) {
+          const cityDisplay = profile.location_state 
+            ? `${profile.location_city}, ${profile.location_state}`
+            : profile.location_city;
+          
+          setLocationInput(cityDisplay);
+          setFormData(prev => ({
+            ...prev,
+            locationCity: profile.location_city,
+            locationState: profile.location_state || '',
+            countryCode: profile.profile_country || '',
+            lat: profile.profile_lat,
+            lng: profile.profile_lng
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading user location:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadUserLocation();
+  }, [user?.id]);
 
 
   // Geocode the address to get coordinates

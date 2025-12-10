@@ -4,27 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
-import { MapPin, Utensils, Target, Check } from 'lucide-react';
+import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
+import { MapPin, Camera, Target, Check } from 'lucide-react';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 
-const CUISINE_OPTIONS = [
-  'African',
-  'American',
-  'Chinese',
-  'Indian',
-  'Italian',
-  'Japanese',
-  'Mediterranean',
-  'Mexican',
-  'Nepali',
-  'Thai',
-  'Other'
-];
+// Goal 3: Distance unit options
+type DistanceUnit = 'miles' | 'km';
 
 const UserOnboarding = () => {
   const [step, setStep] = useState(1);
@@ -39,11 +28,12 @@ const UserOnboarding = () => {
   const [gpsAttempted, setGpsAttempted] = useState(false);
   const [cityInput, setCityInput] = useState('');
   
-  // Cuisine expertise state
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  // Goal 4: Profile picture state (replaces cuisine expertise)
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   
-  // Search range state
+  // Goal 3: Search range state with unit support
   const [searchRange, setSearchRange] = useState('local');
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('miles');
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -117,12 +107,9 @@ const UserOnboarding = () => {
     setLocationState(state);
   };
 
-  const toggleCuisine = (cuisine: string) => {
-    setSelectedCuisines(prev => 
-      prev.includes(cuisine)
-        ? prev.filter(c => c !== cuisine)
-        : [...prev, cuisine]
-    );
+  // Goal 4: Handle profile image change
+  const handleProfileImageChange = (newUrl: string | null) => {
+    setProfileImageUrl(newUrl);
   };
 
   const handleNextStep = () => {
@@ -135,18 +122,24 @@ const UserOnboarding = () => {
         });
         return;
       }
-    } else if (step === 2) {
-      if (selectedCuisines.length === 0) {
-        toast({
-          title: "Select At Least One",
-          description: "Please select at least one cuisine expertise.",
-          variant: "destructive",
-        });
-        return;
-      }
     }
+    // Step 2 (profile picture) is optional - can skip
     
     setStep(step + 1);
+  };
+
+  // Goal 3: Convert distance to kilometers for storage (normalized)
+  const getDistanceInKm = (rangeValue: string): number => {
+    const rangeMap: Record<string, { miles: number; km: number }> = {
+      'local': { miles: 5, km: 8 },
+      'nearby': { miles: 25, km: 40 },
+      '10mi': { miles: 10, km: 16 },
+      '25mi': { miles: 25, km: 40 },
+      '50mi': { miles: 50, km: 80 },
+    };
+    
+    const range = rangeMap[rangeValue] || rangeMap['nearby'];
+    return range.km;
   };
 
   const handleComplete = async () => {
@@ -155,13 +148,19 @@ const UserOnboarding = () => {
     setLoading(true);
     
     try {
+      // Goal 3: Store notification_radius_km (always in km for consistency)
+      const notificationRadiusKm = getDistanceInKm(searchRange);
+      
       const { error } = await supabase
         .from('profiles')
         .update({
           location_city: locationCity,
           location_state: locationState,
-          cuisine_expertise: selectedCuisines,
+          profile_lat: locationLat,
+          profile_lng: locationLng,
           search_range: searchRange,
+          notification_radius_km: notificationRadiusKm,
+          // Note: profile_image_url is already updated by ProfilePictureUpload component
         })
         .eq('id', user.id);
       
@@ -169,7 +168,7 @@ const UserOnboarding = () => {
       
       toast({
         title: "Preferences Saved!",
-        description: "Your preferences have been saved — personalized food recommendations are coming soon!",
+        description: "Your preferences have been saved. Let's find you some great food!",
       });
       
       navigate('/');
@@ -212,13 +211,22 @@ const UserOnboarding = () => {
     </div>
   );
 
+  // Goal 3: Get display label for range based on unit
+  const getRangeLabel = (range: string) => {
+    const labels: Record<string, { miles: string; km: string }> = {
+      'local': { miles: 'Local (Same City)', km: 'Local (Same City)' },
+      'nearby': { miles: 'Nearby (Within 25 miles)', km: 'Nearby (Within 40 km)' },
+    };
+    return labels[range]?.[distanceUnit] || range;
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F1E8] to-[#FAF6F0] px-4 py-8">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-2">
             {step === 1 && <MapPin className="h-12 w-12 text-[#FF6A3D]" />}
-            {step === 2 && <Utensils className="h-12 w-12 text-[#FF6A3D]" />}
+            {step === 2 && <Camera className="h-12 w-12 text-[#FF6A3D]" />}
             {step === 3 && <Target className="h-12 w-12 text-[#FF6A3D]" />}
           </div>
           
@@ -226,13 +234,13 @@ const UserOnboarding = () => {
           
           <CardTitle className="text-2xl font-poppins font-semibold text-[#3E2F25]">
             {step === 1 && 'Where are you located?'}
-            {step === 2 && 'Your Cuisine Expertise'}
+            {step === 2 && 'Add a Profile Picture'}
             {step === 3 && 'Search Range Preference'}
           </CardTitle>
           
           <p className="text-sm text-[#6B5B52] font-nunito">
             {step === 1 && 'Help us show you the best local food recommendations'}
-            {step === 2 && 'Select cuisines you know well or have cultural expertise in'}
+            {step === 2 && 'Let others see who they\'re getting recommendations from (optional)'}
             {step === 3 && 'How far would you like to search for food recommendations?'}
           </p>
         </CardHeader>
@@ -274,47 +282,83 @@ const UserOnboarding = () => {
             </div>
           )}
           
-          {/* Step 2: Cuisine Expertise */}
+          {/* Step 2: Profile Picture (Goal 4 - replaces cuisine expertise) */}
           {step === 2 && (
-            <div className="space-y-3">
-              {CUISINE_OPTIONS.map((cuisine) => (
-                <div key={cuisine} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-[#F5F1E8]/50 transition-colors">
-                  <Checkbox
-                    id={cuisine}
-                    checked={selectedCuisines.includes(cuisine)}
-                    onCheckedChange={() => toggleCuisine(cuisine)}
-                    className="border-[#9DBF70]"
-                  />
-                  <Label
-                    htmlFor={cuisine}
-                    className="flex-1 cursor-pointer font-nunito text-[#3E2F25]"
-                  >
-                    {cuisine}
-                  </Label>
-                </div>
-              ))}
+            <div className="space-y-6">
+              <div className="flex flex-col items-center gap-4">
+                <ProfilePictureUpload
+                  currentImageUrl={profileImageUrl}
+                  displayName={user?.email?.split('@')[0] || 'User'}
+                  onImageChange={handleProfileImageChange}
+                  size="lg"
+                />
+                <p className="text-sm text-muted-foreground text-center">
+                  Click the camera icon to upload a photo
+                </p>
+              </div>
+              
+              <div className="p-4 bg-[#F5F1E8] rounded-lg">
+                <p className="text-sm text-[#6B5B52] text-center">
+                  📸 A profile picture helps build trust and makes your recommendations more personal!
+                </p>
+              </div>
             </div>
           )}
           
-          {/* Step 3: Search Range */}
+          {/* Step 3: Search Range with Unit Toggle (Goal 3) */}
           {step === 3 && (
-            <RadioGroup value={searchRange} onValueChange={setSearchRange} className="space-y-3">
-              <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-[#9DBF70]/30 hover:border-[#9DBF70] hover:bg-[#F5F1E8]/50 transition-all cursor-pointer">
-                <RadioGroupItem value="local" id="local" className="border-[#9DBF70]" />
-                <Label htmlFor="local" className="flex-1 cursor-pointer">
-                  <div className="font-poppins font-semibold text-[#3E2F25]">Local (Same City)</div>
-                  <div className="text-sm text-[#6B5B52] font-nunito">Only show restaurants in your city</div>
-                </Label>
+            <div className="space-y-4">
+              {/* Unit Toggle */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Label className="text-sm text-[#6B5B52]">Distance unit:</Label>
+                <div className="flex bg-[#F5F1E8] rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setDistanceUnit('miles')}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      distanceUnit === 'miles'
+                        ? 'bg-white text-[#FF6A3D] shadow-sm'
+                        : 'text-[#6B5B52] hover:text-[#3E2F25]'
+                    }`}
+                  >
+                    Miles
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDistanceUnit('km')}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      distanceUnit === 'km'
+                        ? 'bg-white text-[#FF6A3D] shadow-sm'
+                        : 'text-[#6B5B52] hover:text-[#3E2F25]'
+                    }`}
+                  >
+                    Kilometers
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-[#9DBF70]/30 hover:border-[#9DBF70] hover:bg-[#F5F1E8]/50 transition-all cursor-pointer">
-                <RadioGroupItem value="nearby" id="nearby" className="border-[#9DBF70]" />
-                <Label htmlFor="nearby" className="flex-1 cursor-pointer">
-                  <div className="font-poppins font-semibold text-[#3E2F25]">Nearby (Within 25 Miles)</div>
-                  <div className="text-sm text-[#6B5B52] font-nunito">Include restaurants within 25 miles</div>
-                </Label>
-              </div>
-            </RadioGroup>
+
+              <RadioGroup value={searchRange} onValueChange={setSearchRange} className="space-y-3">
+                <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-[#9DBF70]/30 hover:border-[#9DBF70] hover:bg-[#F5F1E8]/50 transition-all cursor-pointer">
+                  <RadioGroupItem value="local" id="local" className="border-[#9DBF70]" />
+                  <Label htmlFor="local" className="flex-1 cursor-pointer">
+                    <div className="font-poppins font-semibold text-[#3E2F25]">Local (Same City)</div>
+                    <div className="text-sm text-[#6B5B52] font-nunito">Only show restaurants in your city</div>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-[#9DBF70]/30 hover:border-[#9DBF70] hover:bg-[#F5F1E8]/50 transition-all cursor-pointer">
+                  <RadioGroupItem value="nearby" id="nearby" className="border-[#9DBF70]" />
+                  <Label htmlFor="nearby" className="flex-1 cursor-pointer">
+                    <div className="font-poppins font-semibold text-[#3E2F25]">
+                      {distanceUnit === 'miles' ? 'Nearby (Within 25 Miles)' : 'Nearby (Within 40 km)'}
+                    </div>
+                    <div className="text-sm text-[#6B5B52] font-nunito">
+                      Include restaurants within {distanceUnit === 'miles' ? '25 miles' : '40 kilometers'}
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
           )}
           
           {/* Navigation Buttons */}
@@ -336,7 +380,7 @@ const UserOnboarding = () => {
                 className="flex-1 bg-gradient-to-r from-[#FF6A3D] to-[#FF3B30] text-white font-poppins font-semibold"
                 size="lg"
               >
-                Next
+                {step === 2 ? (profileImageUrl ? 'Next' : 'Skip for Now') : 'Next'}
               </Button>
             ) : (
               <Button
