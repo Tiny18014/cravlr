@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MapPin, Clock, Star, TrendingUp, FileText, Clock3, MessageCircle, Award, CheckCircle, XCircle } from 'lucide-react';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { DashboardBottomNav } from '@/components/DashboardBottomNav';
+import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 
 interface FoodRequest {
   id: string;
@@ -219,6 +220,7 @@ const Dashboard = () => {
         />
 
         <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+          <NotificationPermissionBanner className="mb-4" />
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-semibold text-foreground">My Requests</h1>
             <Button 
@@ -313,6 +315,7 @@ const Dashboard = () => {
         />
 
         <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+          <NotificationPermissionBanner className="mb-4" />
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-semibold text-foreground">My Recommendations</h1>
             <Button 
@@ -429,6 +432,7 @@ const Dashboard = () => {
       />
 
       <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+        <NotificationPermissionBanner className="mb-4" />
         {/* Page Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">Craving Insights</h1>

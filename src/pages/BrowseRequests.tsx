@@ -10,6 +10,7 @@ import CountdownTimer from '@/components/CountdownTimer';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
 import { DashboardHeader } from '@/components/DashboardHeader';
+import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 
 interface FoodRequest {
   id: string;
@@ -397,6 +398,7 @@ const BrowseRequests = () => {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          <NotificationPermissionBanner className="mb-6" />
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2">Requests Near You 🍽️</h1>
             <p className="text-muted-foreground">Tap a request to share your favorite spot.</p>

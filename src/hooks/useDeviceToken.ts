@@ -35,32 +35,42 @@ export function useDeviceToken(): UseDeviceTokenReturn {
     setIsLoading(false);
   }, []);
 
-  // Check if user is already registered when component mounts
+  // Check registration status periodically
   useEffect(() => {
     if (!user) return;
 
     const checkRegistration = async () => {
+      // Wait for OneSignal to be ready
       const OS = window.OneSignal;
-      if (!OS) return;
-
+      if (!OS) {
+        // Retry after a delay
+        const timeout = setTimeout(checkRegistration, 2000);
+        return () => clearTimeout(timeout);
+      }
+      
       try {
         const subscriptionId = await OS.User?.PushSubscription?.id;
-        if (subscriptionId) {
+        const optedIn = await OS.User?.PushSubscription?.optedIn;
+        console.log('🔔 useDeviceToken: subscription check -', { subscriptionId, optedIn });
+        
+        if (subscriptionId && optedIn) {
           setIsRegistered(true);
+          setPermissionState('granted');
         }
       } catch (error) {
-        console.error('Error checking registration:', error);
+        console.log('🔔 useDeviceToken: Could not check registration:', error);
       }
     };
 
-    // Wait a bit for OneSignal to initialize
-    const timeout = setTimeout(checkRegistration, 2000);
+    // Check after a delay to allow OneSignal to initialize
+    const timeout = setTimeout(checkRegistration, 3000);
     return () => clearTimeout(timeout);
   }, [user]);
 
   const registerTokenToBackend = async (token: string, platform: 'web' | 'ios' | 'android') => {
     try {
-      const { error } = await supabase.functions.invoke('register-device-token', {
+      console.log('🔔 useDeviceToken: Registering token to backend...');
+      const { data, error } = await supabase.functions.invoke('register-device-token', {
         body: {
           token,
           platform,
@@ -68,10 +78,15 @@ export function useDeviceToken(): UseDeviceTokenReturn {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ useDeviceToken: Backend registration failed:', error);
+        return false;
+      }
+      
+      console.log('✅ useDeviceToken: Token registered:', data);
       return true;
     } catch (error) {
-      console.error('Failed to register token:', error);
+      console.error('❌ useDeviceToken: Registration error:', error);
       return false;
     }
   };
@@ -92,43 +107,52 @@ export function useDeviceToken(): UseDeviceTokenReturn {
   }, []);
 
   const registerToken = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
+    if (!user) {
+      console.log('🔔 useDeviceToken: No user, cannot register');
+      return false;
+    }
 
     setIsLoading(true);
+    console.log('🔔 useDeviceToken: Starting registration flow...');
 
     try {
       const OS = window.OneSignal;
       
       if (!OS) {
-        console.warn('OneSignal not available');
+        console.warn('🔔 useDeviceToken: OneSignal not available yet');
         setIsLoading(false);
         return false;
       }
 
       // Request permission using OneSignal's slidedown
+      console.log('🔔 useDeviceToken: Showing OneSignal prompt...');
       await OS.Slidedown.promptPush();
       
-      // Wait a moment for permission to be processed
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for permission to be processed
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
       const permission = await OS.Notifications.permission;
+      console.log('🔔 useDeviceToken: Permission after prompt:', permission);
       
       if (permission) {
         const subscriptionId = await OS.User.PushSubscription.id;
+        console.log('🔔 useDeviceToken: Got subscription ID:', subscriptionId);
         
         if (subscriptionId) {
-          await registerTokenToBackend(subscriptionId, 'web');
-          setIsRegistered(true);
-          setPermissionState('granted');
-          setIsLoading(false);
-          return true;
+          const success = await registerTokenToBackend(subscriptionId, 'web');
+          if (success) {
+            setIsRegistered(true);
+            setPermissionState('granted');
+            setIsLoading(false);
+            return true;
+          }
         }
       }
 
       setIsLoading(false);
       return false;
     } catch (error) {
-      console.error('Register token error:', error);
+      console.error('❌ useDeviceToken: Registration error:', error);
       setIsLoading(false);
       return false;
     }
