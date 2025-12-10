@@ -158,6 +158,8 @@ const BrowseRequests = () => {
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
 
   useEffect(() => {
@@ -178,11 +180,13 @@ const BrowseRequests = () => {
     
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km')
+      .select('display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km, profile_image_url, updated_at')
       .eq('id', user.id)
       .single();
     
     setUserName(profile?.display_name || user.email?.split('@')[0] || 'User');
+    setProfileImageUrl(profile?.profile_image_url || null);
+    setProfileImageUpdatedAt(profile?.updated_at || null);
     setUserLocation({
       city: profile?.location_city || null,
       state: profile?.location_state || null,
@@ -384,7 +388,12 @@ const BrowseRequests = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <DashboardHeader onSignOut={signOut} userName={userName} />
+      <DashboardHeader 
+        onSignOut={signOut} 
+        userName={userName}
+        profileImageUrl={profileImageUrl}
+        profileImageUpdatedAt={profileImageUpdatedAt}
+      />
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

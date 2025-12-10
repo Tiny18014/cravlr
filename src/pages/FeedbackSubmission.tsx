@@ -20,16 +20,20 @@ export default function FeedbackSubmission() {
   const [comment, setComment] = useState('');
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [displayName, setDisplayName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name')
+        .select('display_name, profile_image_url, updated_at')
         .eq('id', user.id)
         .maybeSingle();
       setDisplayName(profile?.display_name || user.email?.split('@')[0] || 'User');
+      setProfileImageUrl(profile?.profile_image_url || null);
+      setProfileImageUpdatedAt(profile?.updated_at || null);
     };
     fetchUserProfile();
   }, [user]);
@@ -131,6 +135,8 @@ export default function FeedbackSubmission() {
         <DashboardHeader 
           onSignOut={signOut}
           userName={displayName || 'User'}
+          profileImageUrl={profileImageUrl}
+          profileImageUpdatedAt={profileImageUpdatedAt}
         />
         <div className="container mx-auto px-4 py-8">
           <p className="text-center text-muted-foreground">Loading...</p>
@@ -144,6 +150,8 @@ export default function FeedbackSubmission() {
       <DashboardHeader 
         onSignOut={signOut}
         userName={displayName || 'User'}
+        profileImageUrl={profileImageUrl}
+        profileImageUpdatedAt={profileImageUpdatedAt}
       />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Card className="p-8">

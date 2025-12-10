@@ -52,6 +52,7 @@ const Profile = () => {
   const [userLevel, setUserLevel] = useState('Newbie');
   const [userPoints, setUserPoints] = useState(0);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -103,6 +104,7 @@ const Profile = () => {
         setUserLevel(profile.level || 'Newbie');
         setUserPoints(profile.points_total || 0);
         setProfileImageUrl((profile as any).profile_image_url || null);
+        setProfileImageUpdatedAt(profile?.updated_at || null);
         
         form.reset({
           display_name: profile.display_name || '',
@@ -195,7 +197,12 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <DashboardHeader onSignOut={signOut} userName={userName} />
+      <DashboardHeader 
+        onSignOut={signOut} 
+        userName={userName}
+        profileImageUrl={profileImageUrl}
+        profileImageUpdatedAt={profileImageUpdatedAt}
+      />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         {/* Notification Permission Banner */}
@@ -226,7 +233,10 @@ const Profile = () => {
                   <ProfilePictureUpload
                     currentImageUrl={profileImageUrl}
                     displayName={userName}
-                    onImageChange={setProfileImageUrl}
+                    onImageChange={(url) => {
+                      setProfileImageUrl(url);
+                      setProfileImageUpdatedAt(new Date().toISOString());
+                    }}
                     size="lg"
                   />
                   <div className="text-center sm:text-left">
