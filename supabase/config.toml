@@ -1,5 +1,8 @@
 project_id = "ioqogdxfmapcijmqjcpb"
 
+[functions.get-onesignal-config]
+verify_jwt = true
+
 [functions.track-referral-click]
 verify_jwt = false
 
