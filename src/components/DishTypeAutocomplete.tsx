@@ -20,16 +20,26 @@ export function DishTypeAutocomplete({ value, onSelect }: DishTypeAutocompletePr
     threshold: 0.3
   }), []);
 
+  const saveCustomValue = () => {
+    if (query.trim() && !value) {
+      onSelect({ id: -1, name: query.trim() });
+      setQuery('');
+      setResults([]);
+      setShowDropdown(false);
+    }
+  };
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        saveCustomValue();
         setShowDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  }, [query, value]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -78,6 +88,13 @@ export function DishTypeAutocomplete({ value, onSelect }: DishTypeAutocompletePr
                   setShowDropdown(true);
                 }}
                 onFocus={() => query.trim() && setShowDropdown(true)}
+                onBlur={() => setTimeout(saveCustomValue, 150)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveCustomValue();
+                  }
+                }}
                 placeholder="Search dishes..."
                 className="flex-1 outline-none ml-3 bg-transparent text-foreground placeholder:text-muted-foreground"
               />
