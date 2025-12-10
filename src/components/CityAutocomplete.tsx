@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MapPin, X, Loader2 } from 'lucide-react';
@@ -89,19 +89,19 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     onValueChange(newValue);
   };
 
-  // Goal 2: Fix city selection - ensure single click registers
-  const handleCitySelect = (result: AutocompleteResult) => {
-    // Immediately close dropdown and clear suggestions to prevent double-selection issues
+  // Task B: Fix city selection - ensure single click registers immediately
+  const handleCitySelect = useCallback((result: AutocompleteResult) => {
+    // Immediately update all state synchronously to prevent race conditions
+    const displayValue = `${result.city}, ${result.state}`;
+    
+    // Close dropdown and clear suggestions first
     setIsOpen(false);
     setSuggestions([]);
     
-    const displayValue = `${result.city}, ${result.state}`;
-    // Use requestAnimationFrame to ensure state updates happen after click event completes
-    requestAnimationFrame(() => {
-      onValueChange(displayValue);
-      onCitySelect(result.city, result.state);
-    });
-  };
+    // Update value and call callback synchronously
+    onValueChange(displayValue);
+    onCitySelect(result.city, result.state);
+  }, [onValueChange, onCitySelect]);
 
   const handleInputFocus = () => {
     if (suggestions.length > 0) {
@@ -170,14 +170,12 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
               type="button"
               tabIndex={0}
               className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl focus:bg-accent focus:outline-none"
-              onClick={(e) => {
+              onMouseDown={(e) => {
+                // Task B: Use mouseDown instead of click for immediate response
+                // preventDefault stops the blur event from firing on the input
                 e.preventDefault();
                 e.stopPropagation();
                 handleCitySelect(suggestion);
-              }}
-              onMouseDown={(e) => {
-                // Prevent input blur from firing before click
-                e.preventDefault();
               }}
             >
               <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />

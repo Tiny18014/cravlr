@@ -49,18 +49,32 @@ const AuthFoodlover = () => {
         const { error } = await signIn(email, password);
         if (error) {
           clearValidating();
-          // Goal 1: Differentiate between non-existent account vs wrong password
-          if (error.message?.toLowerCase().includes('invalid login credentials')) {
-            // Check if user exists by attempting password reset (doesn't reveal info to attacker)
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-              redirectTo: `${window.location.origin}/auth/reset`,
-            });
-            // If reset succeeds, user exists -> wrong password. If fails, user doesn't exist.
-            if (resetError?.message?.toLowerCase().includes('user not found') || 
-                resetError?.message?.toLowerCase().includes('unable to validate')) {
-              setLoginError("Your account doesn't exist.");
-            } else {
-              setLoginError('Invalid password. Please try again.');
+          // Task A: Differentiate between non-existent account vs wrong password
+          // Supabase returns "Invalid login credentials" for both cases
+          if (error.message?.toLowerCase().includes('invalid login credentials') ||
+              error.message?.toLowerCase().includes('invalid email or password')) {
+            try {
+              // Try to sign up with a dummy password - if user exists, we get "already registered"
+              const { error: signupCheckError } = await supabase.auth.signUp({
+                email,
+                password: 'dummy_check_password_123!@#',
+              });
+              
+              // If we get "User already registered" or no error (user auto-confirmed), account exists
+              const signupErrorMsg = signupCheckError?.message?.toLowerCase() || '';
+              if (signupErrorMsg.includes('already registered') || 
+                  signupErrorMsg.includes('already exists') ||
+                  signupErrorMsg.includes('user already') ||
+                  !signupCheckError) {
+                // User exists, so it's a wrong password
+                setLoginError('Invalid password. Please try again.');
+              } else {
+                // User doesn't exist
+                setLoginError("Your account doesn't exist.");
+              }
+            } catch {
+              // Fallback to generic message
+              setLoginError('Invalid email or password. Please try again.');
             }
           } else {
             setLoginError(error.message || 'Invalid email or password. Please try again.');
