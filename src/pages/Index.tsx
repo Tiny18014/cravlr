@@ -154,6 +154,8 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [userName, setUserName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
   const [isRecommenderModalOpen, setIsRecommenderModalOpen] = useState(false);
   const { hasRole } = useUserRoles();
 
@@ -162,10 +164,12 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
       if (!user) return;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name')
+        .select('display_name, profile_image_url, updated_at')
         .eq('id', user.id)
         .maybeSingle();
       setUserName(profile?.display_name || user.email?.split('@')[0] || 'User');
+      setProfileImageUrl(profile?.profile_image_url || null);
+      setProfileImageUpdatedAt(profile?.updated_at || null);
     };
     fetchUserProfile();
   }, [user]);
@@ -185,7 +189,12 @@ function AuthenticatedView({ onSignOut }: { onSignOut: () => void }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background">
-      <DashboardHeader onSignOut={onSignOut} userName={userName} />
+      <DashboardHeader 
+        onSignOut={onSignOut} 
+        userName={userName}
+        profileImageUrl={profileImageUrl}
+        profileImageUpdatedAt={profileImageUpdatedAt}
+      />
       <main className="flex-1 flex flex-col justify-center space-y-8 pb-24">
         <HeroCard onRecommendClick={handleRecommendClick} />
         <HowItWorks />

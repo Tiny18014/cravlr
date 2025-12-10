@@ -66,6 +66,8 @@ const Dashboard = () => {
   const [userPoints, setUserPoints] = useState({ total: 0, thisMonth: 0 });
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -80,10 +82,12 @@ const Dashboard = () => {
     if (!user) return;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name')
+      .select('display_name, profile_image_url, updated_at')
       .eq('id', user.id)
       .maybeSingle();
     setDisplayName(profile?.display_name || user.email?.split('@')[0] || 'User');
+    setProfileImageUrl(profile?.profile_image_url || null);
+    setProfileImageUpdatedAt(profile?.updated_at || null);
   };
 
   const fetchDashboardData = async () => {
@@ -209,7 +213,9 @@ const Dashboard = () => {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
         <DashboardHeader 
           onSignOut={signOut} 
-          userName={displayName || "User"} 
+          userName={displayName || "User"}
+          profileImageUrl={profileImageUrl}
+          profileImageUpdatedAt={profileImageUpdatedAt}
         />
 
         <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
@@ -301,7 +307,9 @@ const Dashboard = () => {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
         <DashboardHeader 
           onSignOut={signOut} 
-          userName={displayName || "User"} 
+          userName={displayName || "User"}
+          profileImageUrl={profileImageUrl}
+          profileImageUpdatedAt={profileImageUpdatedAt}
         />
 
         <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
@@ -415,7 +423,9 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-primary/[0.02] to-background pb-20">
       <DashboardHeader 
         onSignOut={signOut} 
-        userName={displayName || "User"} 
+        userName={displayName || "User"}
+        profileImageUrl={profileImageUrl}
+        profileImageUpdatedAt={profileImageUpdatedAt}
       />
 
       <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
