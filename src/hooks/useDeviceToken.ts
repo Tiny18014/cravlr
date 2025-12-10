@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 declare global {
   interface Window {
     OneSignal: any;
-    __oneSignalInitialized?: boolean;
   }
 }
 
@@ -36,84 +35,36 @@ export function useDeviceToken(): UseDeviceTokenReturn {
     setIsLoading(false);
   }, []);
 
-  // Initialize OneSignal when user logs in
+  // Check if user is already registered when component mounts
   useEffect(() => {
-    if (!user || window.__oneSignalInitialized) return;
+    if (!user) return;
 
-    const initOneSignal = async () => {
+    const checkRegistration = async () => {
+      const OS = window.OneSignal;
+      if (!OS) return;
+
       try {
-        // Load OneSignal SDK if not already loaded
-        if (!window.OneSignal) {
-          await new Promise<void>((resolve, reject) => {
-            const existingScript = document.querySelector('script[src*="OneSignalSDK"]');
-            if (existingScript) {
-              // Wait for existing script to load
-              const checkLoaded = setInterval(() => {
-                if (window.OneSignal) {
-                  clearInterval(checkLoaded);
-                  resolve();
-                }
-              }, 100);
-              setTimeout(() => {
-                clearInterval(checkLoaded);
-                reject(new Error('OneSignal load timeout'));
-              }, 10000);
-              return;
-            }
-
-            const script = document.createElement('script');
-            script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
-            script.async = true;
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load OneSignal'));
-            document.head.appendChild(script);
-          });
-        }
-
-        // Initialize with your app ID
-        const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
-        if (!appId) {
-          console.warn('OneSignal App ID not configured');
-          return;
-        }
-
-        await window.OneSignal.init({
-          appId,
-          allowLocalhostAsSecureOrigin: true,
-          notifyButton: { enable: false },
-        });
-
-        window.__oneSignalInitialized = true;
-
-        // Set external user ID
-        await window.OneSignal.setExternalUserId(user.id);
-
-        // Check subscription status
-        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-        setIsRegistered(isSubscribed);
-
-        if (isSubscribed) {
-          // Register token in our database
-          const playerId = await window.OneSignal.getUserId();
-          if (playerId) {
-            await registerTokenToBackend(playerId, 'web');
-          }
+        const subscriptionId = await OS.User?.PushSubscription?.id;
+        if (subscriptionId) {
+          setIsRegistered(true);
         }
       } catch (error) {
-        console.error('OneSignal init error:', error);
+        console.error('Error checking registration:', error);
       }
     };
 
-    initOneSignal();
+    // Wait a bit for OneSignal to initialize
+    const timeout = setTimeout(checkRegistration, 2000);
+    return () => clearTimeout(timeout);
   }, [user]);
 
-  const registerTokenToBackend = async (token: string, platform: 'web' | 'ios' | 'android', onesignalPlayerId?: string) => {
+  const registerTokenToBackend = async (token: string, platform: 'web' | 'ios' | 'android') => {
     try {
       const { error } = await supabase.functions.invoke('register-device-token', {
         body: {
           token,
           platform,
-          onesignalPlayerId: onesignalPlayerId || token,
+          onesignalPlayerId: token,
         },
       });
 
@@ -146,64 +97,57 @@ export function useDeviceToken(): UseDeviceTokenReturn {
     setIsLoading(true);
 
     try {
-      // First request permission
-      const hasPermission = await requestPermission();
-      if (!hasPermission) {
+      const OS = window.OneSignal;
+      
+      if (!OS) {
+        console.warn('OneSignal not available');
         setIsLoading(false);
         return false;
       }
 
-      // If OneSignal is available, use it
-      if (window.OneSignal && window.__oneSignalInitialized) {
-        await window.OneSignal.showNativePrompt();
-        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
+      // Request permission using OneSignal's slidedown
+      await OS.Slidedown.promptPush();
+      
+      // Wait a moment for permission to be processed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const permission = await OS.Notifications.permission;
+      
+      if (permission) {
+        const subscriptionId = await OS.User.PushSubscription.id;
         
-        if (isSubscribed) {
-          const playerId = await window.OneSignal.getUserId();
-          if (playerId) {
-            await registerTokenToBackend(playerId, 'web', playerId);
-            setIsRegistered(true);
-            return true;
-          }
-        }
-      } else {
-        // Fallback: Use browser's native push if available
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-          const registration = await navigator.serviceWorker.ready;
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
-          });
-
-          const token = JSON.stringify(subscription);
-          await registerTokenToBackend(token, 'web');
+        if (subscriptionId) {
+          await registerTokenToBackend(subscriptionId, 'web');
           setIsRegistered(true);
+          setPermissionState('granted');
+          setIsLoading(false);
           return true;
         }
       }
 
+      setIsLoading(false);
       return false;
     } catch (error) {
       console.error('Register token error:', error);
-      return false;
-    } finally {
       setIsLoading(false);
+      return false;
     }
-  }, [user, requestPermission]);
+  }, [user]);
 
   const unregisterToken = useCallback(async () => {
     if (!user) return;
 
     try {
-      if (window.OneSignal && window.__oneSignalInitialized) {
-        const playerId = await window.OneSignal.getUserId();
-        if (playerId) {
+      const OS = window.OneSignal;
+      if (OS) {
+        const subscriptionId = await OS.User?.PushSubscription?.id;
+        if (subscriptionId) {
           await supabase.functions.invoke('register-device-token', {
             method: 'DELETE',
-            body: { token: playerId },
+            body: { token: subscriptionId },
           });
         }
-        await window.OneSignal.setSubscription(false);
+        await OS.User?.PushSubscription?.optOut();
       }
       setIsRegistered(false);
     } catch (error) {

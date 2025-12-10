@@ -1,16 +1,41 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-// Get OneSignal App ID from environment
-const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
-
-// Track initialization state
+// Track initialization state globally
 let onesignalInitialized = false;
+let onesignalAppId: string | null = null;
 
 export const OneSignalInit = () => {
   const { user } = useAuth();
   const registrationAttempted = useRef(false);
+  const [appIdLoaded, setAppIdLoaded] = useState(false);
+
+  // Fetch OneSignal App ID from backend
+  useEffect(() => {
+    if (!user || onesignalAppId) return;
+
+    const fetchAppId = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-onesignal-config');
+        
+        if (error) {
+          console.error('❌ Failed to fetch OneSignal config:', error);
+          return;
+        }
+        
+        if (data?.appId) {
+          onesignalAppId = data.appId;
+          setAppIdLoaded(true);
+          console.log('✅ OneSignal App ID loaded from backend');
+        }
+      } catch (err) {
+        console.error('❌ Error fetching OneSignal config:', err);
+      }
+    };
+
+    fetchAppId();
+  }, [user]);
 
   // Register device token with backend
   const registerDeviceToken = useCallback(async (playerId: string) => {
@@ -21,11 +46,10 @@ export const OneSignalInit = () => {
       
       const { error } = await supabase.functions.invoke('register-device-token', {
         body: {
-          action: 'register',
           token: playerId,
           platform: 'web',
-          onesignal_player_id: playerId,
-          app_version: import.meta.env.VITE_APP_VERSION || '1.0.0',
+          onesignalPlayerId: playerId,
+          appVersion: '1.0.0',
         }
       });
 
@@ -43,9 +67,12 @@ export const OneSignalInit = () => {
   const handleNotificationClick = useCallback((data: any) => {
     console.log('🔔 Notification clicked:', data);
     
-    const payload = data?.notification?.additionalData || data;
+    const payload = data?.notification?.additionalData || data?.result?.notification?.additionalData || data;
     
-    if (!payload?.type) return;
+    if (!payload?.type) {
+      window.location.href = '/dashboard';
+      return;
+    }
 
     // Deep link based on notification type
     switch (payload.type) {
@@ -76,16 +103,17 @@ export const OneSignalInit = () => {
         break;
       
       default:
-        window.location.href = '/dashboard';
+        if (payload.url) {
+          window.location.href = payload.url;
+        } else {
+          window.location.href = '/dashboard';
+        }
     }
   }, []);
 
   useEffect(() => {
-    // Don't initialize if no user or no app ID
-    if (!user || !ONESIGNAL_APP_ID) {
-      if (!ONESIGNAL_APP_ID) {
-        console.warn('🔔 OneSignal App ID not configured (VITE_ONESIGNAL_APP_ID)');
-      }
+    // Don't initialize if no user or no app ID yet
+    if (!user || !appIdLoaded || !onesignalAppId) {
       return;
     }
 
@@ -95,19 +123,15 @@ export const OneSignalInit = () => {
       return;
     }
 
-    console.log('🔔 Initializing OneSignal...');
+    console.log('🔔 Initializing OneSignal with App ID:', onesignalAppId);
 
     const initOneSignal = async () => {
       try {
-        // Access OneSignal from window
-        const OneSignal = (window as any).OneSignal;
-        
         // Load OneSignal SDK if not already loaded
-        if (!OneSignal) {
+        if (!(window as any).OneSignal) {
           await new Promise<void>((resolve, reject) => {
             const existingScript = document.querySelector('script[src*="OneSignalSDK"]');
             if (existingScript) {
-              // Wait for it to load
               const checkLoaded = setInterval(() => {
                 if ((window as any).OneSignal) {
                   clearInterval(checkLoaded);
@@ -141,13 +165,16 @@ export const OneSignalInit = () => {
           }, 50);
         });
 
-        // Get OneSignal reference
         const OS = (window as any).OneSignal;
 
         // Initialize OneSignal
         await OS.init({
-          appId: ONESIGNAL_APP_ID,
+          appId: onesignalAppId,
           allowLocalhostAsSecureOrigin: true,
+          serviceWorkerParam: {
+            scope: '/'
+          },
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
           notifyButton: {
             enable: false,
           },
@@ -174,21 +201,23 @@ export const OneSignalInit = () => {
           await OS.login(user.id);
           console.log('✅ OneSignal user logged in:', user.id);
         } catch (loginError) {
-          console.warn('⚠️ OneSignal login failed:', loginError);
+          console.warn('⚠️ OneSignal login warning:', loginError);
         }
 
         // Set up notification click handler
         OS.Notifications.addEventListener('click', handleNotificationClick);
 
-        // Get subscription state and register if subscribed
+        // Check permission and register if already granted
         const permission = await OS.Notifications.permission;
         console.log('🔔 OneSignal permission state:', permission);
 
         if (permission && !registrationAttempted.current) {
           registrationAttempted.current = true;
           
-          // Get the player/subscription ID
+          // Get the subscription ID
           const subscriptionId = await OS.User.PushSubscription.id;
+          console.log('🔔 OneSignal subscription ID:', subscriptionId);
+          
           if (subscriptionId) {
             await registerDeviceToken(subscriptionId);
           }
@@ -197,7 +226,7 @@ export const OneSignalInit = () => {
         // Listen for subscription changes
         OS.User.PushSubscription.addEventListener('change', async (event: any) => {
           console.log('🔔 Subscription changed:', event);
-          if (event.current.id && event.current.optedIn) {
+          if (event.current?.id && event.current?.optedIn) {
             await registerDeviceToken(event.current.id);
           }
         });
@@ -216,7 +245,7 @@ export const OneSignalInit = () => {
         OS.Notifications.removeEventListener('click', handleNotificationClick);
       }
     };
-  }, [user, registerDeviceToken, handleNotificationClick]);
+  }, [user, appIdLoaded, registerDeviceToken, handleNotificationClick]);
 
   return null;
 };
@@ -241,13 +270,13 @@ export const useRequestPushPermission = () => {
         return true;
       }
 
-      // Request permission
-      await OS.Notifications.requestPermission();
+      // Request permission using slidedown prompt
+      await OS.Slidedown.promptPush();
       
       const newPermission = await OS.Notifications.permission;
       console.log('🔔 New permission state:', newPermission);
       
-      return newPermission;
+      return newPermission === true;
     } catch (error) {
       console.error('❌ Error requesting push permission:', error);
       return false;
