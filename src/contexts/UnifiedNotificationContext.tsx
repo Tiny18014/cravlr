@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { RequestService } from '@/services/RequestService';
 
-export type NotificationType = 'new_request' | 'request_results';
+export type NotificationType = 'new_request' | 'request_results' | 'visit_reminder';
 
 export interface Notification {
   id: string;
@@ -14,6 +14,7 @@ export interface Notification {
   actionUrl: string;
   data: any;
   priority: 'high' | 'normal' | 'low';
+  timestamp: number;
 }
 
 interface NotificationContextType {
@@ -21,7 +22,7 @@ interface NotificationContextType {
   dismissNotification: () => void;
   dnd: boolean;
   setDnd: (value: boolean) => void;
-  showNotification: (notification: Omit<Notification, 'id'>) => void;
+  showNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
 }
 
 const UnifiedNotificationContext = createContext<NotificationContextType | null>(null);
@@ -34,36 +35,116 @@ export const useNotifications = () => {
   return context;
 };
 
+// Goal 6: Notification frequency control
+const NOTIFICATION_COOLDOWN_MS = 30000; // 30 seconds between same-type notifications
+const REMINDER_INTERVAL_HOURS = 3; // Hours between visit reminders
+
 export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
   const [dnd, setDndState] = useState(false);
   const [notificationQueue, setNotificationQueue] = useState<Notification[]>([]);
-  const [dismissedRequestIds, setDismissedRequestIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [lastNotificationTime, setLastNotificationTime] = useState<Record<string, number>>({});
   const channelsRef = useRef<any[]>([]);
+  const mountedRef = useRef(true);
 
-  // Unified realtime subscription setup - wait for DND state to load
+  // Cleanup on unmount
   useEffect(() => {
-    if (!user?.id) {
-      cleanup();
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Goal 6: Check if enough time has passed since last notification of this type
+  const canShowNotification = useCallback((type: NotificationType, dataId: string): boolean => {
+    const key = `${type}-${dataId}`;
+    const lastTime = lastNotificationTime[key];
+    if (!lastTime) return true;
+    return Date.now() - lastTime > NOTIFICATION_COOLDOWN_MS;
+  }, [lastNotificationTime]);
+
+  // Show notification with frequency control
+  const showNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {
+    if (dnd || !mountedRef.current) return;
+
+    const dataId = notification.data?.requestId || notification.data?.recommendationId || 'default';
+    
+    // Goal 6: Check cooldown
+    if (!canShowNotification(notification.type, dataId)) {
+      console.log('🔕 Notification skipped due to cooldown:', notification.type);
       return;
     }
 
-    // Wait a moment for DND state to load before setting up subscriptions
-    const timer = setTimeout(() => {
-        // console.log("🔔 Setting up unified notification system for user:", user.id, "DND:", dnd);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [user?.id, dnd]);
-  // Set up actual realtime subscriptions
-  useEffect(() => {
-    if (!user?.id) {
-      cleanup();
+    // Check if already dismissed
+    const dismissKey = `${notification.type}-${dataId}`;
+    if (dismissedIds.has(dismissKey)) {
+      console.log('🔕 Notification skipped - already dismissed:', dismissKey);
       return;
     }
 
-    console.log("🔔 Setting up realtime subscriptions for user:", user.id, "DND state:", dnd);
+    const fullNotification: Notification = {
+      ...notification,
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: Date.now()
+    };
+
+    // Update last notification time
+    setLastNotificationTime(prev => ({
+      ...prev,
+      [dismissKey]: Date.now()
+    }));
+
+    if (!currentNotification) {
+      setCurrentNotification(fullNotification);
+    } else {
+      // Only queue if not a duplicate
+      setNotificationQueue(prev => {
+        const isDuplicate = prev.some(n => 
+          n.type === fullNotification.type && 
+          JSON.stringify(n.data) === JSON.stringify(fullNotification.data)
+        );
+        if (isDuplicate) return prev;
+        return [...prev, fullNotification];
+      });
+    }
+  }, [dnd, currentNotification, canShowNotification, dismissedIds]);
+
+  // Dismiss notification and show next in queue
+  const dismissNotification = useCallback(() => {
+    if (currentNotification) {
+      const dismissKey = `${currentNotification.type}-${currentNotification.data?.requestId || 'default'}`;
+      setDismissedIds(prev => new Set([...prev, dismissKey]));
+    }
+    
+    setCurrentNotification(null);
+    
+    // Show next notification after a brief delay
+    setTimeout(() => {
+      if (!mountedRef.current) return;
+      setNotificationQueue(prev => {
+        if (prev.length > 0) {
+          const [next, ...rest] = prev;
+          setCurrentNotification(next);
+          return rest;
+        }
+        return prev;
+      });
+    }, 500);
+  }, [currentNotification]);
+
+  // Set up realtime subscriptions
+  useEffect(() => {
+    if (!user?.id) {
+      channelsRef.current.forEach(channel => {
+        if (channel) supabase.removeChannel(channel);
+      });
+      channelsRef.current = [];
+      return;
+    }
+
+    console.log("🔔 Setting up realtime subscriptions for user:", user.id);
     
     // Listen for new requests (for recommenders)
     const requestChannel = supabase
@@ -73,21 +154,12 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         (payload) => {
           const request = payload.new;
           
-          console.log("🔔 New request received, DND state:", dnd, "Request:", request.food_type);
+          // Skip own requests
+          if (request.requester_id === user.id) return;
           
-          // Skip notifications for your own requests
-          if (request.requester_id === user.id) {
-            console.log("🔕 Skipping notification - own request");
-            return;
-          }
+          // Skip if DND
+          if (dnd) return;
           
-          // Skip if Do Not Disturb is enabled
-          if (dnd) {
-            console.log("🔕 Skipping notification due to DND mode");
-            return;
-          }
-          
-          console.log("📨 Proceeding to show notification");
           showNotification({
             type: 'new_request',
             title: 'New request nearby',
@@ -99,9 +171,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           });
         }
       )
-      .subscribe((status) => {
-        // console.log("🔔 Request notifications status:", status);
-      });
+      .subscribe();
 
     // Listen for request results (for requesters)
     const notificationChannel = supabase
@@ -113,26 +183,10 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           table: 'notifications',
           filter: `requester_id=eq.${user.id}`
         },
-        async (payload) => {
+        (payload) => {
           const notification = payload.new;
           
-          // Skip if already read
-          if (notification.read_at) {
-            // console.log("🔕 Skipping notification - already read");
-            return;
-          }
-          
-          // Skip if request was already dismissed
-          if (dismissedRequestIds.has(notification.request_id)) {
-            // console.log("🔕 Skipping notification - request already dismissed");
-            return;
-          }
-          
-          // Skip if Do Not Disturb is enabled
-          if (dnd) {
-            // console.log("🔕 Skipping notification due to DND mode");
-            return;
-          }
+          if (notification.read_at || dnd) return;
           
           if (notification.type === 'request_results') {
             showNotification({
@@ -147,9 +201,7 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           }
         }
       )
-      .subscribe((status) => {
-        console.log("🔔 User notifications status:", status);
-      });
+      .subscribe();
 
     // Listen for request status changes (fallback for expiry)
     const statusChannel = supabase
@@ -182,75 +234,33 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
           }
         }
       )
-      .subscribe((status) => {
-        // console.log("🔔 Status notifications status:", status);
-      });
+      .subscribe();
 
     channelsRef.current = [requestChannel, notificationChannel, statusChannel];
 
-    return cleanup;
-  }, [user?.id, dnd]); // Add dnd as dependency so subscriptions restart when DND changes
-
-  // Load DND state from profile on mount
-  useEffect(() => {
-    if (!user?.id) return;
-    setDndState(false);
-  }, [user?.id]);
-
-  const setDnd = async (enabled: boolean) => {
-    setDndState(enabled);
-  };
-
-  const cleanup = () => {
-    channelsRef.current.forEach(channel => {
-      if (channel) supabase.removeChannel(channel);
-    });
-    channelsRef.current = [];
-  };
-
-  const showNotification = (notification: Omit<Notification, 'id'>) => {
-    // Double-check DND status before showing any notification
-    if (dnd) {
-      return;
-    }
-
-    const fullNotification: Notification = {
-      ...notification,
-      id: Math.random().toString(36).substr(2, 9)
+    return () => {
+      channelsRef.current.forEach(channel => {
+        if (channel) supabase.removeChannel(channel);
+      });
+      channelsRef.current = [];
     };
+  }, [user?.id, dnd, showNotification]);
 
-    // Enhanced deduplication - check both current notification and queue
-    const isDuplicateOfCurrent = currentNotification && 
-      currentNotification.type === fullNotification.type && 
-      JSON.stringify(currentNotification.data) === JSON.stringify(fullNotification.data);
-      
-    const isDuplicateInQueue = notificationQueue.some(n => 
-      n.type === fullNotification.type && 
-      JSON.stringify(n.data) === JSON.stringify(fullNotification.data)
-    );
-
-    if (isDuplicateOfCurrent || isDuplicateInQueue) {
-      return;
-    }
-
-    if (!currentNotification) {
-      setCurrentNotification(fullNotification);
-    } else {
-      setNotificationQueue(prev => [...prev, fullNotification]);
-    }
-  };
-
-  const dismissNotification = () => {
-    // Add the request ID to dismissed list to prevent future notifications
-    if (currentNotification?.data?.requestId) {
-      setDismissedRequestIds(prev => new Set([...prev, currentNotification.data.requestId]));
-    }
+  // Reset dismissed IDs periodically (every hour)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDismissedIds(new Set());
+    }, 3600000);
     
-    // Clear current notification immediately
-    setCurrentNotification(null);
-    
-    // Clear the entire queue to prevent multiple popups for the same event
-    setNotificationQueue([]);
+    return () => clearInterval(interval);
+  }, []);
+
+  const setDnd = (enabled: boolean) => {
+    setDndState(enabled);
+    if (enabled) {
+      setCurrentNotification(null);
+      setNotificationQueue([]);
+    }
   };
 
   return (

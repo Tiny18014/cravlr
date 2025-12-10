@@ -136,7 +136,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           value={value}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
+          onBlur={handleInputBlur as any}
           placeholder={placeholder}
           disabled={disabled}
           className={cn(

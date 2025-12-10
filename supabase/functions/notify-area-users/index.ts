@@ -9,6 +9,10 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
+// Goal 7: OneSignal configuration for push notifications
+const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID");
+const ONESIGNAL_API_KEY = Deno.env.get("ONESIGNAL_API_KEY");
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -29,6 +33,57 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
+}
+
+// Goal 7: Send push notification via OneSignal
+async function sendPushNotification(
+  playerIds: string[], 
+  title: string, 
+  message: string, 
+  data: Record<string, any>
+): Promise<{ success: boolean; sentCount: number }> {
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY || playerIds.length === 0) {
+    console.log('Push notifications skipped - missing config or no recipients');
+    return { success: false, sentCount: 0 };
+  }
+
+  try {
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        include_player_ids: playerIds,
+        headings: { en: title },
+        contents: { en: message },
+        data: data,
+        // iOS specific settings
+        ios_badgeType: 'Increase',
+        ios_badgeCount: 1,
+        // Android specific settings
+        android_channel_id: 'cravlr_requests',
+        priority: 10,
+        // Web specific
+        web_push_topic: 'new_request',
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (result.errors) {
+      console.error('OneSignal errors:', result.errors);
+      return { success: false, sentCount: 0 };
+    }
+
+    console.log(`✅ Push notification sent to ${result.recipients || 0} devices`);
+    return { success: true, sentCount: result.recipients || playerIds.length };
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    return { success: false, sentCount: 0 };
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -110,13 +165,11 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     // Find users who are eligible for notifications
-    // Use geo-based matching if coordinates are available, otherwise fall back to city matching
     const hasCoordinates = request.lat && request.lng;
     
     let eligibleUsers: any[] = [];
     
     if (hasCoordinates) {
-      // Get all active recommenders with location data
       const { data: potentialUsers, error: usersError } = await supabase
         .from('profiles')
         .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state')
@@ -129,9 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error('Failed to find users');
       }
       
-      // Filter by distance
       eligibleUsers = (potentialUsers || []).filter(u => {
-        // If user has profile coordinates, use geo matching
         if (u.profile_lat && u.profile_lng) {
           const distance = calculateDistance(
             request.lat, 
@@ -142,14 +193,11 @@ const handler = async (req: Request): Promise<Response> => {
           const radius = u.notification_radius_km || 20;
           return distance <= radius;
         }
-        
-        // Fall back to city matching if no coordinates
         return u.location_city?.toLowerCase() === request.location_city?.toLowerCase();
       });
       
       console.log(`📍 Geo-based matching: Found ${eligibleUsers.length} users within radius`);
     } else {
-      // Fall back to city-based matching
       const { data: nearbyUsers, error: usersError } = await supabase
         .from('profiles')
         .select('id, display_name, notify_recommender, recommender_paused, location_city, location_state')
@@ -180,9 +228,40 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${eligibleUsers.length} eligible users to notify`);
 
-    // Send notification emails to all eligible users
+    // Goal 7: Get device tokens for push notifications
+    const userIds = eligibleUsers.map(u => u.id);
+    const { data: deviceTokens } = await supabase
+      .from('device_tokens')
+      .select('user_id, onesignal_player_id')
+      .in('user_id', userIds)
+      .eq('is_active', true)
+      .not('onesignal_player_id', 'is', null);
+
+    const playerIds = (deviceTokens || [])
+      .map(t => t.onesignal_player_id)
+      .filter((id): id is string => id !== null);
+
+    console.log(`Found ${playerIds.length} active push subscriptions`);
+
+    // Goal 7: Send push notifications
+    const locationDisplay = request.location_state 
+      ? `${request.location_city}, ${request.location_state}`
+      : request.location_city;
+
+    const pushTitle = '🍽️ New food request nearby!';
+    const pushMessage = `Someone's craving ${request.food_type} in ${locationDisplay}. Know a great spot?`;
+    const pushData = {
+      type: 'NEW_REQUEST_NEARBY',
+      requestId: request.id,
+      foodType: request.food_type,
+      location: locationDisplay,
+      url: `/recommend/${request.id}`
+    };
+
+    const pushResult = await sendPushNotification(playerIds, pushTitle, pushMessage, pushData);
+
+    // Send notification emails to all eligible users (existing logic)
     const emailPromises = eligibleUsers.map(async (targetUser) => {
-      // Get user's email from auth.users using service role key
       const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
       
       if (authUserError || !authUser?.user?.email) {
@@ -191,9 +270,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
       
       const emailTo = authUser.user.email;
-      const locationDisplay = request.location_state 
-        ? `${request.location_city}, ${request.location_state}`
-        : request.location_city;
 
       try {
         const emailResponse = await resend.emails.send({
@@ -251,11 +327,12 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResults = await Promise.all(emailPromises);
     const successfulEmails = emailResults.filter(id => id !== null).length;
 
-    console.log(`Successfully sent ${successfulEmails} area notifications`);
+    console.log(`Successfully sent ${successfulEmails} emails and ${pushResult.sentCount} push notifications`);
 
     return new Response(JSON.stringify({ 
       success: true,
-      notificationsSent: successfulEmails,
+      emailsSent: successfulEmails,
+      pushNotificationsSent: pushResult.sentCount,
       totalEligibleUsers: eligibleUsers.length
     }), {
       status: 200,
