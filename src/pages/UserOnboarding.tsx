@@ -8,19 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { CuisineMultiSelect } from '@/components/CuisineMultiSelect';
 import { MapPin, Utensils, Target, Check } from 'lucide-react';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
-
-// Popular cuisine options for food expertise
-const CUISINE_OPTIONS = [
-  'American', 'Italian', 'Mexican', 'Chinese',
-  'Japanese', 'Indian', 'Thai',
-  'Mediterranean', 'Middle Eastern', 'Korean',
-  'Vietnamese', 'French', 'Spanish',
-  'African', 'Latin/Caribbean', 'Brazilian',
-  'BBQ', 'Seafood', 'Pizza & Pasta',
-  'Bakery/Desserts', 'Vegan/Vegetarian'
-];
 
 // Goal 3: Distance unit options
 type DistanceUnit = 'miles' | 'km';
@@ -117,14 +107,6 @@ const UserOnboarding = () => {
     setLocationState(state);
   };
 
-  // Toggle cuisine selection
-  const toggleCuisine = (cuisine: string) => {
-    setSelectedCuisines(prev =>
-      prev.includes(cuisine)
-        ? prev.filter(c => c !== cuisine)
-        : [...prev, cuisine]
-    );
-  };
 
   const handleNextStep = () => {
     if (step === 1) {
@@ -309,22 +291,11 @@ const UserOnboarding = () => {
           {/* Step 2: Food Expertise (Cuisine Selection) */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2 justify-center">
-                {CUISINE_OPTIONS.map((cuisine) => (
-                  <button
-                    key={cuisine}
-                    type="button"
-                    onClick={() => toggleCuisine(cuisine)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all border-2 ${
-                      selectedCuisines.includes(cuisine)
-                        ? 'bg-[#FF6A3D] text-white border-[#FF6A3D]'
-                        : 'bg-transparent text-[#3E2F25] border-[#FF6A3D]/50 hover:border-[#FF6A3D]'
-                    }`}
-                  >
-                    {cuisine}
-                  </button>
-                ))}
-              </div>
+              <CuisineMultiSelect
+                value={selectedCuisines}
+                onChange={setSelectedCuisines}
+                placeholder="Search cuisines..."
+              />
               
               <p className={`text-sm text-center ${selectedCuisines.length === 0 ? 'text-[#FF6A3D]' : 'text-[#6B5B52]'}`}>
                 {selectedCuisines.length === 0 
