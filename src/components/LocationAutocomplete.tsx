@@ -79,6 +79,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -106,7 +107,8 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       clearTimeout(debounceRef.current);
     }
 
-    if (value.length < 2) {
+    // Only search if user has actively typed (not on initial load with existing value)
+    if (!hasUserTyped || value.length < 2) {
       setSuggestions([]);
       setIsOpen(false);
       setIsLoading(false);
@@ -150,13 +152,15 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [value, userCoords, includeRestaurants]);
+  }, [value, userCoords, includeRestaurants, hasUserTyped]);
 
   const handleInputChange = (newValue: string) => {
+    setHasUserTyped(true);
     onValueChange(newValue);
   };
 
   const handleLocationSelect = (location: NormalizedLocation) => {
+    setHasUserTyped(false); // Reset so dropdown doesn't reopen
     onValueChange(location.displayLabel);
     onLocationSelect(location);
     setIsOpen(false);
