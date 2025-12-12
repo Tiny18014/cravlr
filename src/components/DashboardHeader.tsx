@@ -115,13 +115,15 @@ export function DashboardHeader({
 
       {/* Full-size image dialog */}
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
-        <DialogContent className="max-w-md p-2 bg-background/95 backdrop-blur">
+        <DialogContent className="max-w-md p-4 bg-background/95 backdrop-blur">
           {fullSizeImageUrl && (
-            <img 
-              src={fullSizeImageUrl} 
-              alt={`${userName}'s profile`}
-              className="w-full h-auto rounded-lg object-contain max-h-[80vh]"
-            />
+            <div className="w-full aspect-square rounded-lg overflow-hidden">
+              <img 
+                src={fullSizeImageUrl} 
+                alt={`${userName}'s profile`}
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>
