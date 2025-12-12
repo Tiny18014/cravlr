@@ -32,10 +32,27 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // Track if a city was selected
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Reset locked state when value is cleared externally
+  useEffect(() => {
+    if (!value) {
+      setIsLocked(false);
+    }
+  }, [value]);
 
   useEffect(() => {
+    // Don't search if locked (user selected a city)
+    if (isLocked) {
+      setSuggestions([]);
+      setIsOpen(false);
+      return;
+    }
+
     // Clear any existing debounce timeout
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -46,6 +63,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       setSuggestions([]);
       setIsOpen(false);
       setIsLoading(false);
+      setHighlightedIndex(-1);
       return;
     }
 
@@ -69,6 +87,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         const results = data || [];
         setSuggestions(results.slice(0, 8));
         setIsOpen(results.length > 0);
+        setHighlightedIndex(-1);
       } catch (error) {
         console.error('Error searching cities:', error);
         setSuggestions([]);
@@ -83,40 +102,74 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [value]);
+  }, [value, isLocked]);
 
   const handleInputChange = (newValue: string) => {
+    // User is typing, unlock the field
+    setIsLocked(false);
     onValueChange(newValue);
   };
 
-  // Task B: Fix city selection - ensure single click registers immediately
   const handleCitySelect = useCallback((result: AutocompleteResult) => {
-    // Immediately update all state synchronously to prevent race conditions
     const displayValue = `${result.city}, ${result.state}`;
     
-    // Close dropdown and clear suggestions first
+    // Lock the selection and close dropdown
+    setIsLocked(true);
     setIsOpen(false);
     setSuggestions([]);
+    setHighlightedIndex(-1);
     
-    // Update value and call callback synchronously
+    // Update value and call callback
     onValueChange(displayValue);
     onCitySelect(result.city, result.state);
   }, [onValueChange, onCitySelect]);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen || suggestions.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+          handleCitySelect(suggestions[highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        setHighlightedIndex(-1);
+        break;
+    }
+  };
+
   const handleInputFocus = () => {
-    if (suggestions.length > 0) {
+    // Only show dropdown if not locked and we have suggestions
+    if (!isLocked && suggestions.length > 0) {
       setIsOpen(true);
     }
   };
 
   const handleInputBlur = (e: React.FocusEvent) => {
-    // Check if the new focus target is within our dropdown
     const relatedTarget = e.relatedTarget as HTMLElement;
     if (relatedTarget?.closest('.city-suggestions-dropdown')) {
-      return; // Don't close if clicking inside dropdown
+      return;
     }
-    // Short delay to allow click to register
-    setTimeout(() => setIsOpen(false), 100);
+    setTimeout(() => {
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+    }, 100);
   };
 
   const clearInput = () => {
@@ -124,8 +177,20 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     onCitySelect('', '');
     setIsOpen(false);
     setSuggestions([]);
+    setIsLocked(false);
+    setHighlightedIndex(-1);
     inputRef.current?.focus();
   };
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && dropdownRef.current) {
+      const highlighted = dropdownRef.current.children[highlightedIndex] as HTMLElement;
+      if (highlighted) {
+        highlighted.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedIndex]);
 
   return (
     <div className="relative w-full">
@@ -137,6 +202,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur as any}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
@@ -163,20 +229,27 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       </div>
       
       {isOpen && suggestions.length > 0 && !isLoading && (
-        <div className="city-suggestions-dropdown absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto">
+        <div 
+          ref={dropdownRef}
+          className="city-suggestions-dropdown absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150"
+        >
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.placeId}-${index}`}
               type="button"
               tabIndex={0}
-              className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl focus:bg-accent focus:outline-none"
+              className={cn(
+                "w-full px-4 py-3 text-left flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl focus:outline-none",
+                highlightedIndex === index 
+                  ? "bg-accent text-accent-foreground" 
+                  : "hover:bg-accent hover:text-accent-foreground"
+              )}
               onMouseDown={(e) => {
-                // Task B: Use mouseDown instead of click for immediate response
-                // preventDefault stops the blur event from firing on the input
                 e.preventDefault();
                 e.stopPropagation();
                 handleCitySelect(suggestion);
               }}
+              onMouseEnter={() => setHighlightedIndex(index)}
             >
               <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
