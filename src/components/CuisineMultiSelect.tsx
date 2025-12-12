@@ -66,9 +66,9 @@ export function CuisineMultiSelect({ value, onChange, placeholder = "Search cuis
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full">
       <div className="relative" ref={dropdownRef}>
-        <div className="relative flex-1">
+        <div className="relative">
           <div className="flex items-center border-2 border-border rounded-full px-4 py-3 bg-background shadow-sm focus-within:border-primary transition-colors">
             <Globe className="h-5 w-5 text-muted-foreground shrink-0" />
             <input
@@ -87,7 +87,7 @@ export function CuisineMultiSelect({ value, onChange, placeholder = "Search cuis
                 }
               }}
               placeholder={placeholder}
-              className="flex-1 outline-none ml-3 bg-transparent text-foreground placeholder:text-muted-foreground"
+              className="flex-1 outline-none ml-3 bg-transparent text-foreground placeholder:text-muted-foreground text-base"
             />
             {query && (
               <button
@@ -101,7 +101,7 @@ export function CuisineMultiSelect({ value, onChange, placeholder = "Search cuis
           </div>
 
           {showDropdown && results.length > 0 && (
-            <ul className="absolute z-10 w-full mt-2 max-h-60 overflow-y-auto bg-background border border-border rounded-xl shadow-lg">
+            <ul className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-popover border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150">
               {results.map(item => (
                 <li
                   key={item.id}
@@ -114,28 +114,28 @@ export function CuisineMultiSelect({ value, onChange, placeholder = "Search cuis
             </ul>
           )}
         </div>
-
-        {/* Selected Cuisines Tags */}
-        {value.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {value.map((cuisine) => (
-              <span
-                key={cuisine}
-                className="bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2"
-              >
-                {cuisine}
-                <button
-                  type="button"
-                  onClick={() => removeCuisine(cuisine)}
-                  className="text-primary hover:text-primary/80 transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Selected Cuisines Tags */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3 px-1">
+          {value.map((cuisine) => (
+            <span
+              key={cuisine}
+              className="bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2"
+            >
+              {cuisine}
+              <button
+                type="button"
+                onClick={() => removeCuisine(cuisine)}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
