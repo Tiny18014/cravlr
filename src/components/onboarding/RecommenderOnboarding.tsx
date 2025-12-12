@@ -7,13 +7,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, ChefHat, Target } from 'lucide-react';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
+import { CuisineMultiSelect } from '@/components/CuisineMultiSelect';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 
-const CUISINE_OPTIONS = [
-  'African', 'Italian', 'Indian', 'Nepali', 'Mexican',
-  'Chinese', 'Japanese', 'Thai', 'Mediterranean', 'American', 'Other'
-];
 
 interface RecommenderOnboardingProps {
   onComplete?: () => void;
@@ -90,13 +87,6 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
     // Optionally geocode the city to get lat/lng
   };
 
-  const toggleCuisine = (cuisine: string) => {
-    setSelectedCuisines(prev =>
-      prev.includes(cuisine)
-        ? prev.filter(c => c !== cuisine)
-        : [...prev, cuisine]
-    );
-  };
 
   const handleNextStep = () => {
     if (step === 1 && !locationCity) {
@@ -252,19 +242,11 @@ export const RecommenderOnboarding: React.FC<RecommenderOnboardingProps> = ({
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {CUISINE_OPTIONS.map((cuisine) => (
-                  <Button
-                    key={cuisine}
-                    type="button"
-                    variant={selectedCuisines.includes(cuisine) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleCuisine(cuisine)}
-                  >
-                    {cuisine}
-                  </Button>
-                ))}
-              </div>
+              <CuisineMultiSelect
+                value={selectedCuisines}
+                onChange={setSelectedCuisines}
+                placeholder="Search cuisines..."
+              />
               <p className="text-xs text-muted-foreground">
                 Select cuisines you're knowledgeable about
               </p>

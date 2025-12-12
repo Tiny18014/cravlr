@@ -10,13 +10,7 @@ import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { cn } from '@/lib/utils';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
-
-const CUISINE_OPTIONS = [
-  'American', 'Italian', 'Mexican', 'Chinese', 'Japanese', 'Indian', 'Thai',
-  'Mediterranean', 'Middle Eastern', 'Korean', 'Vietnamese', 'French', 'Spanish',
-  'African', 'Latin/Caribbean', 'Brazilian', 'BBQ', 'Seafood', 'Pizza & Pasta',
-  'Bakery/Desserts', 'Vegan/Vegetarian'
-];
+import { CuisineMultiSelect } from '@/components/CuisineMultiSelect';
 
 interface RequesterOnboardingProps {
   onComplete?: () => void;
@@ -129,13 +123,6 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
     setStep(step + 1);
   };
 
-  const toggleCuisine = (cuisine: string) => {
-    setSelectedCuisines(prev => 
-      prev.includes(cuisine) 
-        ? prev.filter(c => c !== cuisine)
-        : [...prev, cuisine]
-    );
-  };
 
   const handleComplete = async () => {
     if (selectedCuisines.length === 0) {
@@ -311,30 +298,11 @@ export const RequesterOnboarding: React.FC<RequesterOnboardingProps> = ({
 
           {step === 3 && (
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {CUISINE_OPTIONS.map((cuisine) => {
-                  const isSelected = selectedCuisines.includes(cuisine);
-                  return (
-                    <button
-                      key={cuisine}
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleCuisine(cuisine);
-                      }}
-                      className={cn(
-                        "px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors cursor-pointer",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-primary bg-background text-foreground hover:bg-muted"
-                      )}
-                    >
-                      {cuisine}
-                    </button>
-                  );
-                })}
-              </div>
+              <CuisineMultiSelect
+                value={selectedCuisines}
+                onChange={setSelectedCuisines}
+                placeholder="Search cuisines..."
+              />
               {selectedCuisines.length === 0 && (
                 <p className="text-xs text-destructive">
                   Select at least one cuisine
