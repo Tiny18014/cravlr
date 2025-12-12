@@ -338,25 +338,32 @@ const Profile = () => {
               <FormField
                 control={form.control}
                 name="notification_radius_km"
-                render={({ field }) => (
-                  <div className="py-4 border-t border-border">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-medium text-foreground">Notification Radius</p>
-                      <span className="text-sm font-semibold text-primary">{field.value || 20} km</span>
+                render={({ field }) => {
+                  // Convert km to miles for display (1 km ≈ 0.621371 miles)
+                  const kmToMiles = (km: number) => Math.round(km * 0.621371);
+                  const milesToKm = (miles: number) => Math.round(miles / 0.621371);
+                  const displayMiles = kmToMiles(field.value || 20);
+                  
+                  return (
+                    <div className="py-4 border-t border-border">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-medium text-foreground">Notification Radius</p>
+                        <span className="text-sm font-semibold text-primary">{displayMiles} miles</span>
+                      </div>
+                      <Slider
+                        value={[displayMiles]}
+                        onValueChange={(values) => field.onChange(milesToKm(values[0]))}
+                        min={1}
+                        max={60}
+                        step={1}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Get notified about requests within this distance
+                      </p>
                     </div>
-                    <Slider
-                      value={[field.value || 20]}
-                      onValueChange={(values) => field.onChange(values[0])}
-                      min={1}
-                      max={100}
-                      step={1}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Get notified about requests within this distance
-                    </p>
-                  </div>
-                )}
+                  );
+                }}
               />
 
               {/* Recommender Mode */}
