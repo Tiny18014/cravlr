@@ -8,9 +8,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CityAutocomplete } from '@/components/CityAutocomplete';
-import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
-import { MapPin, Camera, Target, Check } from 'lucide-react';
+import { MapPin, Utensils, Target, Check } from 'lucide-react';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
+
+// Popular cuisine options for food expertise
+const CUISINE_OPTIONS = [
+  'American', 'Italian', 'Mexican', 'Chinese',
+  'Japanese', 'Indian', 'Thai',
+  'Mediterranean', 'Middle Eastern', 'Korean',
+  'Vietnamese', 'French', 'Spanish',
+  'African', 'Latin/Caribbean', 'Brazilian',
+  'BBQ', 'Seafood', 'Pizza & Pasta',
+  'Bakery/Desserts', 'Vegan/Vegetarian'
+];
 
 // Goal 3: Distance unit options
 type DistanceUnit = 'miles' | 'km';
@@ -28,8 +38,8 @@ const UserOnboarding = () => {
   const [gpsAttempted, setGpsAttempted] = useState(false);
   const [cityInput, setCityInput] = useState('');
   
-  // Goal 4: Profile picture state (replaces cuisine expertise)
-  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  // Cuisine expertise state (replaces profile picture)
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   
   // Goal 3: Search range state with unit support
   const [searchRange, setSearchRange] = useState('local');
@@ -107,9 +117,13 @@ const UserOnboarding = () => {
     setLocationState(state);
   };
 
-  // Goal 4: Handle profile image change
-  const handleProfileImageChange = (newUrl: string | null) => {
-    setProfileImageUrl(newUrl);
+  // Toggle cuisine selection
+  const toggleCuisine = (cuisine: string) => {
+    setSelectedCuisines(prev =>
+      prev.includes(cuisine)
+        ? prev.filter(c => c !== cuisine)
+        : [...prev, cuisine]
+    );
   };
 
   const handleNextStep = () => {
@@ -123,7 +137,17 @@ const UserOnboarding = () => {
         return;
       }
     }
-    // Step 2 (profile picture) is optional - can skip
+    
+    if (step === 2) {
+      if (selectedCuisines.length === 0) {
+        toast({
+          title: "Select at least one cuisine",
+          description: "Please select at least one cuisine you specialize in.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     
     setStep(step + 1);
   };
@@ -160,7 +184,7 @@ const UserOnboarding = () => {
           profile_lng: locationLng,
           search_range: searchRange,
           notification_radius_km: notificationRadiusKm,
-          // Note: profile_image_url is already updated by ProfilePictureUpload component
+          cuisine_expertise: selectedCuisines,
         })
         .eq('id', user.id);
       
@@ -226,7 +250,7 @@ const UserOnboarding = () => {
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-2">
             {step === 1 && <MapPin className="h-12 w-12 text-[#FF6A3D]" />}
-            {step === 2 && <Camera className="h-12 w-12 text-[#FF6A3D]" />}
+            {step === 2 && <Utensils className="h-12 w-12 text-[#FF6A3D]" />}
             {step === 3 && <Target className="h-12 w-12 text-[#FF6A3D]" />}
           </div>
           
@@ -234,13 +258,13 @@ const UserOnboarding = () => {
           
           <CardTitle className="text-2xl font-poppins font-semibold text-[#3E2F25]">
             {step === 1 && 'Where are you located?'}
-            {step === 2 && 'Add a Profile Picture'}
+            {step === 2 && 'Your Food Expertise'}
             {step === 3 && 'Search Range Preference'}
           </CardTitle>
           
           <p className="text-sm text-[#6B5B52] font-nunito">
             {step === 1 && 'Help us show you the best local food recommendations'}
-            {step === 2 && 'Let others see who they\'re getting recommendations from (optional)'}
+            {step === 2 && 'What cuisines do you specialize in?'}
             {step === 3 && 'How far would you like to search for food recommendations?'}
           </p>
         </CardHeader>
@@ -282,26 +306,31 @@ const UserOnboarding = () => {
             </div>
           )}
           
-          {/* Step 2: Profile Picture (Goal 4 - replaces cuisine expertise) */}
+          {/* Step 2: Food Expertise (Cuisine Selection) */}
           {step === 2 && (
-            <div className="space-y-6">
-              <div className="flex flex-col items-center gap-4">
-                <ProfilePictureUpload
-                  currentImageUrl={profileImageUrl}
-                  displayName={user?.email?.split('@')[0] || 'User'}
-                  onImageChange={handleProfileImageChange}
-                  size="lg"
-                />
-                <p className="text-sm text-muted-foreground text-center">
-                  Click the camera icon to upload a photo
-                </p>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {CUISINE_OPTIONS.map((cuisine) => (
+                  <button
+                    key={cuisine}
+                    type="button"
+                    onClick={() => toggleCuisine(cuisine)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all border-2 ${
+                      selectedCuisines.includes(cuisine)
+                        ? 'bg-[#FF6A3D] text-white border-[#FF6A3D]'
+                        : 'bg-transparent text-[#3E2F25] border-[#FF6A3D]/50 hover:border-[#FF6A3D]'
+                    }`}
+                  >
+                    {cuisine}
+                  </button>
+                ))}
               </div>
               
-              <div className="p-4 bg-[#F5F1E8] rounded-lg">
-                <p className="text-sm text-[#6B5B52] text-center">
-                  📸 A profile picture helps build trust and makes your recommendations more personal!
-                </p>
-              </div>
+              <p className={`text-sm text-center ${selectedCuisines.length === 0 ? 'text-[#FF6A3D]' : 'text-[#6B5B52]'}`}>
+                {selectedCuisines.length === 0 
+                  ? 'Select at least one cuisine' 
+                  : `${selectedCuisines.length} cuisine${selectedCuisines.length > 1 ? 's' : ''} selected`}
+              </p>
             </div>
           )}
           
@@ -380,7 +409,7 @@ const UserOnboarding = () => {
                 className="flex-1 bg-gradient-to-r from-[#FF6A3D] to-[#FF3B30] text-white font-poppins font-semibold"
                 size="lg"
               >
-                {step === 2 ? (profileImageUrl ? 'Next' : 'Skip for Now') : 'Next'}
+                Next
               </Button>
             ) : (
               <Button
