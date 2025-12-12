@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   MapPin, Bell, Utensils, Shield, MessageSquareHeart, 
-  Download, Lock, Trash2, Save
+  Lock, Trash2, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -441,15 +441,6 @@ const Profile = () => {
                 onClick={() => setShowPasswordModal(true)}
                 showChevron
               />
-              <div className="border-t border-border">
-                <SettingsRow
-                  label="Download My Data"
-                  description="Get a copy of all your Cravlr data"
-                  icon={Download}
-                  onClick={handleDataExport}
-                  showChevron
-                />
-              </div>
             </SettingsSection>
 
             {/* Feedback Section */}
