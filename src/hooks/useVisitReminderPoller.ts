@@ -31,12 +31,10 @@ export const useVisitReminderPoller = () => {
       if (!isPollingRef.current) return;
 
       try {
-        console.log('🔔 Polling for visit reminders...');
-        
-        // Verify session is still valid before polling
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.log('🔔 No valid session, skipping reminder poll');
+        // Use getUser() to validate session with server (not cached getSession)
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        if (userError || !currentUser) {
+          console.log('🔔 No valid user session, skipping reminder poll');
           isPollingRef.current = false;
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -48,9 +46,9 @@ export const useVisitReminderPoller = () => {
         const { data, error } = await supabase.functions.invoke('process-visit-reminders');
         
         if (error) {
-          // Stop polling on auth errors
+          // Silently stop polling on auth errors (expected when session expires)
           if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-            console.log('🔔 Auth error, stopping reminder polling');
+            console.log('🔔 Session expired, stopping reminder polling');
             isPollingRef.current = false;
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
@@ -58,7 +56,8 @@ export const useVisitReminderPoller = () => {
             }
             return;
           }
-          console.error('Error polling visit reminders:', error);
+          // Only log non-auth errors at debug level
+          console.debug('Reminder poll error:', error.message);
           return;
         }
         
@@ -66,7 +65,8 @@ export const useVisitReminderPoller = () => {
           console.log(`✅ Processed ${data.processed} visit reminders`);
         }
       } catch (err) {
-        console.error('Failed to poll visit reminders:', err);
+        // Silently handle errors - polling is background task
+        console.debug('Reminder poll failed:', err);
       }
     };
 
