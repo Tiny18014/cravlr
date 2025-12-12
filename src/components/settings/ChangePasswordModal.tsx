@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface ChangePasswordModalProps {
 
 export const ChangePasswordModal = ({ open, onOpenChange }: ChangePasswordModalProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,6 +36,11 @@ export const ChangePasswordModal = ({ open, onOpenChange }: ChangePasswordModalP
     e.preventDefault();
     setError('');
 
+    if (!currentPassword) {
+      setError('Please enter your current password');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
       return;
@@ -44,8 +51,26 @@ export const ChangePasswordModal = ({ open, onOpenChange }: ChangePasswordModalP
       return;
     }
 
+    if (!user?.email) {
+      setError('Unable to verify user. Please try again.');
+      return;
+    }
+
     setLoading(true);
     try {
+      // Re-authenticate with current password first to verify identity
+      const { error: reAuthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (reAuthError) {
+        setError('Current password is incorrect');
+        setLoading(false);
+        return;
+      }
+
+      // Now update to new password
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -89,6 +114,27 @@ export const ChangePasswordModal = ({ open, onOpenChange }: ChangePasswordModalP
               {error}
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <div className="relative">
+              <Input
+                id="current-password"
+                type={showPasswords.current ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => toggleVisibility('current')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="new-password">New Password</Label>
