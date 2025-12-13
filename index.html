@@ -35,6 +35,16 @@
   </head>
 
   <body>
+    <!-- Apply theme immediately before React renders to prevent flash -->
+    <script>
+      (function() {
+        const stored = localStorage.getItem('theme');
+        const theme = stored || 'light';
+        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
