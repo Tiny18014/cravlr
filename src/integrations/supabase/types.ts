@@ -125,6 +125,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_notification_logs: {
+        Row: {
+          created_at: string
+          email_to: string
+          entity_id: string
+          error_message: string | null
+          event_type: string
+          id: string
+          provider_message_id: string | null
+          sent_at: string
+          status: string
+          subject: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_to: string
+          entity_id: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          provider_message_id?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_to?: string
+          entity_id?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          provider_message_id?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_requests: {
         Row: {
           additional_notes: string | null
@@ -520,6 +562,10 @@ export type Database = {
           created_at: string
           cuisine_expertise: string[] | null
           display_name: string | null
+          email_new_requests: boolean | null
+          email_notifications_enabled: boolean | null
+          email_recommendations: boolean | null
+          email_visit_reminders: boolean | null
           id: string
           last_feedback_date: string | null
           level: string | null
@@ -545,6 +591,10 @@ export type Database = {
           created_at?: string
           cuisine_expertise?: string[] | null
           display_name?: string | null
+          email_new_requests?: boolean | null
+          email_notifications_enabled?: boolean | null
+          email_recommendations?: boolean | null
+          email_visit_reminders?: boolean | null
           id: string
           last_feedback_date?: string | null
           level?: string | null
@@ -570,6 +620,10 @@ export type Database = {
           created_at?: string
           cuisine_expertise?: string[] | null
           display_name?: string | null
+          email_new_requests?: boolean | null
+          email_notifications_enabled?: boolean | null
+          email_recommendations?: boolean | null
+          email_visit_reminders?: boolean | null
           id?: string
           last_feedback_date?: string | null
           level?: string | null
