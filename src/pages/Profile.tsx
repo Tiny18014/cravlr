@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   MapPin, Bell, Utensils, Shield, MessageSquareHeart, 
-  Lock, Trash2, Save
+  Lock, Trash2, Save, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -26,6 +26,7 @@ import { SettingsRow } from '@/components/settings/SettingsRow';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal';
 import { DeleteAccountFlow } from '@/components/settings/DeleteAccountFlow';
+import { EmailPreferencesSettings } from '@/components/settings/EmailPreferencesSettings';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
 
 const profileFormSchema = z.object({
@@ -391,15 +392,15 @@ const Profile = () => {
               </div>
             </SettingsSection>
 
-            {/* Notifications Section */}
-            <SettingsSection title="Notifications" icon={Bell}>
+            {/* Push Notifications Section */}
+            <SettingsSection title="Push Notifications" icon={Bell}>
               <FormField
                 control={form.control}
                 name="notify_recommender"
                 render={({ field }) => (
                   <SettingsRow
                     label="New Requests Nearby"
-                    description="Get notified when food requests are posted in your area"
+                    description="Get push notifications when food requests are posted in your area"
                     toggle={{
                       checked: field.value,
                       onChange: field.onChange,
@@ -410,7 +411,7 @@ const Profile = () => {
               <div className="border-t border-border">
                 <SettingsRow
                   label="Comments on Recommendations"
-                  description="Receive alerts when someone comments on your recommendation"
+                  description="Receive push alerts when someone comments on your recommendation"
                   toggle={{
                     checked: notifyComments,
                     onChange: setNotifyComments,
@@ -420,7 +421,7 @@ const Profile = () => {
               <div className="border-t border-border">
                 <SettingsRow
                   label="Thumbs Up Notifications"
-                  description="Know when someone likes your recommendation"
+                  description="Get notified when someone likes your recommendation"
                   toggle={{
                     checked: notifyThumbs,
                     onChange: setNotifyThumbs,
@@ -437,6 +438,11 @@ const Profile = () => {
                   }}
                 />
               </div>
+            </SettingsSection>
+
+            {/* Email Notifications Section */}
+            <SettingsSection title="Email Notifications" icon={Mail}>
+              <EmailPreferencesSettings />
             </SettingsSection>
 
             {/* Privacy & Security Section */}
