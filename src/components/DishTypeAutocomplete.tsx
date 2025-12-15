@@ -14,6 +14,7 @@ export function DishTypeAutocomplete({ value, onSelect }: DishTypeAutocompletePr
   const [results, setResults] = useState<typeof dishTypes[number][]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const justSelectedRef = useRef(false);
 
   const fuse = useMemo(() => new Fuse([...dishTypes], {
     keys: ['name'],
@@ -21,6 +22,10 @@ export function DishTypeAutocomplete({ value, onSelect }: DishTypeAutocompletePr
   }), []);
 
   const saveCustomValue = () => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
     if (query.trim() && !value) {
       onSelect({ id: -1, name: query.trim() });
       setQuery('');
@@ -51,6 +56,7 @@ export function DishTypeAutocomplete({ value, onSelect }: DishTypeAutocompletePr
   }, [query, fuse]);
 
   const handleSelect = (item: typeof dishTypes[number]) => {
+    justSelectedRef.current = true;
     onSelect({ id: item.id, name: item.name });
     setQuery('');
     setResults([]);

@@ -14,6 +14,7 @@ export function FlavorMoodAutocomplete({ value, onSelect }: FlavorMoodAutocomple
   const [results, setResults] = useState<typeof flavorMoods[number][]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const justSelectedRef = useRef(false);
 
   const fuse = useMemo(() => new Fuse([...flavorMoods], {
     keys: ['name'],
@@ -21,6 +22,10 @@ export function FlavorMoodAutocomplete({ value, onSelect }: FlavorMoodAutocomple
   }), []);
 
   const saveCustomValue = () => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
     if (query.trim() && !value) {
       onSelect({ id: -1, name: query.trim() });
       setQuery('');
@@ -50,6 +55,7 @@ export function FlavorMoodAutocomplete({ value, onSelect }: FlavorMoodAutocomple
   }, [query, fuse]);
 
   const handleSelect = (item: typeof flavorMoods[number]) => {
+    justSelectedRef.current = true;
     onSelect({ id: item.id, name: item.name });
     setQuery('');
     setResults([]);
