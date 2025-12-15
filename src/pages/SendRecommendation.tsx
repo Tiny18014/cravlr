@@ -66,7 +66,7 @@ const SendRecommendation = () => {
   const [request, setRequest] = useState<FoodRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
   const [showStreakPopup, setShowStreakPopup] = useState(false);
   const [streakData, setStreakData] = useState<{ streakCount: number; points: number }>({ streakCount: 0, points: 0 });
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -94,14 +94,13 @@ const SendRecommendation = () => {
     fetchRequest();
   }, [user, requestId, navigate]);
 
-  // Set user location based on request location for better search results
+  const [requestLocation, setRequestLocation] = useState<string | null>(null);
+
+  // Set request location for restaurant search
   useEffect(() => {
     if (request && request.location_city && request.location_state) {
-      // Use the request location for restaurant search
-      setUserLocation({
-        lat: 35.4100756, // Default to request area coordinates
-        lng: -80.5819527  // You might want to geocode the actual request location
-      });
+      // Pass the request's city/state for location-based restaurant search
+      setRequestLocation(`${request.location_city}, ${request.location_state}`);
     }
   }, [request]);
 
@@ -390,9 +389,9 @@ const SendRecommendation = () => {
                     <RestaurantSearchInput
                       value={formData.restaurantName}
                       onChange={handleRestaurantChange}
-                      placeholder="Search for restaurants (e.g., Oli...)"
+                      placeholder={`Search restaurants in ${request.location_city}...`}
                       required
-                      userLocation={userLocation}
+                      location={requestLocation}
                     />
                     {formData.restaurantAddress && (
                       <div className="flex items-center justify-between mt-1">

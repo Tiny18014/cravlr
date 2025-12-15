@@ -42,6 +42,7 @@ interface RestaurantSearchInputProps {
   placeholder?: string;
   required?: boolean;
   userLocation?: { lat: number; lng: number } | null;
+  location?: string | null; // City, State string for location-based search
 }
 
 export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
@@ -49,7 +50,8 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
   onChange,
   placeholder = "Search for restaurants...",
   required = false,
-  userLocation
+  userLocation,
+  location
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<RestaurantSuggestion[]>([]);
@@ -70,7 +72,7 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, userLocation]);
+  }, [searchTerm, userLocation, location]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -100,7 +102,8 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
       const requestBody = {
         input: query,
         ...(userLocation && { lat: userLocation.lat, lng: userLocation.lng }),
-        radiusKm: 10 // 10km radius
+        ...(location && !userLocation && { location }), // Use location string if no coordinates
+        radiusKm: 25 // 25km radius (~15 miles) for location-based search
       };
 
       console.log('🔍 Request body:', requestBody);
