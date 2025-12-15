@@ -26,51 +26,37 @@ export function CuisineAutocomplete({ value, onSelect }: CuisineAutocompleteProp
       justSelectedRef.current = false;
       return;
     }
-    if (query.trim() && !value) {
-      onSelect({ id: -1, name: query.trim() });
-      setQuery('');
+
+    const custom = query.trim();
+    if (custom && !value) {
+      onSelect({ id: -1, name: custom });
+      setQuery(custom);
       setResults([]);
       setShowDropdown(false);
     }
   };
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        saveCustomValue();
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [query, value]);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-    const matched = fuse.search(query).map(r => r.item);
-    setResults(matched.slice(0, 10));
-  }, [query, fuse]);
-
   const handleSelect = (item: typeof cuisines[number]) => {
     justSelectedRef.current = true;
     onSelect({ id: item.id, name: item.name });
-    setQuery('');
+    setQuery(item.name);
     setResults([]);
     setShowDropdown(false);
   };
 
   const handleAnything = () => {
+    justSelectedRef.current = true;
     onSelect({ id: 0, name: 'Anything' });
-    setQuery('');
+    setQuery('Anything');
     setResults([]);
     setShowDropdown(false);
   };
 
   const clearSelection = () => {
     onSelect(null);
+    setQuery('');
+    setResults([]);
+    setShowDropdown(false);
   };
 
   return (
@@ -115,10 +101,11 @@ export function CuisineAutocomplete({ value, onSelect }: CuisineAutocompleteProp
             </div>
 
             {showDropdown && results.length > 0 && (
-              <ul className="absolute z-10 w-full mt-2 max-h-60 overflow-y-auto bg-background border border-border rounded-xl shadow-lg">
+              <ul className="absolute z-50 w-full mt-2 max-h-60 overflow-y-auto bg-popover border border-border rounded-xl shadow-lg">
                 {results.map(item => (
                   <li
                     key={item.id}
+                    onPointerDown={(e) => e.preventDefault()}
                     onClick={() => handleSelect(item)}
                     className="px-4 py-3 hover:bg-accent cursor-pointer text-foreground transition-colors first:rounded-t-xl last:rounded-b-xl"
                   >
@@ -131,6 +118,7 @@ export function CuisineAutocomplete({ value, onSelect }: CuisineAutocompleteProp
 
           <button
             type="button"
+            onPointerDown={(e) => e.preventDefault()}
             onClick={handleAnything}
             className={cn(
               "px-4 py-3 rounded-full text-sm font-medium transition-all border-2 whitespace-nowrap",

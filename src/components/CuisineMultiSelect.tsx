@@ -105,6 +105,7 @@ export function CuisineMultiSelect({ value, onChange, placeholder = "Search cuis
               {results.map(item => (
                 <li
                   key={item.id}
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(item)}
                   className="px-4 py-3 hover:bg-accent cursor-pointer text-foreground transition-colors first:rounded-t-xl last:rounded-b-xl"
                 >
