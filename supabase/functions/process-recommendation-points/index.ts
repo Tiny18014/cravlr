@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const pointsSchema = z.object({
+  recommendationId: z.string().uuid('Invalid recommendation ID format'),
+  action: z.enum(['create', 'thumbs_up', 'comment', 'photo'], {
+    errorMap: () => ({ message: 'Action must be one of: create, thumbs_up, comment, photo' })
+  })
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -40,14 +49,22 @@ serve(async (req) => {
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { recommendationId, action } = await req.json();
-
-    if (!recommendationId || !action) {
+    // Validate input with Zod
+    const body = await req.json();
+    const validationResult = pointsSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.error('Input validation failed:', validationResult.error.issues);
       return new Response(
-        JSON.stringify({ error: 'Missing recommendationId or action' }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues.map(i => i.message) 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { recommendationId, action } = validationResult.data;
 
     // Get recommendation details
     const { data: recommendation, error: recError } = await supabase
