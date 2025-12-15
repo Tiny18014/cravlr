@@ -21,6 +21,16 @@ export function FlavorMoodAutocomplete({ value, onSelect }: FlavorMoodAutocomple
     threshold: 0.3
   }), []);
 
+  // Run search when query changes
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    const matched = fuse.search(query).map(r => r.item);
+    setResults(matched.slice(0, 10));
+  }, [query, fuse]);
+
   const saveCustomValue = () => {
     if (justSelectedRef.current) {
       justSelectedRef.current = false;
