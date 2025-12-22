@@ -106,10 +106,10 @@ export const SettingsLayout = ({
 
   // Desktop: two-column layout
   return (
-    <div className="flex gap-6 min-h-[calc(100vh-200px)]">
+    <div className="flex gap-6 h-[calc(100vh-200px)]">
       {/* Left navigation - fixed, non-scrolling */}
-      <aside className="w-56 flex-shrink-0">
-        <div className="sticky top-24">
+      <aside className="w-56 flex-shrink-0 overflow-hidden">
+        <div>
           {headerContent && (
             <div className="mb-4">
               {headerContent}
