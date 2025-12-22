@@ -20,8 +20,9 @@ const defaultPreferences: EmailPreferences = {
 export function useEmailPreferences() {
   const { user } = useAuth();
   const [preferences, setPreferences] = useState<EmailPreferences>(defaultPreferences);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false to show defaults immediately
   const [saving, setSaving] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
     if (!user) {
