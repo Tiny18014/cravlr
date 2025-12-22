@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   MapPin, Bell, Utensils, Shield, MessageSquareHeart, 
-  Lock, Trash2, Save, Mail
+  Lock, Trash2, Save, Mail, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -28,6 +28,8 @@ import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal';
 import { DeleteAccountFlow } from '@/components/settings/DeleteAccountFlow';
 import { EmailPreferencesSettings } from '@/components/settings/EmailPreferencesSettings';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
+import { SettingsLayout, SettingsNavItem } from '@/components/settings/SettingsLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const profileFormSchema = z.object({
   display_name: z.string().min(2, "Display name must be at least 2 characters."),
@@ -43,11 +45,23 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+// Navigation items for the settings sections
+const settingsNavItems: SettingsNavItem[] = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'preferences', label: 'Preferences', icon: MapPin },
+  { id: 'push-notifications', label: 'Push Notifications', icon: Bell },
+  { id: 'email-notifications', label: 'Email Notifications', icon: Mail },
+  { id: 'privacy-security', label: 'Privacy & Security', icon: Shield },
+  { id: 'help-feedback', label: 'Help & Feedback', icon: MessageSquareHeart },
+  { id: 'account', label: 'Account', icon: Shield },
+];
+
 const Profile = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasRole } = useUserRoles();
+  const isMobile = useIsMobile();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,6 +70,7 @@ const Profile = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showDeleteFlow, setShowDeleteFlow] = useState(false);
+  const [activeSection, setActiveSection] = useState('profile');
   
   // User profile state
   const [userName, setUserName] = useState('');
@@ -260,6 +275,210 @@ const Profile = () => {
     });
   };
 
+  // Render content for each section
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case 'profile':
+        return (
+          <div className="space-y-6">
+            <SettingsAccountCard
+              userName={userName}
+              userLevel={userLevel}
+              userPoints={userPoints}
+              profileImageUrl={profileImageUrl}
+              onImageChange={(url) => {
+                setProfileImageUrl(url);
+                setProfileImageUpdatedAt(new Date().toISOString());
+              }}
+              onEditProfile={() => setShowEditProfileModal(true)}
+            />
+          </div>
+        );
+
+      case 'preferences':
+        return (
+          <SettingsSection title="Preferences" icon={MapPin}>
+            {/* Default Location */}
+            <div className="py-4">
+              <p className="text-sm font-medium text-foreground mb-3">Default Location</p>
+              <LocationAutocomplete
+                value={locationInput}
+                onValueChange={setLocationInput}
+                onLocationSelect={(location: NormalizedLocation) => {
+                  form.setValue('location_city', location.city || '', { shouldDirty: true });
+                  form.setValue('location_state', location.region || '', { shouldDirty: true });
+                  form.setValue('profile_lat', location.lat, { shouldDirty: true });
+                  form.setValue('profile_lng', location.lng, { shouldDirty: true });
+                  form.setValue('profile_country', location.countryName || '', { shouldDirty: true });
+                }}
+                placeholder="Search city, neighborhood..."
+                showGpsButton={true}
+                showMapPicker={true}
+                includeRestaurants={false}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Used for matching food requests and sending nearby notifications
+              </p>
+            </div>
+
+            {/* Notification Radius */}
+            <FormField
+              control={form.control}
+              name="notification_radius_km"
+              render={({ field }) => {
+                const kmToMiles = (km: number) => Math.round(km * 0.621371);
+                const milesToKm = (miles: number) => Math.round(miles / 0.621371);
+                const displayMiles = kmToMiles(field.value || 20);
+                
+                return (
+                  <div className="py-4 border-t border-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-foreground">Notification Radius</p>
+                      <span className="text-sm font-semibold text-primary">{displayMiles} miles</span>
+                    </div>
+                    <Slider
+                      value={[displayMiles]}
+                      onValueChange={(values) => field.onChange(milesToKm(values[0]))}
+                      min={1}
+                      max={60}
+                      step={1}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Get notified about requests within this distance
+                    </p>
+                  </div>
+                );
+              }}
+            />
+
+            {/* Recommender Mode */}
+            <FormField
+              control={form.control}
+              name="recommender_paused"
+              render={({ field }) => (
+                <div className="border-t border-border">
+                  <SettingsRow
+                    label="Pause Recommender Mode"
+                    description="Stop receiving new food requests from others"
+                    icon={Utensils}
+                    toggle={{
+                      checked: field.value,
+                      onChange: field.onChange,
+                    }}
+                  />
+                </div>
+              )}
+            />
+
+            {/* Theme Selector */}
+            <div className="border-t border-border">
+              <ThemeSelector />
+            </div>
+          </SettingsSection>
+        );
+
+      case 'push-notifications':
+        return (
+          <SettingsSection title="Push Notifications" icon={Bell}>
+            <FormField
+              control={form.control}
+              name="notify_recommender"
+              render={({ field }) => (
+                <SettingsRow
+                  label="New Requests Nearby"
+                  description="Get push notifications when food requests are posted in your area"
+                  toggle={{
+                    checked: field.value,
+                    onChange: field.onChange,
+                  }}
+                />
+              )}
+            />
+            <div className="border-t border-border">
+              <SettingsRow
+                label="Comments on Recommendations"
+                description="Receive push alerts when someone comments on your recommendation"
+                toggle={{
+                  checked: notifyComments,
+                  onChange: setNotifyComments,
+                }}
+              />
+            </div>
+            <div className="border-t border-border">
+              <SettingsRow
+                label="Thumbs Up Notifications"
+                description="Get notified when someone likes your recommendation"
+                toggle={{
+                  checked: notifyThumbs,
+                  onChange: setNotifyThumbs,
+                }}
+              />
+            </div>
+            <div className="border-t border-border">
+              <SettingsRow
+                label="System Alerts"
+                description="Important updates and announcements from Cravlr"
+                toggle={{
+                  checked: notifySystem,
+                  onChange: setNotifySystem,
+                }}
+              />
+            </div>
+          </SettingsSection>
+        );
+
+      case 'email-notifications':
+        return (
+          <SettingsSection title="Email Notifications" icon={Mail}>
+            <EmailPreferencesSettings />
+          </SettingsSection>
+        );
+
+      case 'privacy-security':
+        return (
+          <SettingsSection title="Privacy & Security" icon={Shield}>
+            <SettingsRow
+              label="Change Password"
+              description="Update your account password"
+              icon={Lock}
+              onClick={() => setShowPasswordModal(true)}
+              showChevron
+            />
+          </SettingsSection>
+        );
+
+      case 'help-feedback':
+        return (
+          <SettingsSection title="Help & Feedback" icon={MessageSquareHeart}>
+            <SettingsRow
+              label="Share Feedback"
+              description="Help us improve Cravlr with your thoughts"
+              onClick={() => setShowFeedbackSurvey(true)}
+              showChevron
+            />
+          </SettingsSection>
+        );
+
+      case 'account':
+        return (
+          <SettingsSection title="Account" icon={Shield}>
+            <SettingsRow
+              label="Delete Account"
+              description="Permanently delete your Cravlr account"
+              icon={Trash2}
+              danger
+              onClick={() => setShowDeleteFlow(true)}
+              showChevron
+            />
+          </SettingsSection>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   if (!user) return null;
 
   if (loading) {
@@ -284,7 +503,7 @@ const Profile = () => {
         profileImageUpdatedAt={profileImageUpdatedAt}
       />
 
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <div className="container mx-auto px-4 py-6 max-w-5xl">
         {/* Page Title */}
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
@@ -295,193 +514,19 @@ const Profile = () => {
         <NotificationPermissionBanner className="mb-6" />
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            
-            {/* Account Overview Card */}
-            <SettingsAccountCard
-              userName={userName}
-              userLevel={userLevel}
-              userPoints={userPoints}
-              profileImageUrl={profileImageUrl}
-              onImageChange={(url) => {
-                setProfileImageUrl(url);
-                setProfileImageUpdatedAt(new Date().toISOString());
-              }}
-              onEditProfile={() => setShowEditProfileModal(true)}
-            />
-
-            {/* Preferences Section */}
-            <SettingsSection title="Preferences" icon={MapPin}>
-              {/* Default Location */}
-              <div className="py-4">
-                <p className="text-sm font-medium text-foreground mb-3">Default Location</p>
-                <LocationAutocomplete
-                  value={locationInput}
-                  onValueChange={setLocationInput}
-                  onLocationSelect={(location: NormalizedLocation) => {
-                    form.setValue('location_city', location.city || '', { shouldDirty: true });
-                    form.setValue('location_state', location.region || '', { shouldDirty: true });
-                    form.setValue('profile_lat', location.lat, { shouldDirty: true });
-                    form.setValue('profile_lng', location.lng, { shouldDirty: true });
-                    form.setValue('profile_country', location.countryName || '', { shouldDirty: true });
-                  }}
-                  placeholder="Search city, neighborhood..."
-                  showGpsButton={true}
-                  showMapPicker={true}
-                  includeRestaurants={false}
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Used for matching food requests and sending nearby notifications
-                </p>
-              </div>
-
-              {/* Notification Radius */}
-              <FormField
-                control={form.control}
-                name="notification_radius_km"
-                render={({ field }) => {
-                  // Convert km to miles for display (1 km ≈ 0.621371 miles)
-                  const kmToMiles = (km: number) => Math.round(km * 0.621371);
-                  const milesToKm = (miles: number) => Math.round(miles / 0.621371);
-                  const displayMiles = kmToMiles(field.value || 20);
-                  
-                  return (
-                    <div className="py-4 border-t border-border">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-sm font-medium text-foreground">Notification Radius</p>
-                        <span className="text-sm font-semibold text-primary">{displayMiles} miles</span>
-                      </div>
-                      <Slider
-                        value={[displayMiles]}
-                        onValueChange={(values) => field.onChange(milesToKm(values[0]))}
-                        min={1}
-                        max={60}
-                        step={1}
-                        className="w-full"
-                      />
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Get notified about requests within this distance
-                      </p>
-                    </div>
-                  );
-                }}
-              />
-
-              {/* Recommender Mode */}
-              <FormField
-                control={form.control}
-                name="recommender_paused"
-                render={({ field }) => (
-                  <div className="border-t border-border">
-                    <SettingsRow
-                      label="Pause Recommender Mode"
-                      description="Stop receiving new food requests from others"
-                      icon={Utensils}
-                      toggle={{
-                        checked: field.value,
-                        onChange: field.onChange,
-                      }}
-                    />
-                  </div>
-                )}
-              />
-
-              {/* Theme Selector */}
-              <div className="border-t border-border">
-                <ThemeSelector />
-              </div>
-            </SettingsSection>
-
-            {/* Push Notifications Section */}
-            <SettingsSection title="Push Notifications" icon={Bell}>
-              <FormField
-                control={form.control}
-                name="notify_recommender"
-                render={({ field }) => (
-                  <SettingsRow
-                    label="New Requests Nearby"
-                    description="Get push notifications when food requests are posted in your area"
-                    toggle={{
-                      checked: field.value,
-                      onChange: field.onChange,
-                    }}
-                  />
-                )}
-              />
-              <div className="border-t border-border">
-                <SettingsRow
-                  label="Comments on Recommendations"
-                  description="Receive push alerts when someone comments on your recommendation"
-                  toggle={{
-                    checked: notifyComments,
-                    onChange: setNotifyComments,
-                  }}
-                />
-              </div>
-              <div className="border-t border-border">
-                <SettingsRow
-                  label="Thumbs Up Notifications"
-                  description="Get notified when someone likes your recommendation"
-                  toggle={{
-                    checked: notifyThumbs,
-                    onChange: setNotifyThumbs,
-                  }}
-                />
-              </div>
-              <div className="border-t border-border">
-                <SettingsRow
-                  label="System Alerts"
-                  description="Important updates and announcements from Cravlr"
-                  toggle={{
-                    checked: notifySystem,
-                    onChange: setNotifySystem,
-                  }}
-                />
-              </div>
-            </SettingsSection>
-
-            {/* Email Notifications Section */}
-            <SettingsSection title="Email Notifications" icon={Mail}>
-              <EmailPreferencesSettings />
-            </SettingsSection>
-
-            {/* Privacy & Security Section */}
-            <SettingsSection title="Privacy & Security" icon={Shield}>
-              <SettingsRow
-                label="Change Password"
-                description="Update your account password"
-                icon={Lock}
-                onClick={() => setShowPasswordModal(true)}
-                showChevron
-              />
-            </SettingsSection>
-
-            {/* Feedback Section */}
-            <SettingsSection title="Help & Feedback" icon={MessageSquareHeart}>
-              <SettingsRow
-                label="Share Feedback"
-                description="Help us improve Cravlr with your thoughts"
-                onClick={() => setShowFeedbackSurvey(true)}
-                showChevron
-              />
-            </SettingsSection>
-
-            {/* Account Management */}
-            <SettingsSection title="Account" icon={Shield}>
-              <SettingsRow
-                label="Delete Account"
-                description="Permanently delete your Cravlr account"
-                icon={Trash2}
-                danger
-                onClick={() => setShowDeleteFlow(true)}
-                showChevron
-              />
-            </SettingsSection>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <SettingsLayout
+              navItems={settingsNavItems}
+              activeSection={activeSection}
+              onSectionChange={setActiveSection}
+            >
+              {renderSectionContent()}
+            </SettingsLayout>
 
             {/* Save Button - Fixed at bottom when dirty */}
             {isDirty && (
               <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 shadow-lg z-50">
-                <div className="container mx-auto max-w-2xl flex items-center justify-between gap-4">
+                <div className="container mx-auto max-w-5xl flex items-center justify-between gap-4">
                   <p className="text-sm text-muted-foreground">You have unsaved changes</p>
                   <Button type="submit" disabled={saving} className="min-w-[140px]">
                     <Save className="h-4 w-4 mr-2" />
@@ -492,7 +537,7 @@ const Profile = () => {
             )}
           </form>
         </Form>
-      </main>
+      </div>
       
       {/* Modals */}
       <ChangePasswordModal 

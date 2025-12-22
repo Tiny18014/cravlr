@@ -6,3 +6,5 @@ export { ChangePasswordModal } from './ChangePasswordModal';
 export { DeleteAccountFlow } from './DeleteAccountFlow';
 export { EditProfileModal } from './EditProfileModal';
 export { EmailPreferencesSettings } from './EmailPreferencesSettings';
+export { SettingsLayout } from './SettingsLayout';
+export type { SettingsNavItem } from './SettingsLayout';
