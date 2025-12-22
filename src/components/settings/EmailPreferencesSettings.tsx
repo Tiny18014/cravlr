@@ -7,21 +7,7 @@ import { useEmailPreferences } from "@/hooks/useEmailPreferences";
 export const EmailPreferencesSettings = () => {
   const { preferences, loading, saving, updatePreference } = useEmailPreferences();
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex items-center justify-between py-3">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-48" />
-            </div>
-            <Skeleton className="h-6 w-10 rounded-full" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  // Show toggles immediately with defaults, no loading skeleton
 
   const emailSettings = [
     {
