@@ -47,6 +47,7 @@ export const SettingsLayout = ({
           {/* Mobile back header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card sticky top-0 z-10">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={handleBackClick}
@@ -79,6 +80,7 @@ export const SettingsLayout = ({
             const Icon = item.icon;
             return (
               <button
+                type="button"
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 className={cn(
@@ -119,6 +121,7 @@ export const SettingsLayout = ({
               const isActive = activeSection === item.id;
               return (
                 <button
+                  type="button"
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={cn(
