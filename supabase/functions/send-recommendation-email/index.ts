@@ -241,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "FoodFinder <notifications@resend.dev>",
+      from: "Cravlr <notifications@cravlr.app>",
       to: [email],
       subject: subject,
       html: htmlContent,

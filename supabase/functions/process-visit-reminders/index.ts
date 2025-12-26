@@ -187,7 +187,7 @@ serve(async (req) => {
 
                 try {
                   const emailResponse = await resend.emails.send({
-                    from: "Cravlr <noreply@resend.dev>",
+                    from: "Cravlr <notifications@cravlr.app>",
                     to: [emailTo],
                     subject: subject,
                     html: `
