@@ -43,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
     const subject = `🍽️ New ${mockRequest.food_type} request in ${mockRequest.location_city}!`;
 
     const emailResponse = await resend.emails.send({
-      from: "Cravlr <onboarding@resend.dev>",
+      from: "Cravlr <notifications@cravlr.app>",
       to: [email],
       subject: subject,
       html: `
