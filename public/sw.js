@@ -1,9 +1,10 @@
 // Service Worker for Cravlr
 const CACHE_NAME = 'cravlr-v1';
+
+// In development, these files might not exist, causing the SW to fail.
+// We'll leave this empty or minimal for now to prevent errors.
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
   '/manifest.json'
 ];
 
@@ -11,7 +12,12 @@ const urlsToCache = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+      .then((cache) => {
+        // Attempt to cache, but don't fail installation if some files are missing
+        return cache.addAll(urlsToCache).catch(err => {
+            console.warn('[Service Worker] Cache addAll failed (expected in dev):', err);
+        });
+      })
   );
 });
 
@@ -49,9 +55,18 @@ self.addEventListener('push', (event) => {
   };
 
   if (event.data) {
-    const data = event.data.json();
-    options.body = data.body || options.body;
-    options.data = data;
+    try {
+        const data = event.data.json();
+        options.body = data.body || options.body;
+        // Merge data but preserve critical options if needed
+        options.data = data;
+        if(data.title) {
+            // handle title separately if passed in data
+        }
+    } catch (e) {
+        console.error('Error parsing push data', e);
+        options.body = event.data.text();
+    }
   }
 
   const title = 'New Food Request';

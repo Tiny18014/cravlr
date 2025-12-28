@@ -86,8 +86,23 @@ async function sendPushNotification(
   message: string, 
   data: Record<string, any>
 ): Promise<{ success: boolean; sentCount: number }> {
-  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY || playerIds.length === 0) {
-    console.log('Push notifications skipped - missing config or no recipients');
+
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+     console.log('Push notifications skipped - missing config');
+     return { success: false, sentCount: 0 };
+  }
+
+  // VALIDATION: Check for UUID format to prevent Google Key errors
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(ONESIGNAL_APP_ID)) {
+      console.error('❌ CRITICAL: Invalid OneSignal App ID format in Secrets!');
+      console.error(`Received: "${ONESIGNAL_APP_ID}"`);
+      console.error('It looks like a Google API Key was used instead of a OneSignal UUID.');
+      return { success: false, sentCount: 0 };
+  }
+
+  if (playerIds.length === 0) {
+    console.log('Push notifications skipped - no recipients');
     return { success: false, sentCount: 0 };
   }
 
