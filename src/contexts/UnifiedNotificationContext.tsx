@@ -255,6 +255,56 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     return () => clearInterval(interval);
   }, []);
 
+  // Goal: Fetch unread notifications on mount (In-App Inbox)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchMissedNotifications = async () => {
+      // Fetch 'new_request' notifications that haven't been acted on?
+      // Actually, 'notifications' table usually stores results.
+      // But now we are storing 'new_request' there too.
+      // We want to show them if they are recent (e.g. last 2 hours).
+
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('requester_id', user.id) // The user receiving the notification
+        .is('read_at', null)
+        .gte('created_at', twoHoursAgo)
+        .order('created_at', { ascending: false })
+        .limit(1); // Anti-spam: Only show the most recent missed request
+
+      if (error) {
+        console.error('Error fetching missed notifications:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        console.log(`📥 Found missed notification`);
+        const n = data[0];
+        // Map DB notification to Context Notification
+        // Payload structure: { requestId, foodType, location, message }
+        const payload = n.payload as any;
+
+        if (n.type === 'new_request') {
+            showNotification({
+                type: 'new_request',
+                title: 'Missed Request',
+                message: payload.message || 'New food request nearby',
+                actionLabel: 'View',
+                actionUrl: `/recommend/${payload.requestId}`,
+                data: { requestId: payload.requestId, requestType: 'accept' },
+                priority: 'normal'
+            });
+        }
+      }
+    };
+
+    fetchMissedNotifications();
+  }, [user?.id, showNotification]);
+
   const setDnd = (enabled: boolean) => {
     setDndState(enabled);
     if (enabled) {

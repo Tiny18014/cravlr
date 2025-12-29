@@ -281,6 +281,35 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${eligibleUsers.length} eligible users to notify`);
 
+    // PERSISTENCE: Insert notifications into DB so users see them in "Inbox"
+    const notificationInserts = eligibleUsers.map(u => ({
+      requester_id: u.id, // The user RECEIVING the notification
+      request_id: requestId, // The related request ID (optional field name may vary, check schema)
+      // Note: 'request_id' might be the name, or it might be related to results.
+      // Checking schema from migration... 20250905... create table notifications...
+      // It has 'requester_id' (user who sees it) and 'type' and 'payload'.
+      type: 'new_request',
+      payload: {
+        requestId: request.id,
+        foodType: request.food_type,
+        location: request.location_city,
+        message: `New request: ${request.food_type} in ${request.location_city}`
+      }
+    }));
+
+    // Batch insert notifications
+    if (notificationInserts.length > 0) {
+        const { error: insertError } = await supabase
+            .from('notifications')
+            .insert(notificationInserts);
+
+        if (insertError) {
+            console.error('Error inserting persistent notifications:', insertError);
+        } else {
+            console.log(`✅ Persisted ${notificationInserts.length} notifications to DB`);
+        }
+    }
+
     // Get device tokens for push notifications
     const userIds = eligibleUsers.map(u => u.id);
     const { data: deviceTokens } = await supabase

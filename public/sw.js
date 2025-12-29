@@ -69,7 +69,7 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = 'New Food Request';
+  const title = (options.data && options.data.title) ? options.data.title : 'New Food Request';
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
