@@ -271,10 +271,28 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
         .from('notifications')
         .select('*')
         .eq('requester_id', user.id) // The user receiving the notification
-        .is('read_at', null)
+        .is('read_at', null) // Try read_at first, if db error, it means schema drift
         .gte('created_at', twoHoursAgo)
         .order('created_at', { ascending: false })
-        .limit(1); // Anti-spam: Only show the most recent missed request
+        .limit(1);
+
+      // Retry with 'read' column if 'read_at' fails (handling schema variation)
+      if (error && error.code === '42703') { // Undefined column
+         console.warn('⚠️ Notification schema mismatch, trying "read" column...');
+         const { data: retryData, error: retryError } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('requester_id', user.id)
+            .eq('read', false) // Try boolean 'read'
+            .gte('created_at', twoHoursAgo)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+         if (!retryError && retryData && retryData.length > 0) {
+             handleMissedNotification(retryData[0]);
+         }
+         return;
+      }
 
       if (error) {
         console.error('Error fetching missed notifications:', error);
@@ -282,10 +300,13 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
       }
 
       if (data && data.length > 0) {
+        handleMissedNotification(data[0]);
+      }
+    };
+
+    const handleMissedNotification = (n: any) => {
         console.log(`📥 Found missed notification`);
-        const n = data[0];
         // Map DB notification to Context Notification
-        // Payload structure: { requestId, foodType, location, message }
         const payload = n.payload as any;
 
         if (n.type === 'new_request') {
@@ -299,7 +320,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
                 priority: 'normal'
             });
         }
-      }
     };
 
     fetchMissedNotifications();
