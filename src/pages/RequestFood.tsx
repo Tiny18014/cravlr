@@ -203,7 +203,7 @@ const RequestFood = () => {
           requester_id: user.id,
           food_type: foodTypeString,
           location_city: validated.locationCity,
-          location_state: validated.locationState || null,
+          location_state: validated.locationState || '',
           location_address: validated.locationAddress || null,
           additional_notes: validated.additionalNotes || null,
           lat: lat,
