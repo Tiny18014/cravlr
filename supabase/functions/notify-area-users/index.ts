@@ -328,7 +328,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const emailResponse = await resend.emails.send({
-          from: "Cravlr <notifications@cravlr.app>",
+          from: "Cravlr <notifications@cravlr.com>",
           to: [emailTo],
           subject: subject,
           html: `
