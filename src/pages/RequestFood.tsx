@@ -218,9 +218,11 @@ const RequestFood = () => {
       if (error) throw error;
 
       try {
-        await supabase.functions.invoke('notify-area-users', {
+        const { data: notifyData, error: notifyError } = await supabase.functions.invoke('notify-area-users', {
           body: { requestId: data.id }
         });
+        if (notifyError) console.error('Notify Error:', notifyError);
+        else console.log('Notify Response:', notifyData);
       } catch (notificationError) {
         console.error('Error notifying area users:', notificationError);
       }

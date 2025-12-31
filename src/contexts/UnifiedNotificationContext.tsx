@@ -290,6 +290,13 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
          if (!retryError && retryData && retryData.length > 0) {
              handleMissedNotification(retryData[0]);
+         } else if (retryError) {
+             console.error('Retry with "read" column also failed:', retryError);
+             // DEBUG: Probe schema to find correct column
+             const { data: probeData } = await supabase.from('notifications').select('*').limit(1);
+             if (probeData && probeData.length > 0) {
+                 console.log('🔍 DB Schema Probe (notifications):', Object.keys(probeData[0]));
+             }
          }
          return;
       }
