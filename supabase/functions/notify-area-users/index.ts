@@ -343,6 +343,9 @@ const handler = async (req: Request): Promise<Response> => {
     }));
 
     // Batch insert notifications
+    let dbInsertError = null;
+    let dbInsertCount = 0;
+
     if (notificationInserts.length > 0) {
         const { error: insertError } = await supabase
             .from('notifications')
@@ -350,8 +353,10 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (insertError) {
             console.error('Error inserting persistent notifications:', insertError);
+            dbInsertError = insertError;
         } else {
             console.log(`✅ Persisted ${notificationInserts.length} notifications to DB`);
+            dbInsertCount = notificationInserts.length;
         }
     }
 
@@ -492,7 +497,9 @@ const handler = async (req: Request): Promise<Response> => {
       emailsSent: successfulEmails,
       smsSent: successfulSMS,
       pushNotificationsSent: pushResult.sentCount,
-      totalEligibleUsers: eligibleUsers.length
+      totalEligibleUsers: eligibleUsers.length,
+      dbInsertCount,
+      dbInsertError
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
