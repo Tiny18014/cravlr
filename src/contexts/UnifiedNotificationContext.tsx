@@ -306,6 +306,9 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
     const handleMissedNotification = (n: any) => {
         console.log(`📥 Found missed notification`);
+        // Mark as read immediately so it doesn't show up on next refresh (Inbox logic)
+        RequestService.markNotificationReadById(n.id);
+
         // Map DB notification to Context Notification
         const payload = n.payload as any;
 

@@ -68,12 +68,41 @@ export class RequestService {
 
   static async markNotificationRead(requestId: string, userId: string) {
     try {
-      await supabase
+      // Try updating 'read' column first
+      const { error } = await supabase
         .from('notifications')
         .update({ read: true })
         .eq('request_id', requestId)
-        .eq('requester_id', userId)
-        .eq('type', 'request_results');
+        .eq('requester_id', userId);
+
+      // Fallback for schema drift
+      if (error && error.code === '42703') {
+         await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('request_id', requestId)
+          .eq('requester_id', userId);
+      }
+    } catch (error) {
+      console.error("RequestService: Error marking notification as read:", error);
+    }
+  }
+
+  static async markNotificationReadById(notificationId: string) {
+    try {
+      // Try updating 'read' column first
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+
+      // Fallback for schema drift
+      if (error && error.code === '42703') {
+         await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', notificationId);
+      }
     } catch (error) {
       console.error("RequestService: Error marking notification as read:", error);
     }
