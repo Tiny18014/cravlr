@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, ClipboardList, Trophy } from 'lucide-react';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 export function DashboardBottomNav() {
   const navigate = useNavigate();
@@ -41,6 +42,8 @@ export function DashboardBottomNav() {
           <Trophy className={`h-5 w-5 ${isDashboard ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
           <span className={`text-xs font-medium ${isDashboard ? 'text-primary' : 'text-muted-foreground'}`}>Dashboard</span>
         </button>
+
+        <NotificationCenter />
       </div>
     </nav>
   );

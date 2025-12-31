@@ -1,0 +1,171 @@
+import React, { useState, useEffect } from 'react';
+import { Bell, Check, Trash2, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+
+export function NotificationCenter() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+
+    // Fetch all columns to avoid "column does not exist" error
+    // We filter in JS as a robust workaround for schema drift
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('requester_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      return;
+    }
+
+    if (data) {
+      setNotifications(data);
+      // Determine unread count robustly
+      const unread = data.filter(n => {
+          // Check for 'read' boolean OR 'read_at' timestamp
+          if (n.read === true) return false;
+          if (n.read_at && new Date(n.read_at).getTime() > 0) return false;
+          return true; // It is unread
+      });
+      setUnreadCount(unread.length);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Subscribe to new notifications
+    if (!user) return;
+    const channel = supabase
+      .channel('notification-center')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `requester_id=eq.${user.id}` },
+        () => {
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, isOpen]);
+
+  const markAsRead = async (id: string) => {
+    // Try update 'read' column first (most likely)
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id);
+
+    if (error && error.code === '42703') {
+       // Fallback to 'read_at'
+       await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', id);
+    }
+
+    // Optimistic update
+    setNotifications(prev => prev.map(n =>
+        n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n
+    ));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNotificationClick = (n: any) => {
+    markAsRead(n.id);
+    const payload = n.payload || {};
+    // Navigate based on type
+    if (n.type === 'new_request' && payload.requestId) {
+        navigate(`/recommend/${payload.requestId}`);
+    } else if (n.type === 'request_results' && payload.requestId) {
+        navigate(`/requests/${payload.requestId}/results`);
+    }
+    setIsOpen(false);
+  };
+
+  return (
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <button className="relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all opacity-60 hover:opacity-100">
+          <div className="relative">
+            <Bell className="h-5 w-5 text-muted-foreground" strokeWidth={2} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[8px] text-white font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+          <span className="text-xs font-medium text-muted-foreground">Inbox</span>
+        </button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="h-[80vh] rounded-t-3xl">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="flex items-center justify-between">
+            <span>Notifications</span>
+            {unreadCount > 0 && (
+                <span className="text-sm font-normal text-muted-foreground">{unreadCount} unread</span>
+            )}
+          </SheetTitle>
+        </SheetHeader>
+        <ScrollArea className="h-full pb-10">
+          <div className="flex flex-col gap-3">
+            {notifications.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                    <Bell className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                    <p>No notifications yet</p>
+                </div>
+            ) : (
+                notifications.map((n) => {
+                    const payload = n.payload || {};
+                    const isUnread = n.read === false || !n.read_at;
+
+                    return (
+                        <div
+                            key={n.id}
+                            className={`p-4 rounded-xl border transition-colors cursor-pointer active:scale-98 ${
+                                isUnread ? 'bg-primary/5 border-primary/20' : 'bg-card border-border'
+                            }`}
+                            onClick={() => handleNotificationClick(n)}
+                        >
+                            <div className="flex justify-between items-start gap-3">
+                                <div className="flex-1">
+                                    <h4 className={`text-sm ${isUnread ? 'font-semibold text-primary' : 'font-medium'}`}>
+                                        {payload.title || 'Notification'}
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                        {payload.message || 'You have a new update.'}
+                                    </p>
+                                    <span className="text-[10px] text-muted-foreground/60 mt-2 block">
+                                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                                    </span>
+                                </div>
+                                {isUnread && (
+                                    <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
+                                )}
+                            </div>
+                        </div>
+                    );
+                })
+            )}
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}

@@ -255,85 +255,8 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     return () => clearInterval(interval);
   }, []);
 
-  // Goal: Fetch unread notifications on mount (In-App Inbox)
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const fetchMissedNotifications = async () => {
-      // Fetch 'new_request' notifications that haven't been acted on?
-      // Actually, 'notifications' table usually stores results.
-      // But now we are storing 'new_request' there too.
-      // We want to show them if they are recent (e.g. last 2 hours).
-
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('requester_id', user.id) // The user receiving the notification
-        .is('read_at', null) // Try read_at first, if db error, it means schema drift
-        .gte('created_at', twoHoursAgo)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      // Retry with 'read' column if 'read_at' fails (handling schema variation)
-      if (error && error.code === '42703') { // Undefined column
-         console.warn('⚠️ Notification schema mismatch, trying "read" column...');
-         const { data: retryData, error: retryError } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('requester_id', user.id)
-            .eq('read', false) // Try boolean 'read'
-            .gte('created_at', twoHoursAgo)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-         if (!retryError && retryData && retryData.length > 0) {
-             handleMissedNotification(retryData[0]);
-         } else if (retryError) {
-             console.error('Retry with "read" column also failed:', retryError);
-             // DEBUG: Probe schema to find correct column
-             const { data: probeData } = await supabase.from('notifications').select('*').limit(1);
-             if (probeData && probeData.length > 0) {
-                 console.log('🔍 DB Schema Probe (notifications):', Object.keys(probeData[0]));
-             }
-         }
-         return;
-      }
-
-      if (error) {
-        console.error('Error fetching missed notifications:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        handleMissedNotification(data[0]);
-      }
-    };
-
-    const handleMissedNotification = (n: any) => {
-        console.log(`📥 Found missed notification`);
-        // Mark as read immediately so it doesn't show up on next refresh (Inbox logic)
-        RequestService.markNotificationReadById(n.id);
-
-        // Map DB notification to Context Notification
-        const payload = n.payload as any;
-
-        if (n.type === 'new_request') {
-            showNotification({
-                type: 'new_request',
-                title: 'Missed Request',
-                message: payload.message || 'New food request nearby',
-                actionLabel: 'View',
-                actionUrl: `/recommend/${payload.requestId}`,
-                data: { requestId: payload.requestId, requestType: 'accept' },
-                priority: 'normal'
-            });
-        }
-    };
-
-    fetchMissedNotifications();
-  }, [user?.id, showNotification]);
+  // Note: Missed notifications are now handled by the <NotificationCenter /> component
+  // which displays a red dot badge instead of spamming toasts on load.
 
   const setDnd = (enabled: boolean) => {
     setDndState(enabled);
