@@ -31,10 +31,10 @@ export const useVisitReminderPoller = () => {
       if (!isPollingRef.current) return;
 
       try {
-        // Use getUser() to validate session with server (not cached getSession)
-        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-        if (userError || !currentUser) {
-          console.log('🔔 No valid user session, skipping reminder poll');
+        // Get fresh session to ensure we have a valid access token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session?.access_token) {
+          console.log('🔔 No valid session, skipping reminder poll');
           isPollingRef.current = false;
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -43,7 +43,12 @@ export const useVisitReminderPoller = () => {
           return;
         }
 
-        const { data, error } = await supabase.functions.invoke('process-visit-reminders');
+        // Explicitly pass the access token in headers to ensure auth works
+        const { data, error } = await supabase.functions.invoke('process-visit-reminders', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
         
         if (error) {
           // Silently stop polling on auth errors (expected when session expires)
