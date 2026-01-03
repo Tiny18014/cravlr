@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { RouteGuard } from "./components/RouteGuard";
 import { DashboardBottomNav } from "./components/DashboardBottomNav";
 import { useVisitReminderPoller } from "./hooks/useVisitReminderPoller";
+import { LoadingFallback } from "./components/LoadingFallback";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -75,7 +76,7 @@ const App = () => {
 };
 
 const AppContent = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const isDevelopment = import.meta.env.DEV;
   const [currentPath, setCurrentPath] = React.useState(window.location.pathname);
   
@@ -83,6 +84,7 @@ const AppContent = () => {
   useVisitReminderPoller();
   
   return (
+    <LoadingFallback isLoading={loading} timeout={8000}>
     <UnifiedNotificationProvider>
       <TooltipProvider>
         <Toaster />
@@ -138,6 +140,7 @@ const AppContent = () => {
           </BrowserRouter>
         </TooltipProvider>
       </UnifiedNotificationProvider>
+    </LoadingFallback>
   );
 };
 

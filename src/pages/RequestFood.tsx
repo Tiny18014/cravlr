@@ -203,7 +203,7 @@ const RequestFood = () => {
           requester_id: user.id,
           food_type: foodTypeString,
           location_city: validated.locationCity,
-          location_state: validated.locationState || null,
+          location_state: validated.locationState || '',
           location_address: validated.locationAddress || null,
           additional_notes: validated.additionalNotes || null,
           lat: lat,
@@ -218,11 +218,9 @@ const RequestFood = () => {
       if (error) throw error;
 
       try {
-        const { data: notifyData, error: notifyError } = await supabase.functions.invoke('notify-area-users', {
+        await supabase.functions.invoke('notify-area-users', {
           body: { requestId: data.id }
         });
-        if (notifyError) console.error('Notify Error:', notifyError);
-        else console.log('Notify Response:', notifyData);
       } catch (notificationError) {
         console.error('Error notifying area users:', notificationError);
       }

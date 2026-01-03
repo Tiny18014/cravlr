@@ -15,7 +15,7 @@ export const OneSignalInit = () => {
   // Fetch OneSignal App ID from backend
   useEffect(() => {
     if (!user) {
-      // console.log('🔔 OneSignal: No user logged in, skipping init');
+      console.log('🔔 OneSignal: No user logged in, skipping init');
       return;
     }
     
@@ -43,18 +43,9 @@ export const OneSignalInit = () => {
           return;
         }
         
+        console.log('🔔 OneSignal: Config response:', data);
+        
         if (data?.appId) {
-          // VALIDATION: Check if it looks like a UUID
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-          if (!uuidRegex.test(data.appId)) {
-             console.error('❌ CRITICAL CONFIG ERROR: OneSignal App ID is invalid!');
-             console.error(`Received: "${data.appId}"`);
-             console.error('It looks like you put a Google API Key (starts with AIza...) instead of the OneSignal App ID (UUID).');
-             console.error('Please update the ONESIGNAL_APP_ID secret in Supabase Edge Functions.');
-             return; // Stop initialization
-          }
-
           onesignalAppId = data.appId;
           setAppIdLoaded(true);
           console.log('✅ OneSignal: App ID loaded:', onesignalAppId.substring(0, 8) + '...');

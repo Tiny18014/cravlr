@@ -255,9 +255,6 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
     return () => clearInterval(interval);
   }, []);
 
-  // Note: Missed notifications are now handled by the <NotificationCenter /> component
-  // which displays a red dot badge instead of spamming toasts on load.
-
   const setDnd = (enabled: boolean) => {
     setDndState(enabled);
     if (enabled) {

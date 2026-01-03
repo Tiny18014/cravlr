@@ -13,11 +13,6 @@ const supabase = createClient(
 const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID");
 const ONESIGNAL_API_KEY = Deno.env.get("ONESIGNAL_API_KEY");
 
-// Twilio configuration for SMS fallback
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -84,46 +79,6 @@ async function logEmailNotification(
   }
 }
 
-// Send SMS via Twilio
-async function sendSMS(
-  phoneNumber: string,
-  message: string
-): Promise<{ success: boolean; error?: string }> {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-    console.log('Skipping SMS - Missing Twilio credentials');
-    return { success: false, error: 'Missing credentials' };
-  }
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          From: TWILIO_PHONE_NUMBER,
-          To: phoneNumber,
-          Body: message,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Twilio Error:', errorData);
-      return { success: false, error: errorData.message };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error sending SMS:', error);
-    return { success: false, error: error.message };
-  }
-}
-
 // Send push notification via OneSignal
 async function sendPushNotification(
   playerIds: string[], 
@@ -131,23 +86,8 @@ async function sendPushNotification(
   message: string, 
   data: Record<string, any>
 ): Promise<{ success: boolean; sentCount: number }> {
-
-  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
-     console.log('Push notifications skipped - missing config');
-     return { success: false, sentCount: 0 };
-  }
-
-  // VALIDATION: Check for UUID format to prevent Google Key errors
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(ONESIGNAL_APP_ID)) {
-      console.error('❌ CRITICAL: Invalid OneSignal App ID format in Secrets!');
-      console.error(`Received: "${ONESIGNAL_APP_ID}"`);
-      console.error('It looks like a Google API Key was used instead of a OneSignal UUID.');
-      return { success: false, sentCount: 0 };
-  }
-
-  if (playerIds.length === 0) {
-    console.log('Push notifications skipped - no recipients');
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY || playerIds.length === 0) {
+    console.log('Push notifications skipped - missing config or no recipients');
     return { success: false, sentCount: 0 };
   }
 
@@ -270,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (hasCoordinates) {
       const { data: potentialUsers, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests, phone_number')
+        .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
         .neq('id', request.requester_id)
         .eq('notify_recommender', true)
         .or('recommender_paused.is.null,recommender_paused.eq.false');
@@ -298,7 +238,7 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       const { data: nearbyUsers, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, notify_recommender, recommender_paused, location_city, location_state, email_notifications_enabled, email_new_requests, phone_number')
+        .select('id, display_name, notify_recommender, recommender_paused, location_city, location_state, email_notifications_enabled, email_new_requests')
         .ilike('location_city', request.location_city)
         .neq('id', request.requester_id)
         .eq('notify_recommender', true)
@@ -325,40 +265,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Found ${eligibleUsers.length} eligible users to notify`);
-
-    // PERSISTENCE: Insert notifications into DB so users see them in "Inbox"
-    const notificationInserts = eligibleUsers.map(u => ({
-      requester_id: u.id, // The user RECEIVING the notification
-      request_id: requestId, // The related request ID (optional field name may vary, check schema)
-      // Note: 'request_id' might be the name, or it might be related to results.
-      // Checking schema from migration... 20250905... create table notifications...
-      // It has 'requester_id' (user who sees it) and 'type' and 'payload'.
-      type: 'new_request',
-      payload: {
-        requestId: request.id,
-        foodType: request.food_type,
-        location: request.location_city,
-        message: `New request: ${request.food_type} in ${request.location_city}`
-      }
-    }));
-
-    // Batch insert notifications
-    let dbInsertError = null;
-    let dbInsertCount = 0;
-
-    if (notificationInserts.length > 0) {
-        const { error: insertError } = await supabase
-            .from('notifications')
-            .insert(notificationInserts);
-
-        if (insertError) {
-            console.error('Error inserting persistent notifications:', insertError);
-            dbInsertError = insertError;
-        } else {
-            console.log(`✅ Persisted ${notificationInserts.length} notifications to DB`);
-            dbInsertCount = notificationInserts.length;
-        }
-    }
 
     // Get device tokens for push notifications
     const userIds = eligibleUsers.map(u => u.id);
@@ -392,29 +298,40 @@ const handler = async (req: Request): Promise<Response> => {
 
     const pushResult = await sendPushNotification(playerIds, pushTitle, pushMessage, pushData);
 
-    // Send notification emails/SMS to eligible users
+    // Send notification emails to eligible users who have email enabled
     const emailPromises = eligibleUsers.map(async (targetUser) => {
-      let results = { email: false, sms: false, error: null };
-
-      // 1. Email Logic (Existing)
+      // Check email preferences
       const emailEnabled = targetUser.email_notifications_enabled !== false;
       const newRequestsEnabled = targetUser.email_new_requests !== false;
       
-      if (emailEnabled && newRequestsEnabled) {
-        const alreadySent = await wasEmailAlreadySent(targetUser.id, 'new_request', requestId);
-        if (!alreadySent) {
-          const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
+      if (!emailEnabled || !newRequestsEnabled) {
+        console.log(`📧 Skipping email for user ${targetUser.id} - email preferences disabled`);
+        return { skipped: true, reason: 'preferences' };
+      }
 
-          if (!authUserError && authUser?.user?.email) {
-            const emailTo = authUser.user.email;
-            const subject = `🍽️ New ${request.food_type} request in ${request.location_city}!`;
+      // Check for duplicate email (idempotency)
+      const alreadySent = await wasEmailAlreadySent(targetUser.id, 'new_request', requestId);
+      if (alreadySent) {
+        console.log(`📧 Skipping email for user ${targetUser.id} - already sent`);
+        return { skipped: true, reason: 'duplicate' };
+      }
 
-            try {
-              const emailResponse = await resend.emails.send({
-                from: "Cravlr <notifications@cravlr.app>",
-                to: [emailTo],
-                subject: subject,
-                html: `
+      const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
+      
+      if (authUserError || !authUser?.user?.email) {
+        console.log(`No email found for user ${targetUser.id}`);
+        return { skipped: true, reason: 'no_email' };
+      }
+      
+      const emailTo = authUser.user.email;
+      const subject = `🍽️ New ${request.food_type} request in ${request.location_city}!`;
+
+      try {
+        const emailResponse = await resend.emails.send({
+          from: "Cravlr <notifications@cravlr.com>",
+          to: [emailTo],
+          subject: subject,
+          html: `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #F7F5F8;">
               <div style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); padding: 30px; text-align: center;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">🍽️ New Food Request!</h1>
@@ -458,48 +375,52 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
             </div>
           `,
-                text: `Hi ${targetUser.display_name || 'there'}! Someone near you is looking for a great ${request.food_type} spot in ${locationDisplay}. Know a great spot? Visit Cravlr to share your recommendation and earn points!`,
-              });
-              await logEmailNotification(targetUser.id, 'new_request', requestId, emailTo, subject, emailResponse.data?.id || null, 'sent');
-              results.email = true;
-            } catch (err) {
-              console.error('Email error:', err);
-            }
-          }
-        }
-      }
+          text: `Hi ${targetUser.display_name || 'there'}! Someone near you is looking for a great ${request.food_type} spot in ${locationDisplay}. Know a great spot? Visit Cravlr to share your recommendation and earn points!`,
+        });
 
-      // 2. SMS Fallback Logic (New Feature)
-      // Only for 'new_request' (High Priority)
-      // Only if Twilio is configured
-      if (TWILIO_ACCOUNT_SID && targetUser.phone_number) {
-         console.log(`📱 Attempting SMS for user ${targetUser.id}`);
-         const smsMessage = `Cravlr Alert: New request for ${request.food_type} in ${locationDisplay}. Help out: https://cravlr.lovable.app/recommend/${request.id}`;
-         const smsResult = await sendSMS(targetUser.phone_number, smsMessage);
-         if (smsResult.success) {
-             results.sms = true;
-         } else {
-             console.log('SMS failed:', smsResult.error);
-         }
-      }
+        // Log successful email
+        await logEmailNotification(
+          targetUser.id,
+          'new_request',
+          requestId,
+          emailTo,
+          subject,
+          emailResponse.data?.id || null,
+          'sent'
+        );
 
-      return results;
+        console.log(`✅ Email sent to ${emailTo}:`, emailResponse.data?.id);
+        return { success: true, emailId: emailResponse.data?.id };
+      } catch (emailError: any) {
+        // Log failed email
+        await logEmailNotification(
+          targetUser.id,
+          'new_request',
+          requestId,
+          emailTo,
+          subject,
+          null,
+          'failed',
+          emailError.message
+        );
+
+        console.error(`❌ Error sending email to ${emailTo}:`, emailError);
+        return { success: false, error: emailError.message };
+      }
     });
 
-    const results = await Promise.all(emailPromises);
-    const successfulEmails = results.filter(r => r.email).length;
-    const successfulSMS = results.filter(r => r.sms).length;
+    const emailResults = await Promise.all(emailPromises);
+    const successfulEmails = emailResults.filter(r => r.success).length;
+    const skippedEmails = emailResults.filter(r => r.skipped).length;
 
-    console.log(`📧 Sent ${successfulEmails} emails, 📱 Sent ${successfulSMS} SMS, skipped others, sent ${pushResult.sentCount} push notifications`);
+    console.log(`📧 Sent ${successfulEmails} emails, skipped ${skippedEmails}, sent ${pushResult.sentCount} push notifications`);
 
     return new Response(JSON.stringify({ 
       success: true,
       emailsSent: successfulEmails,
-      smsSent: successfulSMS,
+      emailsSkipped: skippedEmails,
       pushNotificationsSent: pushResult.sentCount,
-      totalEligibleUsers: eligibleUsers.length,
-      dbInsertCount,
-      dbInsertError
+      totalEligibleUsers: eligibleUsers.length
     }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },

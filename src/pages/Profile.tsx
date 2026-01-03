@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,11 +13,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Form, FormField } from '@/components/ui/form';
-import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useUserRoles } from '@/hooks/useUserRoles';
+import { LocationSetting } from '@/components/settings/LocationSetting';
 
 // Settings Components
 import { SettingsAccountCard } from '@/components/settings/SettingsAccountCard';
@@ -65,12 +65,16 @@ const Profile = () => {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [locationInput, setLocationInput] = useState('');
   const [showFeedbackSurvey, setShowFeedbackSurvey] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showDeleteFlow, setShowDeleteFlow] = useState(false);
   const [activeSection, setActiveSection] = useState('profile');
+  
+  // Location tracking state
+  const [savedLocationLabel, setSavedLocationLabel] = useState('');
+  const [currentLocationLabel, setCurrentLocationLabel] = useState('');
+  const [locationChanged, setLocationChanged] = useState(false);
   
   // User profile state
   const [userName, setUserName] = useState('');
@@ -125,7 +129,9 @@ const Profile = () => {
           ? `${profile.location_city}, ${profile.location_state}`
           : profile.location_city || '';
         
-        setLocationInput(locationDisplay);
+        setSavedLocationLabel(locationDisplay);
+        setCurrentLocationLabel(locationDisplay);
+        setLocationChanged(false);
         setUserName(profile.display_name || user?.email?.split('@')[0] || 'User');
         setUserLevel(profile.level || 'Newbie');
         setUserPoints(profile.points_total || 0);
@@ -159,6 +165,23 @@ const Profile = () => {
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
     
+    // Check if only location save and nothing changed
+    const formDirtyWithoutLocation = Object.keys(form.formState.dirtyFields).some(
+      key => !['location_city', 'location_state', 'profile_lat', 'profile_lng', 'profile_country'].includes(key)
+    );
+    
+    const hasLocationChange = locationChanged;
+    const hasOtherChanges = formDirtyWithoutLocation;
+    
+    // If no changes at all
+    if (!hasLocationChange && !hasOtherChanges && !form.formState.isDirty) {
+      toast({
+        title: "No changes made",
+        description: "Your settings are already up to date.",
+      });
+      return;
+    }
+    
     setSaving(true);
     try {
       const recommenderPausedAt = values.recommender_paused 
@@ -186,13 +209,32 @@ const Profile = () => {
       
       form.reset(values);
       setUserName(values.display_name);
+      
+      // Update saved location reference
+      const newLocationLabel = values.location_city && values.location_state
+        ? `${values.location_city}, ${values.location_state}`
+        : values.location_city || '';
+      setSavedLocationLabel(newLocationLabel);
+      setCurrentLocationLabel(newLocationLabel);
+      setLocationChanged(false);
 
-      toast({
-        title: "Settings saved",
-        description: values.recommender_paused 
-          ? "Recommender mode paused. You won't receive new requests."
-          : "Your settings have been updated.",
-      });
+      // Show appropriate message based on what changed
+      if (hasLocationChange && !hasOtherChanges) {
+        toast({
+          title: "Location updated",
+          description: "Your default location has been saved.",
+        });
+      } else if (values.recommender_paused) {
+        toast({
+          title: "Settings saved",
+          description: "Recommender mode paused. You won't receive new requests.",
+        });
+      } else {
+        toast({
+          title: "Settings saved",
+          description: "Your settings have been updated.",
+        });
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
@@ -298,28 +340,23 @@ const Profile = () => {
       case 'preferences':
         return (
           <SettingsSection title="Preferences" icon={MapPin}>
-            {/* Default Location */}
-            <div className="py-4">
-              <p className="text-sm font-medium text-foreground mb-3">Default Location</p>
-              <LocationAutocomplete
-                value={locationInput}
-                onValueChange={setLocationInput}
-                onLocationSelect={(location: NormalizedLocation) => {
-                  form.setValue('location_city', location.city || '', { shouldDirty: true });
-                  form.setValue('location_state', location.region || '', { shouldDirty: true });
-                  form.setValue('profile_lat', location.lat, { shouldDirty: true });
-                  form.setValue('profile_lng', location.lng, { shouldDirty: true });
-                  form.setValue('profile_country', location.countryName || '', { shouldDirty: true });
-                }}
-                placeholder="Search city, neighborhood..."
-                showGpsButton={true}
-                showMapPicker={true}
-                includeRestaurants={false}
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Used for matching food requests and sending nearby notifications
-              </p>
-            </div>
+            {/* Default Location - New stable component */}
+            <LocationSetting
+              initialCity={form.getValues('location_city') || ''}
+              initialState={form.getValues('location_state') || ''}
+              initialLat={form.getValues('profile_lat')}
+              initialLng={form.getValues('profile_lng')}
+              initialCountry={form.getValues('profile_country') || ''}
+              onLocationChange={(location) => {
+                form.setValue('location_city', location.city, { shouldDirty: true });
+                form.setValue('location_state', location.state, { shouldDirty: true });
+                form.setValue('profile_lat', location.lat, { shouldDirty: true });
+                form.setValue('profile_lng', location.lng, { shouldDirty: true });
+                form.setValue('profile_country', location.country, { shouldDirty: true });
+                setCurrentLocationLabel(location.displayLabel);
+                setLocationChanged(location.displayLabel !== savedLocationLabel);
+              }}
+            />
 
             {/* Notification Radius */}
             <FormField

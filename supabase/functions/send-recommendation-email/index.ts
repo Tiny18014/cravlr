@@ -4,55 +4,10 @@ import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-// Twilio configuration for SMS
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Send SMS via Twilio
-async function sendSMS(
-  phoneNumber: string,
-  message: string
-): Promise<{ success: boolean; error?: string }> {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-    console.log('Skipping SMS - Missing Twilio credentials');
-    return { success: false, error: 'Missing credentials' };
-  }
-
-  try {
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          From: TWILIO_PHONE_NUMBER,
-          To: phoneNumber,
-          Body: message,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Twilio Error:', errorData);
-      return { success: false, error: errorData.message };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error sending SMS:', error);
-    return { success: false, error: error.message };
-  }
-}
 
 // Check if email was already sent to prevent duplicates
 async function wasEmailAlreadySent(
@@ -175,12 +130,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     const requesterId = recommendation.food_requests.requester_id;
 
-    // Check requester's email preferences and phone number
+    // Check requester's email preferences
     const { data: requesterProfile } = await supabase
       .from("profiles")
-      .select("display_name, email_notifications_enabled, email_recommendations, phone_number")
+      .select("display_name, email_notifications_enabled, email_recommendations")
       .eq("id", requesterId)
       .single();
+
+    if (!requesterProfile?.email_notifications_enabled || !requesterProfile?.email_recommendations) {
+      console.log("send-recommendation-email: Requester has email notifications disabled");
+      return new Response(
+        JSON.stringify({ success: true, message: "User has email notifications disabled", sent: false }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get recommender display name
     const { data: recommenderProfile } = await supabase
@@ -189,38 +152,11 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", user.id)
       .single();
 
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
-    const requestId = recommendation.food_requests.id;
-    const recommenderName = recommenderProfile?.display_name || "A local expert";
-    let smsSent = false;
-
-    // SEND SMS (Requester)
-    if (requesterProfile?.phone_number) {
-       console.log(`📱 Attempting SMS for requester ${requesterId}`);
-       const smsMessage = `Cravlr Alert: New recommendation from ${recommenderName} for your ${recommendation.food_requests.food_type} request! View: ${appUrl}/requests/${requestId}/results`;
-       const smsResult = await sendSMS(requesterProfile.phone_number, smsMessage);
-       if (smsResult.success) {
-           console.log('✅ SMS sent successfully');
-           smsSent = true;
-       } else {
-           console.log('SMS failed:', smsResult.error);
-       }
-    }
-
-    // Check if Resend is configured for Email
+    // Check if Resend is configured
     if (!Deno.env.get("RESEND_API_KEY")) {
       console.log("send-recommendation-email: RESEND_API_KEY not configured");
       return new Response(
-        JSON.stringify({ success: true, message: "Email service not configured", emailSent: false, smsSent }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Check preferences for Email
-    if (!requesterProfile?.email_notifications_enabled || !requesterProfile?.email_recommendations) {
-      console.log("send-recommendation-email: Requester has email notifications disabled");
-      return new Response(
-        JSON.stringify({ success: true, message: "User has email notifications disabled", emailSent: false, smsSent }),
+        JSON.stringify({ success: true, message: "Email service not configured", sent: false }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -232,22 +168,25 @@ const handler = async (req: Request): Promise<Response> => {
     if (!email) {
       console.log("send-recommendation-email: Requester has no email");
       return new Response(
-        JSON.stringify({ success: true, message: "User has no email", emailSent: false, smsSent }),
+        JSON.stringify({ success: true, message: "User has no email", sent: false }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check for duplicate EMAIL only (SMS can be duplicated or we can check logs if needed, but for MVP it's fine)
+    // Check for duplicate
     const alreadySent = await wasEmailAlreadySent(supabase, requesterId, "new_recommendation", recommendationId);
     if (alreadySent) {
       console.log(`send-recommendation-email: Email already sent for recommendation ${recommendationId}`);
       return new Response(
-        JSON.stringify({ success: true, message: "Email already sent", emailSent: false, smsSent }),
+        JSON.stringify({ success: true, message: "Email already sent", sent: false }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const subject = `🎉 New Recommendation: ${recommendation.restaurant_name}`;
+    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
+    const requestId = recommendation.food_requests.id;
+    const recommenderName = recommenderProfile?.display_name || "A local expert";
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -302,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Cravlr <notifications@cravlr.app>",
+      from: "Cravlr <notifications@cravlr.com>",
       to: [email],
       subject: subject,
       html: htmlContent,
@@ -322,7 +261,7 @@ const handler = async (req: Request): Promise<Response> => {
         emailError.message
       );
       return new Response(
-        JSON.stringify({ success: false, error: emailError.message, smsSent }),
+        JSON.stringify({ success: false, error: emailError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -340,7 +279,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     return new Response(
-      JSON.stringify({ success: true, emailSent: true, smsSent }),
+      JSON.stringify({ success: true, sent: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
