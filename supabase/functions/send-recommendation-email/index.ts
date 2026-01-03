@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { Twilio } from "npm:twilio@4.23.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
+// Twilio configuration
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +55,31 @@ async function logEmailNotification(
     status: status,
     error_message: errorMessage || null,
   });
+}
+
+// Send SMS via Twilio
+async function sendSMS(
+  to: string,
+  body: string
+): Promise<{ success: boolean; sid?: string; error?: string }> {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.log('SMS skipped - missing Twilio config');
+    return { success: false, error: 'Missing configuration' };
+  }
+
+  try {
+    const client = new Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+    const message = await client.messages.create({
+      body: body,
+      from: TWILIO_PHONE_NUMBER,
+      to: to,
+    });
+    console.log(`✅ SMS sent to ${to}: ${message.sid}`);
+    return { success: true, sid: message.sid };
+  } catch (error: any) {
+    console.error('Error sending SMS:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -130,17 +161,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     const requesterId = recommendation.food_requests.requester_id;
 
-    // Check requester's email preferences
+    // Check requester's notification preferences
     const { data: requesterProfile } = await supabase
       .from("profiles")
-      .select("display_name, email_notifications_enabled, email_recommendations")
+      .select("display_name, email_notifications_enabled, email_recommendations, phone_number")
       .eq("id", requesterId)
       .single();
 
+    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
+    const requestId = recommendation.food_requests.id;
+
+    // Send SMS if phone number is available
+    let smsSent = false;
+    if (requesterProfile?.phone_number) {
+      const smsBody = `Great news! You have a new recommendation for ${recommendation.food_requests.food_type} at ${recommendation.restaurant_name}. View it here: ${appUrl}/requests/${requestId}/results`;
+      const smsResult = await sendSMS(requesterProfile.phone_number, smsBody);
+      smsSent = smsResult.success;
+    }
+
+    // Handle Email Notifications
     if (!requesterProfile?.email_notifications_enabled || !requesterProfile?.email_recommendations) {
       console.log("send-recommendation-email: Requester has email notifications disabled");
+      // Return success if SMS was sent, or "skipped" message
       return new Response(
-        JSON.stringify({ success: true, message: "User has email notifications disabled", sent: false }),
+        JSON.stringify({
+          success: true,
+          message: smsSent ? "SMS sent, email disabled" : "User has notifications disabled",
+          smsSent
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -156,7 +204,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!Deno.env.get("RESEND_API_KEY")) {
       console.log("send-recommendation-email: RESEND_API_KEY not configured");
       return new Response(
-        JSON.stringify({ success: true, message: "Email service not configured", sent: false }),
+        JSON.stringify({ success: true, message: "Email service not configured", smsSent }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -168,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!email) {
       console.log("send-recommendation-email: Requester has no email");
       return new Response(
-        JSON.stringify({ success: true, message: "User has no email", sent: false }),
+        JSON.stringify({ success: true, message: "User has no email", smsSent }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -178,14 +226,12 @@ const handler = async (req: Request): Promise<Response> => {
     if (alreadySent) {
       console.log(`send-recommendation-email: Email already sent for recommendation ${recommendationId}`);
       return new Response(
-        JSON.stringify({ success: true, message: "Email already sent", sent: false }),
+        JSON.stringify({ success: true, message: "Email already sent", smsSent }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const subject = `🎉 New Recommendation: ${recommendation.restaurant_name}`;
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
-    const requestId = recommendation.food_requests.id;
     const recommenderName = recommenderProfile?.display_name || "A local expert";
 
     const htmlContent = `
@@ -261,7 +307,7 @@ const handler = async (req: Request): Promise<Response> => {
         emailError.message
       );
       return new Response(
-        JSON.stringify({ success: false, error: emailError.message }),
+        JSON.stringify({ success: false, error: emailError.message, smsSent }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -279,7 +325,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     return new Response(
-      JSON.stringify({ success: true, sent: true }),
+      JSON.stringify({ success: true, emailSent: true, smsSent }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
