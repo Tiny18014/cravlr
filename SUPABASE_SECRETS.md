@@ -1,22 +1,24 @@
-# Supabase Secrets for SMS Integration
+# Supabase Secrets for Notifications
 
-To enable SMS/WhatsApp notifications via Twilio, you need to add the following secrets to your Supabase project.
+To enable notifications, you need to add the following secrets to your Supabase project.
 
 ## How to Add Secrets
 
 1.  Go to your [Supabase Dashboard](https://supabase.com/dashboard).
 2.  Navigate to **Edge Functions** (or Settings > API).
 3.  Find the **Secrets** section.
-4.  Add the following secrets with your Twilio credentials:
+4.  Add the following secrets:
 
 | Secret Name | Description | Example Value |
 | :--- | :--- | :--- |
-| `TWILIO_ACCOUNT_SID` | Your Twilio Account SID | `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
-| `TWILIO_AUTH_TOKEN` | Your Twilio Auth Token | `your_auth_token_here` |
-| `TWILIO_PHONE_NUMBER` | The Twilio phone number to send SMS from | `+15551234567` |
+| `ONESIGNAL_APP_ID` | Your OneSignal App ID | `e.g. 12345678-abcd-efgh-ijkl-1234567890ab` |
+| `ONESIGNAL_API_KEY` | Your OneSignal REST API Key | `e.g. NDE0...` |
+| `RESEND_API_KEY` | Your Resend API Key (for emails) | `re_...` |
 
-> **Note:** If you want to use WhatsApp, ensure your `TWILIO_PHONE_NUMBER` is a WhatsApp-enabled number or use a specific `TWILIO_WHATSAPP_NUMBER` if you customize the code further. Currently, the code defaults to sending standard SMS.
+## OneSignal Integration
 
-## Code References
-
-The backend functions `notify-area-users` and `send-recommendation-email` have been updated to check for these variables. If they are missing, SMS sending will be skipped gracefully without crashing the app.
+The application uses OneSignal for Push Notifications.
+- **Frontend**: Initializes OneSignal and asks for permission. Stores the player ID in the `device_tokens` table.
+- **Backend**:
+    - `notify-area-users`: Sends push notifications to recommenders when a new request is nearby.
+    - `send-recommendation-email`: Sends push notifications to the requester when they receive a recommendation.

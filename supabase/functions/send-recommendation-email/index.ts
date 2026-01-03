@@ -1,14 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
-import { Twilio } from "npm:twilio@4.23.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-// Twilio configuration
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
+// OneSignal configuration
+const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID");
+const ONESIGNAL_API_KEY = Deno.env.get("ONESIGNAL_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,28 +55,51 @@ async function logEmailNotification(
   });
 }
 
-// Send SMS via Twilio
-async function sendSMS(
-  to: string,
-  body: string
-): Promise<{ success: boolean; sid?: string; error?: string }> {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-    console.log('SMS skipped - missing Twilio config');
-    return { success: false, error: 'Missing configuration' };
+// Send push notification via OneSignal
+async function sendPushNotification(
+  playerIds: string[],
+  title: string,
+  message: string,
+  data: Record<string, any>
+): Promise<{ success: boolean; sentCount: number }> {
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY || playerIds.length === 0) {
+    console.log('Push notifications skipped - missing config or no recipients');
+    return { success: false, sentCount: 0 };
   }
 
   try {
-    const client = new Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-    const message = await client.messages.create({
-      body: body,
-      from: TWILIO_PHONE_NUMBER,
-      to: to,
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        include_player_ids: playerIds,
+        headings: { en: title },
+        contents: { en: message },
+        data: data,
+        ios_badgeType: 'Increase',
+        ios_badgeCount: 1,
+        android_channel_id: 'cravlr_recommendations',
+        priority: 10,
+        web_push_topic: 'new_recommendation',
+      }),
     });
-    console.log(`✅ SMS sent to ${to}: ${message.sid}`);
-    return { success: true, sid: message.sid };
-  } catch (error: any) {
-    console.error('Error sending SMS:', error);
-    return { success: false, error: error.message };
+
+    const result = await response.json();
+
+    if (result.errors) {
+      console.error('OneSignal errors:', result.errors);
+      return { success: false, sentCount: 0 };
+    }
+
+    console.log(`✅ Push notification sent to ${result.recipients || 0} devices`);
+    return { success: true, sentCount: result.recipients || playerIds.length };
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    return { success: false, sentCount: 0 };
   }
 }
 
@@ -161,33 +182,49 @@ const handler = async (req: Request): Promise<Response> => {
 
     const requesterId = recommendation.food_requests.requester_id;
 
-    // Check requester's notification preferences
+    // Check requester's email preferences
     const { data: requesterProfile } = await supabase
       .from("profiles")
-      .select("display_name, email_notifications_enabled, email_recommendations, phone_number")
+      .select("display_name, email_notifications_enabled, email_recommendations")
       .eq("id", requesterId)
       .single();
 
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
-    const requestId = recommendation.food_requests.id;
+    // -- Push Notification Logic --
+    // Get device tokens for push notifications
+    const { data: deviceTokens } = await supabase
+      .from('device_tokens')
+      .select('onesignal_player_id')
+      .eq('user_id', requesterId)
+      .eq('is_active', true)
+      .not('onesignal_player_id', 'is', null);
 
-    // Send SMS if phone number is available
-    let smsSent = false;
-    if (requesterProfile?.phone_number) {
-      const smsBody = `Great news! You have a new recommendation for ${recommendation.food_requests.food_type} at ${recommendation.restaurant_name}. View it here: ${appUrl}/requests/${requestId}/results`;
-      const smsResult = await sendSMS(requesterProfile.phone_number, smsBody);
-      smsSent = smsResult.success;
+    const playerIds = (deviceTokens || [])
+      .map(t => t.onesignal_player_id)
+      .filter((id): id is string => id !== null);
+
+    let pushSent = false;
+    if (playerIds.length > 0) {
+      const pushTitle = '🎉 New Recommendation!';
+      const pushMessage = `Someone recommended ${recommendation.restaurant_name} for your ${recommendation.food_requests.food_type} request!`;
+      const pushData = {
+        type: 'RECOMMENDATION_RECEIVED',
+        requestId: recommendation.food_requests.id,
+        recommendationId: recommendation.id,
+        url: `/request-results/${recommendation.food_requests.id}`
+      };
+      const pushResult = await sendPushNotification(playerIds, pushTitle, pushMessage, pushData);
+      pushSent = pushResult.success;
     }
+    // ----------------------------
 
-    // Handle Email Notifications
     if (!requesterProfile?.email_notifications_enabled || !requesterProfile?.email_recommendations) {
       console.log("send-recommendation-email: Requester has email notifications disabled");
-      // Return success if SMS was sent, or "skipped" message
       return new Response(
         JSON.stringify({
           success: true,
-          message: smsSent ? "SMS sent, email disabled" : "User has notifications disabled",
-          smsSent
+          message: "User has email notifications disabled",
+          sent: false,
+          pushSent: pushSent
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -204,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!Deno.env.get("RESEND_API_KEY")) {
       console.log("send-recommendation-email: RESEND_API_KEY not configured");
       return new Response(
-        JSON.stringify({ success: true, message: "Email service not configured", smsSent }),
+        JSON.stringify({ success: true, message: "Email service not configured", sent: false, pushSent }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -216,7 +253,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!email) {
       console.log("send-recommendation-email: Requester has no email");
       return new Response(
-        JSON.stringify({ success: true, message: "User has no email", smsSent }),
+        JSON.stringify({ success: true, message: "User has no email", sent: false, pushSent }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -226,12 +263,14 @@ const handler = async (req: Request): Promise<Response> => {
     if (alreadySent) {
       console.log(`send-recommendation-email: Email already sent for recommendation ${recommendationId}`);
       return new Response(
-        JSON.stringify({ success: true, message: "Email already sent", smsSent }),
+        JSON.stringify({ success: true, message: "Email already sent", sent: false, pushSent }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const subject = `🎉 New Recommendation: ${recommendation.restaurant_name}`;
+    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
+    const requestId = recommendation.food_requests.id;
     const recommenderName = recommenderProfile?.display_name || "A local expert";
 
     const htmlContent = `
@@ -307,7 +346,7 @@ const handler = async (req: Request): Promise<Response> => {
         emailError.message
       );
       return new Response(
-        JSON.stringify({ success: false, error: emailError.message, smsSent }),
+        JSON.stringify({ success: false, error: emailError.message, pushSent }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -325,7 +364,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     return new Response(
-      JSON.stringify({ success: true, emailSent: true, smsSent }),
+      JSON.stringify({ success: true, sent: true, pushSent }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
