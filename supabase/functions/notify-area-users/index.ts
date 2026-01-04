@@ -86,7 +86,15 @@ async function sendPushNotification(
   message: string, 
   data: Record<string, any>
 ): Promise<{ success: boolean; sentCount: number }> {
-  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY || playerIds.length === 0) {
+  // Validate UUID format for App ID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!ONESIGNAL_APP_ID || !uuidRegex.test(ONESIGNAL_APP_ID)) {
+    console.error('❌ OneSignal skipped: Invalid or missing App ID (must be a UUID)');
+    return { success: false, sentCount: 0 };
+  }
+
+  if (!ONESIGNAL_API_KEY || playerIds.length === 0) {
     console.log('Push notifications skipped - missing config or no recipients');
     return { success: false, sentCount: 0 };
   }

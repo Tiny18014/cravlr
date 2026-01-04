@@ -78,6 +78,7 @@ const Profile = () => {
   
   // User profile state
   const [userName, setUserName] = useState('');
+  const [userPhone, setUserPhone] = useState('');
   const [userLevel, setUserLevel] = useState('Newbie');
   const [userPoints, setUserPoints] = useState(0);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -133,6 +134,7 @@ const Profile = () => {
         setCurrentLocationLabel(locationDisplay);
         setLocationChanged(false);
         setUserName(profile.display_name || user?.email?.split('@')[0] || 'User');
+        setUserPhone((profile as any).phone_number || '');
         setUserLevel(profile.level || 'Newbie');
         setUserPoints(profile.points_total || 0);
         setProfileImageUrl((profile as any).profile_image_url || null);
@@ -298,22 +300,29 @@ const Profile = () => {
     }
   };
 
-  const handleUpdateDisplayName = async (newName: string) => {
+  const handleUpdateProfile = async (newName: string, newPhone: string) => {
     if (!user) return;
     
+    const updates: any = {
+      display_name: newName,
+      phone_number: newPhone,
+      updated_at: new Date().toISOString()
+    };
+
     const { error } = await supabase
       .from('profiles')
-      .update({ display_name: newName, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq('id', user.id);
 
     if (error) throw error;
     
     setUserName(newName);
+    setUserPhone(newPhone);
     form.setValue('display_name', newName);
     
     toast({
       title: "Profile Updated",
-      description: "Your display name has been changed.",
+      description: "Your profile details have been updated.",
     });
   };
 
@@ -586,7 +595,8 @@ const Profile = () => {
         open={showEditProfileModal}
         onOpenChange={setShowEditProfileModal}
         currentName={userName}
-        onSave={handleUpdateDisplayName}
+        currentPhone={userPhone}
+        onSave={handleUpdateProfile}
       />
       
       <AppFeedbackSurvey
