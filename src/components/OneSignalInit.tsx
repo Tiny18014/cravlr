@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import OneSignal from 'react-onesignal';
 
 // Track initialization state globally
 let onesignalInitialized = false;
@@ -133,11 +134,11 @@ export const OneSignalInit = () => {
     }
 
     async function checkAndRegister() {
-      const OS = (window as any).OneSignal;
-      if (!OS) return;
-      
       try {
-        const subscriptionId = await OS.User?.PushSubscription?.id;
+        // Wait for OneSignal to be available on window
+        if (!(window as any).OneSignal) return;
+
+        const subscriptionId = await OneSignal.User.PushSubscription.id;
         console.log('🔔 Current subscription ID:', subscriptionId);
         
         if (subscriptionId && !registrationAttempted.current) {
@@ -153,53 +154,33 @@ export const OneSignalInit = () => {
 
     const initOneSignal = async () => {
       try {
-        // Load SDK if needed
-        if (!(window as any).OneSignal) {
-          console.log('🔔 Loading OneSignal SDK...');
+        // 1. Manually load the SDK script if it's not present
+        if (!document.querySelector('script[src*="OneSignalSDK.page.js"]')) {
+          console.log('🔔 Loading OneSignal SDK script...');
           await new Promise<void>((resolve, reject) => {
-            const existingScript = document.querySelector('script[src*="OneSignalSDK"]');
-            if (existingScript) {
-              const checkLoaded = setInterval(() => {
-                if ((window as any).OneSignal) {
-                  clearInterval(checkLoaded);
-                  resolve();
-                }
-              }, 100);
-              setTimeout(() => {
-                clearInterval(checkLoaded);
-                reject(new Error('SDK load timeout'));
-              }, 10000);
-              return;
-            }
-
             const script = document.createElement('script');
             script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
             script.async = true;
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load SDK'));
+            script.defer = true;
+            script.onload = () => {
+              console.log('🔔 OneSignal script loaded');
+              resolve();
+            };
+            script.onerror = () => reject(new Error('Failed to load OneSignal SDK'));
             document.head.appendChild(script);
           });
+
+          // Small delay to ensure window.OneSignal is ready
+          await new Promise(r => setTimeout(r, 100));
         }
 
-        // Wait for availability
-        await new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if ((window as any).OneSignal) {
-              clearInterval(check);
-              resolve();
-            }
-          }, 50);
-        });
-
-        const OS = (window as any).OneSignal;
-        console.log('🔔 OneSignal SDK available, initializing...');
-
-        await OS.init({
-          appId: onesignalAppId,
+        // 2. Initialize using react-onesignal
+        await OneSignal.init({
+          appId: onesignalAppId!,
           allowLocalhostAsSecureOrigin: true,
-          serviceWorkerParam: { scope: '/' },
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
           notifyButton: { enable: false },
+          // Remove custom service worker paths to let SDK use defaults
+          // serviceWorkerPath: '/OneSignalSDKWorker.js',
         });
 
         onesignalInitialized = true;
@@ -207,30 +188,33 @@ export const OneSignalInit = () => {
 
         // Login user
         try {
-          await OS.login(user.id);
+          await OneSignal.login(user.id);
           console.log('✅ OneSignal user logged in');
         } catch (e) {
           console.warn('⚠️ OneSignal login warning:', e);
         }
 
         // Set up click handler
-        OS.Notifications.addEventListener('click', handleNotificationClick);
+        OneSignal.Notifications.addEventListener('click', handleNotificationClick);
 
         // Check permission and register
-        const permission = await OS.Notifications.permission;
+        const permission = OneSignal.Notifications.permission;
         console.log('🔔 Permission state:', permission);
 
         if (permission && !registrationAttempted.current) {
-          registrationAttempted.current = true;
-          const subscriptionId = await OS.User.PushSubscription.id;
-          console.log('🔔 Subscription ID:', subscriptionId);
-          if (subscriptionId) {
-            await registerDeviceToken(subscriptionId);
-          }
+          // Wait a moment for subscription to be ready
+          setTimeout(async () => {
+            const subscriptionId = OneSignal.User.PushSubscription.id;
+            console.log('🔔 Subscription ID:', subscriptionId);
+            if (subscriptionId) {
+              registrationAttempted.current = true;
+              await registerDeviceToken(subscriptionId);
+            }
+          }, 1000);
         }
 
         // Listen for changes
-        OS.User.PushSubscription.addEventListener('change', async (event: any) => {
+        OneSignal.User.PushSubscription.addEventListener('change', async (event: any) => {
           console.log('🔔 Subscription changed:', event);
           if (event.current?.id && event.current?.optedIn) {
             await registerDeviceToken(event.current.id);
@@ -245,10 +229,7 @@ export const OneSignalInit = () => {
     initOneSignal();
 
     return () => {
-      const OS = (window as any).OneSignal;
-      if (OS?.Notifications) {
-        OS.Notifications.removeEventListener('click', handleNotificationClick);
-      }
+      // Cleanup if needed
     };
   }, [user, appIdLoaded, registerDeviceToken, handleNotificationClick]);
 
@@ -260,11 +241,6 @@ export const useRequestPushPermission = () => {
   const { user } = useAuth();
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
-    const OS = (window as any).OneSignal;
-    if (!OS) {
-      console.warn('🔔 OneSignal not available');
-      return false;
-    }
     if (!user) {
       console.warn('🔔 User not logged in');
       return false;
@@ -274,12 +250,12 @@ export const useRequestPushPermission = () => {
       console.log('🔔 Requesting push permission...');
       
       // Use slidedown prompt
-      await OS.Slidedown.promptPush();
+      await OneSignal.Slidedown.promptPush();
       
-      const permission = await OS.Notifications.permission;
+      const permission = OneSignal.Notifications.permission;
       console.log('🔔 Permission result:', permission);
       
-      return permission === true;
+      return permission;
     } catch (error) {
       console.error('❌ Error requesting permission:', error);
       return false;
@@ -291,14 +267,9 @@ export const useRequestPushPermission = () => {
   }, []);
 
   const getPermissionState = useCallback(async (): Promise<'granted' | 'denied' | 'default' | null> => {
-    const OS = (window as any).OneSignal;
-    if (!OS) return null;
-    
     try {
-      const permission = await OS.Notifications.permission;
-      if (permission === true) return 'granted';
-      if (permission === false) return 'denied';
-      return 'default';
+      // Direct property access is synchronous in v16 SDK wrapper usually, but let's wrap safely
+      return OneSignal.Notifications.permission ? 'granted' : 'default';
     } catch {
       return null;
     }
