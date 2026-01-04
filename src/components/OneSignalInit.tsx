@@ -179,8 +179,8 @@ export const OneSignalInit = () => {
           appId: onesignalAppId!,
           allowLocalhostAsSecureOrigin: true,
           notifyButton: { enable: false },
-          // Remove custom service worker paths to let SDK use defaults
-          // serviceWorkerPath: '/OneSignalSDKWorker.js',
+          // Use our custom service worker (which imports OneSignal SDK) to avoid conflicts
+          serviceWorkerPath: '/sw.js',
         });
 
         onesignalInitialized = true;
