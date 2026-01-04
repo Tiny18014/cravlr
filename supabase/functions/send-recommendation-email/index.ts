@@ -57,7 +57,7 @@ async function logEmailNotification(
 
 // Send push notification via OneSignal
 async function sendPushNotification(
-  playerIds: string[],
+  userIds: string[],
   title: string,
   message: string,
   data: Record<string, any>
@@ -70,7 +70,7 @@ async function sendPushNotification(
     return { success: false, sentCount: 0 };
   }
 
-  if (!ONESIGNAL_API_KEY || playerIds.length === 0) {
+  if (!ONESIGNAL_API_KEY || userIds.length === 0) {
     console.log('Push notifications skipped - missing config or no recipients');
     return { success: false, sentCount: 0 };
   }
@@ -84,7 +84,11 @@ async function sendPushNotification(
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: playerIds,
+        // Use include_aliases to target by External ID (User ID)
+        include_aliases: {
+          external_id: userIds
+        },
+        target_channel: "push",
         headings: { en: title },
         contents: { en: message },
         data: data,
@@ -198,20 +202,9 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     // -- Push Notification Logic --
-    // Get device tokens for push notifications
-    const { data: deviceTokens } = await supabase
-      .from('device_tokens')
-      .select('onesignal_player_id')
-      .eq('user_id', requesterId)
-      .eq('is_active', true)
-      .not('onesignal_player_id', 'is', null);
-
-    const playerIds = (deviceTokens || [])
-      .map(t => t.onesignal_player_id)
-      .filter((id): id is string => id !== null);
-
+    // Target via External ID (Requester ID)
     let pushSent = false;
-    if (playerIds.length > 0) {
+    if (requesterId) {
       const pushTitle = '🎉 New Recommendation!';
       const pushMessage = `Someone recommended ${recommendation.restaurant_name} for your ${recommendation.food_requests.food_type} request!`;
       const pushData = {
@@ -220,7 +213,8 @@ const handler = async (req: Request): Promise<Response> => {
         recommendationId: recommendation.id,
         url: `/request-results/${recommendation.food_requests.id}`
       };
-      const pushResult = await sendPushNotification(playerIds, pushTitle, pushMessage, pushData);
+      // Send directly to requester UUID
+      const pushResult = await sendPushNotification([requesterId], pushTitle, pushMessage, pushData);
       pushSent = pushResult.success;
     }
     // ----------------------------
