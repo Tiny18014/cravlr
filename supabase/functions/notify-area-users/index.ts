@@ -239,7 +239,10 @@ const handler = async (req: Request): Promise<Response> => {
           const radius = u.notification_radius_km || 20;
           return distance <= radius;
         }
-        return u.location_city?.toLowerCase() === request.location_city?.toLowerCase();
+        // Fallback to fuzzy city matching if no coordinates on user profile
+        const userCity = u.location_city?.toLowerCase() || '';
+        const requestCity = request.location_city?.toLowerCase() || '';
+        return userCity && requestCity && (userCity.includes(requestCity) || requestCity.includes(userCity));
       });
       
       console.log(`📍 Geo-based matching: Found ${eligibleUsers.length} users within radius`);
