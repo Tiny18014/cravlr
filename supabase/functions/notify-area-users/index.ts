@@ -215,7 +215,10 @@ const handler = async (req: Request): Promise<Response> => {
     
     let eligibleUsers: any[] = [];
     
+    console.log(`📍 Finding users for request. Coordinates: ${hasCoordinates ? 'Yes' : 'No'}. City: ${request.location_city}`);
+
     if (hasCoordinates) {
+      console.log(`📍 Fetching potential users with notify_recommender=true...`);
       const { data: potentialUsers, error: usersError } = await supabase
         .from('profiles')
         .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
@@ -227,8 +230,11 @@ const handler = async (req: Request): Promise<Response> => {
         console.error('Error fetching users:', usersError);
         throw new Error('Failed to find users');
       }
+
+      console.log(`📍 Found ${potentialUsers?.length || 0} potential users before filtering.`);
       
       eligibleUsers = (potentialUsers || []).filter(u => {
+        // If user has coords, check radius
         if (u.profile_lat && u.profile_lng) {
           const distance = calculateDistance(
             request.lat, 
@@ -237,15 +243,24 @@ const handler = async (req: Request): Promise<Response> => {
             u.profile_lng
           );
           const radius = u.notification_radius_km || 20;
-          return distance <= radius;
+          const inRange = distance <= radius;
+          if (inRange) console.log(`✅ User ${u.display_name} matched by distance (${Math.round(distance)}km)`);
+          return inRange;
         }
+
         // Fallback to fuzzy city matching if no coordinates on user profile
         const userCity = u.location_city?.toLowerCase() || '';
         const requestCity = request.location_city?.toLowerCase() || '';
-        return userCity && requestCity && (userCity.includes(requestCity) || requestCity.includes(userCity));
+
+        // Ensure not empty strings
+        if (!userCity || !requestCity) return false;
+
+        const match = userCity.includes(requestCity) || requestCity.includes(userCity);
+        if (match) console.log(`✅ User ${u.display_name} matched by city (${userCity} ~= ${requestCity})`);
+        return match;
       });
       
-      console.log(`📍 Geo-based matching: Found ${eligibleUsers.length} users within radius`);
+      console.log(`📍 Geo-based matching: Found ${eligibleUsers.length} users within radius/city`);
     } else {
       const { data: nearbyUsers, error: usersError } = await supabase
         .from('profiles')
