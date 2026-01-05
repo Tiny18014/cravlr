@@ -218,28 +218,31 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`📍 Finding users for request. Coordinates: ${hasCoordinates ? 'Yes' : 'No'}. City: ${request.location_city}`);
 
-    // Fetch ALL potential recommenders (users who haven't explicitly disabled notifications or paused recommending)
-    // We filter in memory to handle complex "fuzzy" matching logic that is hard to do in SQL
-    // Logic:
-    // 1. Not the requester
-    // 2. notify_recommender is TRUE or NULL (default true)
-    // 3. recommender_paused is FALSE or NULL (default false)
+    // Fetch potential recommenders using a simpler query to avoid OR complexity issues
+    // We will filter paused/disabled users in memory if needed, but the query should handle the bulk.
+    // Explicitly excluding the requester.
+    // Querying for users who have not explicitly disabled 'notify_recommender'
+
+    // Note: 'notify_recommender' defaults to TRUE. 'recommender_paused' defaults to FALSE.
+    // We use a broader query and safe filtering.
     const { data: potentialUsers, error: usersError } = await supabase
       .from('profiles')
       .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
-      .neq('id', request.requester_id)
-      .or('notify_recommender.eq.true,notify_recommender.is.null')
-      .or('recommender_paused.is.null,recommender_paused.eq.false');
+      .neq('id', request.requester_id);
 
     if (usersError) {
       console.error('Error fetching users:', usersError);
       throw new Error('Failed to find users');
     }
 
-    console.log(`📍 Found ${potentialUsers?.length || 0} active recommenders globally. Filtering...`);
+    console.log(`📍 Found ${potentialUsers?.length || 0} total profiles (excluding requester). Filtering...`);
 
     const eligibleUsers = (potentialUsers || []).filter(u => {
-      // 1. If Request has coords AND User has coords -> Check Radius
+      // 1. Check Preferences
+      if (u.notify_recommender === false) return false; // Explicitly disabled
+      if (u.recommender_paused === true) return false; // Explicitly paused
+
+      // 2. If Request has coords AND User has coords -> Check Radius
       if (hasCoordinates && u.profile_lat && u.profile_lng) {
         const distance = calculateDistance(
           request.lat,
@@ -253,15 +256,15 @@ const handler = async (req: Request): Promise<Response> => {
         return inRange;
       }
 
-      // 2. Fallback: Fuzzy City Matching
+      // 3. Fallback: Fuzzy City Matching
       // Matches if: User has city AND Request has city AND they partially match
-      // "New York" matches "New York, NY"
-      // "New York, NY" matches "New York"
-      const userCity = u.location_city?.toLowerCase() || '';
-      const requestCity = request.location_city?.toLowerCase() || '';
+      const userCity = (u.location_city || '').trim().toLowerCase();
+      const requestCity = (request.location_city || '').trim().toLowerCase();
 
       if (!userCity || !requestCity) return false;
 
+      // "New York" matches "New York, NY"
+      // "New York, NY" matches "New York"
       const match = userCity.includes(requestCity) || requestCity.includes(userCity);
       if (match) console.log(`✅ User ${u.display_name} matched by city (${userCity} ~= ${requestCity})`);
       return match;
@@ -301,7 +304,6 @@ const handler = async (req: Request): Promise<Response> => {
       url: `/recommend/${request.id}`
     };
 
-    // Use sendPushNotification targeting External IDs (mapped to user IDs)
     const pushResult = await sendPushNotification(userIds, pushTitle, pushMessage, pushData);
 
     // Send notification emails to eligible users who have email enabled
@@ -360,7 +362,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="font-size: 16px; color: #1C1C1C;">Know a great spot? Share your recommendation and earn points!</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/browse-requests"
+                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/recommend/${requestId}"
                      style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 28px; 
                             text-decoration: none; border-radius: 24px; display: inline-block; font-weight: 600;
                             box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
