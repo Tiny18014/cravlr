@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error("send-recommendation-email: Auth error:", authError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
