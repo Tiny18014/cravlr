@@ -271,7 +271,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const subject = `🎉 New Recommendation: ${recommendation.restaurant_name}`;
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://ioqogdxfmapcijmqjcpb.lovable.app";
+    const appUrl = Deno.env.get("SITE_URL") || "https://cravlr.com";
     const requestId = recommendation.food_requests.id;
     const recommenderName = recommenderProfile?.display_name || "A local expert";
 

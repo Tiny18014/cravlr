@@ -81,7 +81,7 @@ async function logEmailNotification(
 
 // Send push notification via OneSignal
 async function sendPushNotification(
-  playerIds: string[],
+  userIds: string[],
   title: string,
   message: string,
   data: Record<string, any>
@@ -94,7 +94,7 @@ async function sendPushNotification(
     return { success: false, sentCount: 0 };
   }
 
-  if (!ONESIGNAL_API_KEY || playerIds.length === 0) {
+  if (!ONESIGNAL_API_KEY || userIds.length === 0) {
     console.log('Push notifications skipped - missing config or no recipients');
     return { success: false, sentCount: 0 };
   }
@@ -108,7 +108,10 @@ async function sendPushNotification(
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: playerIds,
+        include_aliases: {
+          external_id: userIds
+        },
+        target_channel: "push",
         headings: { en: title },
         contents: { en: message },
         data: data,
@@ -128,7 +131,7 @@ async function sendPushNotification(
     }
 
     console.log(`✅ Push notification sent to ${result.recipients || 0} devices`);
-    return { success: true, sentCount: result.recipients || playerIds.length };
+    return { success: true, sentCount: result.recipients || userIds.length };
   } catch (error) {
     console.error('Error sending push notification:', error);
     return { success: false, sentCount: 0 };
@@ -279,20 +282,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${eligibleUsers.length} eligible users to notify`);
 
-    // Get device tokens for push notifications
+    // Get user IDs for push notifications (Targeting via External ID)
     const userIds = eligibleUsers.map(u => u.id);
-    const { data: deviceTokens } = await supabase
-      .from('device_tokens')
-      .select('user_id, onesignal_player_id')
-      .in('user_id', userIds)
-      .eq('is_active', true)
-      .not('onesignal_player_id', 'is', null);
-
-    const playerIds = (deviceTokens || [])
-      .map(t => t.onesignal_player_id)
-      .filter((id): id is string => id !== null);
-
-    console.log(`Found ${playerIds.length} active push subscriptions`);
+    console.log(`Targeting ${userIds.length} users for push via External ID`);
 
     // Send push notifications
     const locationDisplay = request.location_state
@@ -309,7 +301,8 @@ const handler = async (req: Request): Promise<Response> => {
       url: `/recommend/${request.id}`
     };
 
-    const pushResult = await sendPushNotification(playerIds, pushTitle, pushMessage, pushData);
+    // Use sendPushNotification targeting External IDs (mapped to user IDs)
+    const pushResult = await sendPushNotification(userIds, pushTitle, pushMessage, pushData);
 
     // Send notification emails to eligible users who have email enabled
     const emailPromises = eligibleUsers.map(async (targetUser) => {
