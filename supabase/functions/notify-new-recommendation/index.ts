@@ -141,8 +141,8 @@ serve(async (req) => {
     // Don't notify if the recommender is the requester (self-recommendation?)
     const recommenderId = record.recommender_id || record.user_id;
     if (recommenderId && recommenderId === requester_id) {
-       console.log("Skipping notification: Recommender is the Requester.");
-       return new Response(
+      console.log("Skipping notification: Recommender is the Requester.");
+      return new Response(
         JSON.stringify({ message: 'Skipped: Self-recommendation' }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -158,7 +158,7 @@ serve(async (req) => {
       type: 'RECOMMENDATION_RECEIVED',
       requestId: record.request_id,
       recommendationId: record.id,
-      url: `/requests/${record.request_id}/results`
+      url: `/request-results/${record.request_id}`
     };
 
     const pushResult = await sendPushNotification([requester_id], pushTitle, pushMessage, pushData);
