@@ -108,7 +108,7 @@ async function sendPushNotification(
     }
 
     console.log(`✅ Push notification sent to ${result.recipients || 0} devices`);
-    return { success: true, sentCount: result.recipients || playerIds.length };
+    return { success: true, sentCount: result.recipients || userIds.length };
   } catch (error) {
     console.error('Error sending push notification:', error);
     return { success: false, sentCount: 0 };
@@ -202,6 +202,11 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     // -- Push Notification Logic --
+    // Note: Push notifications for new recommendations are now primarily handled by the
+    // 'notify-new-recommendation' database webhook.
+    // However, we keep this logic here as a fallback or for clients invoking this function directly,
+    // but users should prefer the webhook to avoid potential duplicate notifications if both are active.
+
     // Target via External ID (Requester ID)
     let pushSent = false;
     if (requesterId) {
@@ -211,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
         type: 'RECOMMENDATION_RECEIVED',
         requestId: recommendation.food_requests.id,
         recommendationId: recommendation.id,
-        url: `/request-results/${recommendation.food_requests.id}`
+        url: `/requests/${recommendation.food_requests.id}/results`
       };
       // Send directly to requester UUID
       const pushResult = await sendPushNotification([requesterId], pushTitle, pushMessage, pushData);
@@ -275,6 +280,7 @@ const handler = async (req: Request): Promise<Response> => {
     const requestId = recommendation.food_requests.id;
     const recommenderName = recommenderProfile?.display_name || "A local expert";
 
+    // Use the Purple/Pink scheme from notify-area-users
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -282,47 +288,54 @@ const handler = async (req: Request): Promise<Response> => {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
       </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #F7F5F8; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); padding: 30px; text-align: center; border-radius: 16px 16px 0 0;">
           <h1 style="color: white; margin: 0; font-size: 24px;">🎉 New Recommendation!</h1>
         </div>
         <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+          <p style="color: #1C1C1C; font-size: 16px; line-height: 1.6;">
             Hi ${requesterProfile?.display_name || "there"}!
           </p>
-          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+          <p style="color: #1C1C1C; font-size: 16px; line-height: 1.6;">
             <strong>${recommenderName}</strong> just sent you a recommendation for your food request!
           </p>
-          <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-            <p style="color: #166534; font-size: 20px; font-weight: 600; margin: 0 0 8px 0;">
+
+          <div style="background-color: #F9EFF5; padding: 20px; border-radius: 16px; margin: 24px 0; border-left: 4px solid #A03272;">
+            <p style="color: #A03272; font-size: 20px; font-weight: 600; margin: 0 0 8px 0;">
               🍽️ ${recommendation.restaurant_name}
             </p>
-            ${recommendation.restaurant_address ? `<p style="color: #15803d; font-size: 14px; margin: 0 0 8px 0;">📍 ${recommendation.restaurant_address}</p>` : ""}
-            ${recommendation.notes ? `<p style="color: #166534; font-size: 14px; margin: 8px 0 0 0; font-style: italic;">"${recommendation.notes}"</p>` : ""}
+            ${recommendation.restaurant_address ? `<p style="color: #7A2156; font-size: 14px; margin: 0 0 8px 0;">📍 ${recommendation.restaurant_address}</p>` : ""}
+            ${recommendation.notes ? `<p style="color: #7A2156; font-size: 14px; margin: 8px 0 0 0; font-style: italic;">"${recommendation.notes}"</p>` : ""}
           </div>
-          <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
+
+          <p style="color: #6B6B6B; font-size: 14px; margin-bottom: 8px;">
             <strong>Your request:</strong> ${recommendation.food_requests.food_type}
           </p>
-          <p style="color: #6b7280; font-size: 14px;">
+          <p style="color: #6B6B6B; font-size: 14px;">
             📍 ${recommendation.food_requests.location_city}${recommendation.food_requests.location_state ? `, ${recommendation.food_requests.location_state}` : ""}
           </p>
+
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${appUrl}/requests/${requestId}/results" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-              View All Recommendations
+            <a href="${appUrl}/requests/${requestId}/results" style="display: inline-block; background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 32px; border-radius: 24px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
+              View Recommendation
             </a>
           </div>
+
           ${recommendation.maps_url ? `
             <div style="text-align: center; margin-bottom: 20px;">
-              <a href="${recommendation.maps_url}" style="color: #22c55e; font-size: 14px; text-decoration: underline;">
+              <a href="${recommendation.maps_url}" style="color: #A03272; font-size: 14px; text-decoration: underline;">
                 📍 Open in Google Maps
               </a>
             </div>
           ` : ""}
         </div>
-        <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 20px;">
-          You received this email because you have email notifications enabled.<br>
-          <a href="${appUrl}/settings" style="color: #22c55e;">Manage your notification preferences</a>
-        </p>
+
+        <div style="padding: 20px; text-align: center; background-color: #F7F5F8;">
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 0;">
+            You received this email because you have email notifications enabled.<br>
+            <a href="${appUrl}/settings" style="color: #A03272;">Manage your notification preferences</a>
+          </p>
+        </div>
       </body>
       </html>
     `;

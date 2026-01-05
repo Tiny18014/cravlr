@@ -158,7 +158,7 @@ serve(async (req) => {
       type: 'RECOMMENDATION_RECEIVED',
       requestId: record.request_id,
       recommendationId: record.id,
-      url: `/request-results/${record.request_id}`
+      url: `/requests/${record.request_id}/results`
     };
 
     const pushResult = await sendPushNotification([requester_id], pushTitle, pushMessage, pushData);
