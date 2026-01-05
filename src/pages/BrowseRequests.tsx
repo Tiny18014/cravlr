@@ -11,6 +11,7 @@ import { ReputationBadge } from '@/components/ReputationBadge';
 import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
+import { useToast } from '@/hooks/use-toast';
 
 interface FoodRequest {
   id: string;
@@ -156,6 +157,7 @@ interface UserLocation {
 const BrowseRequests = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
@@ -358,24 +360,25 @@ const BrowseRequests = () => {
       ));
 
       console.log(`✅ Successfully ${action}ed request ${id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Error ${action}ing request:`, error);
       
-      // Log more details about the error
-      if (error instanceof Error) {
-        console.error('❌ Error name:', error.name);
-        console.error('❌ Error message:', error.message);
-      }
-      
-      // If it's a FunctionsHttpError, try to get more details
-      if (error && typeof error === 'object' && 'context' in error) {
-        console.error('❌ Error context:', error.context);
-        try {
-          const errorText = await (error.context as Response).text();
-          console.error('❌ Error response text:', errorText);
-        } catch (e) {
-          console.error('❌ Could not read error response text:', e);
-        }
+      // Check if the request has expired
+      const errorMessage = error?.message || error?.toString() || '';
+      if (errorMessage.includes('expired')) {
+        toast({
+          title: "Request expired",
+          description: "This request is no longer available.",
+          variant: "destructive"
+        });
+        // Remove expired request from local state
+        setRequests(prev => prev.filter(req => req.id !== id));
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to ${action} request. Please try again.`,
+          variant: "destructive"
+        });
       }
     }
   };
