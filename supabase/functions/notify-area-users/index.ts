@@ -355,7 +355,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="font-size: 16px; color: #1C1C1C;">Know a great spot? Share your recommendation and earn points!</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/browse-requests"
+                  <a href="https://cravlr.com/browse-requests"
                      style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 28px; 
                             text-decoration: none; border-radius: 24px; display: inline-block; font-weight: 600;
                             box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
@@ -367,7 +367,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="padding: 20px; text-align: center; background-color: #F7F5F8;">
                 <p style="font-size: 12px; color: #6B6B6B; margin: 0;">
                   You received this because you're registered near ${locationDisplay}.<br>
-                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/profile" style="color: #A03272;">Update your notification preferences</a>
+                  <a href="https://cravlr.com/profile" style="color: #A03272;">Update your notification preferences</a>
                 </p>
                 <p style="margin-top: 16px; font-size: 14px; color: #1C1C1C;">
                   Happy recommending! 🎉<br>
