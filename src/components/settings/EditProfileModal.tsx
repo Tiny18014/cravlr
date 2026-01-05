@@ -14,16 +14,19 @@ interface EditProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentName: string;
-  onSave: (name: string) => Promise<void>;
+  currentPhone: string;
+  onSave: (name: string, phone: string) => Promise<void>;
 }
 
 export const EditProfileModal = ({ 
   open, 
   onOpenChange, 
   currentName,
+  currentPhone,
   onSave 
 }: EditProfileModalProps) => {
   const [displayName, setDisplayName] = useState(currentName);
+  const [phoneNumber, setPhoneNumber] = useState(currentPhone || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,7 +41,7 @@ export const EditProfileModal = ({
 
     setLoading(true);
     try {
-      await onSave(displayName.trim());
+      await onSave(displayName.trim(), phoneNumber.trim());
       onOpenChange(false);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
@@ -74,6 +77,20 @@ export const EditProfileModal = ({
             />
             <p className="text-xs text-muted-foreground">
               This is how other users will see you in the app
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone-number">Phone Number</Label>
+            <Input
+              id="phone-number"
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+1 (555) 000-0000"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used for notifications and account recovery
             </p>
           </div>
 

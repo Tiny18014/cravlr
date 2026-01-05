@@ -59,7 +59,7 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await signUp(email, password, displayName, userType);
+        const { error } = await signUp(email, password, displayName, userType, phoneNumber);
         if (error) {
           toast({
             title: "Signup Failed",
@@ -227,25 +227,25 @@ const Auth = () => {
                   />
                 </div>
                 
-                {userType === 'business' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Business Phone Number
-                    </Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      required={userType === 'business'}
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    {userType === 'business' ? 'Business Phone Number' : 'Phone Number (Optional)'}
+                  </Label>
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    required={userType === 'business'}
+                  />
+                  {userType === 'business' && (
                     <p className="text-xs text-muted-foreground">
                       Required for business verification
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
             
