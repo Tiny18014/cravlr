@@ -47,7 +47,7 @@ async function wasEmailAlreadySent(
     .eq('user_id', userId)
     .eq('event_type', eventType)
     .eq('entity_id', entityId)
-    .single();
+    .maybeSingle();
 
   return !!data;
 }
