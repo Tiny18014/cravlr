@@ -88,7 +88,8 @@ async function sendPushNotification(
         include_aliases: {
           external_id: userIds
         },
-        target_channel: "push",
+        // Omit target_channel to send to all active channels (Push, SMS, Email)
+        // target_channel: "push",
         headings: { en: title },
         contents: { en: message },
         data: data,

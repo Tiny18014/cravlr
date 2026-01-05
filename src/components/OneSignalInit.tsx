@@ -190,8 +190,26 @@ export const OneSignalInit = () => {
         try {
           await OneSignal.login(user.id);
           console.log('✅ OneSignal user logged in');
+
+          // Sync phone number if available in metadata
+          if (user.user_metadata?.phone_number) {
+            console.log('🔔 Syncing phone number to OneSignal...');
+            await OneSignal.User.addSms(user.user_metadata.phone_number);
+          } else {
+            // Try fetching from profile if not in metadata
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('phone_number')
+              .eq('id', user.id)
+              .single();
+
+            if (profile?.phone_number) {
+              console.log('🔔 Syncing phone number from profile to OneSignal...');
+              await OneSignal.User.addSms(profile.phone_number);
+            }
+          }
         } catch (e) {
-          console.warn('⚠️ OneSignal login warning:', e);
+          console.warn('⚠️ OneSignal login/sync warning:', e);
         }
 
         // Set up click handler

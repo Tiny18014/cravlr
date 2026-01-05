@@ -28,10 +28,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
 
@@ -81,7 +81,7 @@ async function logEmailNotification(
 
 // Send push notification via OneSignal
 async function sendPushNotification(
-  playerIds: string[],
+  userIds: string[],
   title: string,
   message: string,
   data: Record<string, any>
@@ -94,7 +94,7 @@ async function sendPushNotification(
     return { success: false, sentCount: 0 };
   }
 
-  if (!ONESIGNAL_API_KEY || playerIds.length === 0) {
+  if (!ONESIGNAL_API_KEY || userIds.length === 0) {
     console.log('Push notifications skipped - missing config or no recipients');
     return { success: false, sentCount: 0 };
   }
@@ -108,7 +108,12 @@ async function sendPushNotification(
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
-        include_player_ids: playerIds,
+        // Use include_aliases to target by External ID (User ID)
+        include_aliases: {
+          external_id: userIds
+        },
+        // Omit target_channel to send to all active channels (Push, SMS, Email)
+        // target_channel: "push",
         headings: { en: title },
         contents: { en: message },
         data: data,
@@ -210,61 +215,97 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('id', request.requester_id)
       .single();
 
-    // Find users who are eligible for notifications
-    const hasCoordinates = request.lat && request.lng;
+    // Use PostGIS "Radar" if possible (RPC call), otherwise fallback to manual calculation
+    let eligibleUserIds: string[] = [];
 
-    console.log(`📍 Finding users for request. Coordinates: ${hasCoordinates ? 'Yes' : 'No'}. City: ${request.location_city}`);
+    // Attempt to use PostGIS RPC if available and request has coordinates
+    // We assume the user has enabled PostGIS and created the function 'get_users_nearby'
+    if (request.lat && request.lng) {
+      console.log('📡 Radar: Attempting PostGIS search...');
+      try {
+        const { data: radarUsers, error: radarError } = await supabase
+          .rpc('get_users_nearby', {
+            lat: request.lat,
+            lng: request.lng,
+            radius_meters: 20000 // 20km default radius for Radar
+          });
 
-    // Fetch ALL potential recommenders (users who haven't explicitly disabled notifications or paused recommending)
-    // We filter in memory to handle complex "fuzzy" matching logic that is hard to do in SQL
-    // Logic:
-    // 1. Not the requester
-    // 2. notify_recommender is TRUE or NULL (default true)
-    // 3. recommender_paused is FALSE or NULL (default false)
-    const { data: potentialUsers, error: usersError } = await supabase
-      .from('profiles')
-      .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
-      .neq('id', request.requester_id)
-      .or('notify_recommender.eq.true,notify_recommender.is.null')
-      .or('recommender_paused.is.null,recommender_paused.eq.false');
-
-    if (usersError) {
-      console.error('Error fetching users:', usersError);
-      throw new Error('Failed to find users');
+        if (!radarError && radarUsers) {
+          console.log(`📡 Radar: Found ${radarUsers.length} users via PostGIS`);
+          eligibleUserIds = radarUsers.map((u: any) => u.user_id);
+        } else {
+          console.log('📡 Radar: PostGIS function unavailable or error, falling back to JS logic', radarError);
+        }
+      } catch (err) {
+        console.log('📡 Radar: RPC call failed, falling back to JS logic');
+      }
     }
 
-    console.log(`📍 Found ${potentialUsers?.length || 0} active recommenders globally. Filtering...`);
+    // If Radar found users, fetch their details. If not (or empty), use legacy logic.
+    let eligibleUsers: any[] = [];
 
-    const eligibleUsers = (potentialUsers || []).filter(u => {
-      // 1. If Request has coords AND User has coords -> Check Radius
-      if (hasCoordinates && u.profile_lat && u.profile_lng) {
-        const distance = calculateDistance(
-          request.lat,
-          request.lng,
-          u.profile_lat,
-          u.profile_lng
-        );
-        const radius = u.notification_radius_km || 20;
-        const inRange = distance <= radius;
-        if (inRange) console.log(`✅ User ${u.display_name} matched by distance (${Math.round(distance)}km)`);
-        return inRange;
+    if (eligibleUserIds.length > 0) {
+      // Fetch full profiles for the IDs returned by Radar
+      const { data: radarProfiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name, notify_recommender, recommender_paused, location_city, location_state, email_notifications_enabled, email_new_requests')
+        .in('id', eligibleUserIds)
+        .neq('id', request.requester_id); // Ensure we don't notify self even if DB function didn't filter
+
+      if (!profileError) {
+        eligibleUsers = radarProfiles || [];
+        console.log(`✅ Loaded ${eligibleUsers.length} profiles from Radar results`);
+      }
+    }
+
+    // If PostGIS didn't run or found no one, fallback to the robust JS/Hybrid matching
+    if (eligibleUsers.length === 0) {
+      const hasCoordinates = request.lat && request.lng;
+      console.log(`📍 Fallback Matching: Finding users. Coordinates: ${hasCoordinates ? 'Yes' : 'No'}. City: ${request.location_city}`);
+
+      // Fetch ALL potential recommenders (users who haven't explicitly disabled notifications or paused recommending)
+      const { data: potentialUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
+        .neq('id', request.requester_id)
+        .or('notify_recommender.eq.true,notify_recommender.is.null')
+        .or('recommender_paused.is.null,recommender_paused.eq.false');
+
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw new Error('Failed to find users');
       }
 
-      // 2. Fallback: Fuzzy City Matching
-      // Matches if: User has city AND Request has city AND they partially match
-      // "New York" matches "New York, NY"
-      // "New York, NY" matches "New York"
-      const userCity = u.location_city?.toLowerCase() || '';
-      const requestCity = request.location_city?.toLowerCase() || '';
+      console.log(`📍 Found ${potentialUsers?.length || 0} active recommenders globally. Filtering...`);
 
-      if (!userCity || !requestCity) return false;
+      eligibleUsers = (potentialUsers || []).filter(u => {
+        // 1. If Request has coords AND User has coords -> Check Radius
+        if (hasCoordinates && u.profile_lat && u.profile_lng) {
+          const distance = calculateDistance(
+            request.lat,
+            request.lng,
+            u.profile_lat,
+            u.profile_lng
+          );
+          const radius = u.notification_radius_km || 20;
+          const inRange = distance <= radius;
+          if (inRange) console.log(`✅ User ${u.display_name} matched by distance (${Math.round(distance)}km)`);
+          return inRange;
+        }
 
-      const match = userCity.includes(requestCity) || requestCity.includes(userCity);
-      if (match) console.log(`✅ User ${u.display_name} matched by city (${userCity} ~= ${requestCity})`);
-      return match;
-    });
+        // 2. Fallback: Fuzzy City Matching
+        const userCity = u.location_city?.toLowerCase() || '';
+        const requestCity = request.location_city?.toLowerCase() || '';
 
-    console.log(`📍 Final Match: Found ${eligibleUsers.length} users within radius/city`);
+        if (!userCity || !requestCity) return false;
+
+        const match = userCity.includes(requestCity) || requestCity.includes(userCity);
+        if (match) console.log(`✅ User ${u.display_name} matched by city (${userCity} ~= ${requestCity})`);
+        return match;
+      });
+    }
+
+    console.log(`📍 Final Match: Found ${eligibleUsers.length} users to notify`);
 
     if (eligibleUsers.length === 0) {
       console.log('No eligible users found');
@@ -279,20 +320,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${eligibleUsers.length} eligible users to notify`);
 
-    // Get device tokens for push notifications
+    // Target specific users via OneSignal External ID (User ID)
     const userIds = eligibleUsers.map(u => u.id);
-    const { data: deviceTokens } = await supabase
-      .from('device_tokens')
-      .select('user_id, onesignal_player_id')
-      .in('user_id', userIds)
-      .eq('is_active', true)
-      .not('onesignal_player_id', 'is', null);
-
-    const playerIds = (deviceTokens || [])
-      .map(t => t.onesignal_player_id)
-      .filter((id): id is string => id !== null);
-
-    console.log(`Found ${playerIds.length} active push subscriptions`);
+    console.log(`Targeting ${userIds.length} users via OneSignal External ID`);
 
     // Send push notifications
     const locationDisplay = request.location_state
@@ -309,7 +339,8 @@ const handler = async (req: Request): Promise<Response> => {
       url: `/recommend/${request.id}`
     };
 
-    const pushResult = await sendPushNotification(playerIds, pushTitle, pushMessage, pushData);
+    // Use userIds (External IDs) directly
+    const pushResult = await sendPushNotification(userIds, pushTitle, pushMessage, pushData);
 
     // Send notification emails to eligible users who have email enabled
     const emailPromises = eligibleUsers.map(async (targetUser) => {
