@@ -1,72 +1,26 @@
-// Service Worker for Cravlr
-const CACHE_NAME = 'cravlr-v1';
-const urlsToCache = [
-  '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json'
-];
+// Cravlr Service Worker
+//
+// IMPORTANT: This service worker intentionally does NOT cache application HTML/JS/CSS.
+// Aggressive app-shell caching can cause blank screens after deployments (stale index.html).
+//
+// OneSignal Web Push integration
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
 
-// Install event
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
+  // Activate updated SW ASAP
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+    (async () => {
+      // Clean up legacy caches from older SW versions
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k.startsWith('cravlr-')).map((k) => caches.delete(k))
+      );
+
+      await self.clients.claim();
+    })()
   );
-});
-
-// Fetch event
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-  );
-});
-
-// Push event handler
-self.addEventListener('push', (event) => {
-  console.log('[Service Worker] Push Received.');
-
-  const options = {
-    body: 'Someone is hungry near you! Help them find great food.',
-    icon: '/placeholder.svg',
-    badge: '/placeholder.svg',
-    tag: 'food-request',
-    requireInteraction: true,
-    actions: [
-      {
-        action: 'open',
-        title: 'View Request'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss'
-      }
-    ]
-  };
-
-  if (event.data) {
-    const data = event.data.json();
-    options.body = data.body || options.body;
-    options.data = data;
-  }
-
-  const title = 'New Food Request';
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification click Received.');
-
-  event.notification.close();
-
-  if (event.action === 'open' || !event.action) {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
 });
