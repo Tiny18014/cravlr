@@ -219,12 +219,6 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`📍 Finding users for request. Coordinates: ${hasCoordinates ? 'Yes' : 'No'}. City: ${request.location_city}`);
 
     // Fetch potential recommenders using a simpler query to avoid OR complexity issues
-    // We will filter paused/disabled users in memory if needed, but the query should handle the bulk.
-    // Explicitly excluding the requester.
-    // Querying for users who have not explicitly disabled 'notify_recommender'
-
-    // Note: 'notify_recommender' defaults to TRUE. 'recommender_paused' defaults to FALSE.
-    // We use a broader query and safe filtering.
     const { data: potentialUsers, error: usersError } = await supabase
       .from('profiles')
       .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
@@ -257,14 +251,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // 3. Fallback: Fuzzy City Matching
-      // Matches if: User has city AND Request has city AND they partially match
       const userCity = (u.location_city || '').trim().toLowerCase();
       const requestCity = (request.location_city || '').trim().toLowerCase();
 
       if (!userCity || !requestCity) return false;
 
-      // "New York" matches "New York, NY"
-      // "New York, NY" matches "New York"
       const match = userCity.includes(requestCity) || requestCity.includes(userCity);
       if (match) console.log(`✅ User ${u.display_name} matched by city (${userCity} ~= ${requestCity})`);
       return match;
@@ -308,33 +299,35 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification emails to eligible users who have email enabled
     const emailPromises = eligibleUsers.map(async (targetUser) => {
-      // Check email preferences
-      const emailEnabled = targetUser.email_notifications_enabled !== false;
-      const newRequestsEnabled = targetUser.email_new_requests !== false;
-
-      if (!emailEnabled || !newRequestsEnabled) {
-        console.log(`📧 Skipping email for user ${targetUser.id} - email preferences disabled`);
-        return { skipped: true, reason: 'preferences' };
-      }
-
-      // Check for duplicate email (idempotency)
-      const alreadySent = await wasEmailAlreadySent(targetUser.id, 'new_request', requestId);
-      if (alreadySent) {
-        console.log(`📧 Skipping email for user ${targetUser.id} - already sent`);
-        return { skipped: true, reason: 'duplicate' };
-      }
-
-      const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
-
-      if (authUserError || !authUser?.user?.email) {
-        console.log(`No email found for user ${targetUser.id}`);
-        return { skipped: true, reason: 'no_email' };
-      }
-
-      const emailTo = authUser.user.email;
-      const subject = `🍽️ New ${request.food_type} request in ${request.location_city}!`;
-
       try {
+        console.log(`📧 Processing email for ${targetUser.id}`);
+
+        // Check email preferences
+        const emailEnabled = targetUser.email_notifications_enabled !== false;
+        const newRequestsEnabled = targetUser.email_new_requests !== false;
+
+        if (!emailEnabled || !newRequestsEnabled) {
+          console.log(`📧 Skipping email for user ${targetUser.id} - email preferences disabled`);
+          return { skipped: true, reason: 'preferences' };
+        }
+
+        // Check for duplicate email (idempotency)
+        const alreadySent = await wasEmailAlreadySent(targetUser.id, 'new_request', requestId);
+        if (alreadySent) {
+          console.log(`📧 Skipping email for user ${targetUser.id} - already sent`);
+          return { skipped: true, reason: 'duplicate' };
+        }
+
+        const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
+
+        if (authUserError || !authUser?.user?.email) {
+          console.log(`No email found for user ${targetUser.id}`);
+          return { skipped: true, reason: 'no_email' };
+        }
+
+        const emailTo = authUser.user.email;
+        const subject = `🍽️ New ${request.food_type} request in ${request.location_city}!`;
+
         const emailResponse = await resend.emails.send({
           from: "Cravlr <notifications@cravlr.com>",
           to: [emailTo],
@@ -400,19 +393,19 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`✅ Email sent to ${emailTo}:`, emailResponse.data?.id);
         return { success: true, emailId: emailResponse.data?.id };
       } catch (emailError: any) {
-        // Log failed email
+        // Log failed email (don't crash the loop)
         await logEmailNotification(
           targetUser.id,
           'new_request',
           requestId,
-          emailTo,
-          subject,
+          'unknown', // Might not have email yet
+          'New Request',
           null,
           'failed',
           emailError.message
         );
 
-        console.error(`❌ Error sending email to ${emailTo}:`, emailError);
+        console.error(`❌ Error sending email to user ${targetUser.id}:`, emailError);
         return { success: false, error: emailError.message };
       }
     });
