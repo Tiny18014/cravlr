@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Clock, Send, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CountdownTimer from '@/components/CountdownTimer';
+import { useToast } from '@/hooks/use-toast';
 
 interface FoodRequest {
   id: string;
@@ -40,6 +41,7 @@ const ActiveRequestsList = ({
 }: ActiveRequestsListProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -190,8 +192,26 @@ const ActiveRequestsList = ({
 
       // Navigate to recommendation form
       navigate(`/recommend/${requestId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting request:', error);
+      
+      // Check if the request has expired
+      const errorMessage = error?.message || error?.toString() || '';
+      if (errorMessage.includes('expired')) {
+        toast({
+          title: "Request expired",
+          description: "This request is no longer available.",
+          variant: "destructive"
+        });
+        // Remove expired request from local state
+        setRequests(prev => prev.filter(req => req.id !== requestId));
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to accept request. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
