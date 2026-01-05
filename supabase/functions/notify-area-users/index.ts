@@ -355,7 +355,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="font-size: 16px; color: #1C1C1C;">Know a great spot? Share your recommendation and earn points!</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/recommend/${requestId}"
+                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/browse-requests"
                      style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 28px; 
                             text-decoration: none; border-radius: 24px; display: inline-block; font-weight: 600;
                             box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">

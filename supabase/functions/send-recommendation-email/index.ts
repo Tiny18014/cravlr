@@ -316,7 +316,7 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${appUrl}/requests/${requestId}/results" style="display: inline-block; background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 32px; border-radius: 24px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
+            <a href="${appUrl}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 32px; border-radius: 24px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
               View Recommendation
             </a>
           </div>
