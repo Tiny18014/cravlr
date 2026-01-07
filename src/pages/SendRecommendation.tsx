@@ -189,16 +189,7 @@ const SendRecommendation = () => {
           // Don't block the success flow if points fail
         }
 
-        // Send email notification to the requester
-        try {
-          await supabase.functions.invoke('send-recommendation-email', {
-            body: { recommendationId: insertData.id },
-          });
-        } catch (emailError) {
-          console.error('Error sending recommendation email:', emailError);
-          // Don't block the success flow if email fails
-        }
-      }
+
 
       // Update streak for recommenders (points are handled by edge function)
       if (hasRole('recommender')) {
