@@ -192,11 +192,20 @@ const SendRecommendation = () => {
         // Trigger email notification for the requester
         try {
           console.log('📧 Triggering email-recommendation-received for recommendation:', insertData.id);
-          await supabase.functions.invoke('email-recommendation-received', {
-            body: { recommendationId: insertData.id },
-          });
+          const { data: emailResult, error: emailInvokeError } = await supabase.functions.invoke(
+            'email-recommendation-received',
+            {
+              body: { recommendationId: insertData.id },
+            }
+          );
+
+          if (emailInvokeError) {
+            console.error('❌ email-recommendation-received failed:', emailInvokeError);
+          } else {
+            console.log('📧 email-recommendation-received response:', emailResult);
+          }
         } catch (emailError) {
-          console.error('Error sending recommendation email:', emailError);
+          console.error('❌ Network error calling email-recommendation-received:', emailError);
           // Don't block success flow
         }
       }
