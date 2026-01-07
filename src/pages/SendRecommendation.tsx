@@ -1,21 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin } from 'lucide-react';
-import { RestaurantSearchInput } from '@/components/RestaurantSearchInput';
-import { EmailVerificationRequired } from '@/components/EmailVerificationRequired';
-import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
-import { useUserRoles } from '@/hooks/useUserRoles';
-import { StreakPopup } from '@/components/StreakPopup';
-import { z } from 'zod';
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, MapPin } from "lucide-react";
+import { RestaurantSearchInput } from "@/components/RestaurantSearchInput";
+import { EmailVerificationRequired } from "@/components/EmailVerificationRequired";
+import { AppFeedbackSurvey } from "@/components/AppFeedbackSurvey";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { StreakPopup } from "@/components/StreakPopup";
+import { z } from "zod";
 
 interface FoodRequest {
   id: string;
@@ -30,30 +30,20 @@ interface FoodRequest {
 }
 
 const recommendationSchema = z.object({
-  restaurantName: z.string()
+  restaurantName: z
+    .string()
     .trim()
-    .min(1, 'Restaurant name is required')
-    .max(200, 'Restaurant name must be less than 200 characters'),
-  restaurantAddress: z.string()
-    .trim()
-    .max(300, 'Address must be less than 300 characters')
-    .optional(),
-  notes: z.string()
-    .trim()
-    .max(1000, 'Notes must be less than 1,000 characters')
-    .optional(),
-  confidenceScore: z.number()
+    .min(1, "Restaurant name is required")
+    .max(200, "Restaurant name must be less than 200 characters"),
+  restaurantAddress: z.string().trim().max(300, "Address must be less than 300 characters").optional(),
+  notes: z.string().trim().max(1000, "Notes must be less than 1,000 characters").optional(),
+  confidenceScore: z
+    .number()
     .int()
-    .min(1, 'Confidence score must be at least 1')
-    .max(5, 'Confidence score cannot exceed 5'),
-  placeId: z.string()
-    .max(200, 'Place ID too long')
-    .optional(),
-  mapsUrl: z.string()
-    .url('Invalid URL format')
-    .max(500, 'URL too long')
-    .optional()
-    .or(z.literal(''))
+    .min(1, "Confidence score must be at least 1")
+    .max(5, "Confidence score cannot exceed 5"),
+  placeId: z.string().max(200, "Place ID too long").optional(),
+  mapsUrl: z.string().url("Invalid URL format").max(500, "URL too long").optional().or(z.literal("")),
 });
 
 const SendRecommendation = () => {
@@ -62,35 +52,35 @@ const SendRecommendation = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasRole } = useUserRoles();
-  
+
   const [request, setRequest] = useState<FoodRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [showStreakPopup, setShowStreakPopup] = useState(false);
   const [streakData, setStreakData] = useState<{ streakCount: number; points: number }>({ streakCount: 0, points: 0 });
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  
+
   const [formData, setFormData] = useState({
-    restaurantName: '',
-    restaurantAddress: '',
-    notes: '',
+    restaurantName: "",
+    restaurantAddress: "",
+    notes: "",
     confidenceScore: [5], // Default to 5/5 (hidden from UI)
-    placeId: '', // For Google Places integration
-    mapsUrl: '' // For storing the Google Maps URL
+    placeId: "", // For Google Places integration
+    mapsUrl: "", // For storing the Google Maps URL
   });
 
   useEffect(() => {
     if (!user) {
-      navigate('/auth');
+      navigate("/auth");
       return;
     }
-    
+
     if (!requestId) {
-      navigate('/browse-requests');
+      navigate("/browse-requests");
       return;
     }
-    
+
     fetchRequest();
   }, [user, requestId, navigate]);
 
@@ -107,35 +97,35 @@ const SendRecommendation = () => {
   const fetchRequest = async () => {
     try {
       const { data, error } = await supabase
-        .from('food_requests')
-        .select('*')
-        .eq('id', requestId)
-        .eq('status', 'active')
+        .from("food_requests")
+        .select("*")
+        .eq("id", requestId)
+        .eq("status", "active")
         .maybeSingle();
 
       if (error) throw error;
-      
+
       if (data) {
         // Fetch requester profile separately
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', data.requester_id)
+          .from("profiles")
+          .select("display_name")
+          .eq("id", data.requester_id)
           .maybeSingle();
-        
+
         setRequest({
           ...data,
-          profiles: { display_name: profile?.display_name || 'Anonymous' }
+          profiles: { display_name: profile?.display_name || "Anonymous" },
         });
       }
     } catch (error) {
-      console.error('Error fetching request:', error);
+      console.error("Error fetching request:", error);
       toast({
         title: "Error",
         description: "Failed to load the food request.",
         variant: "destructive",
       });
-      navigate('/browse-requests');
+      navigate("/browse-requests");
     } finally {
       setLoading(false);
     }
@@ -144,9 +134,9 @@ const SendRecommendation = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !requestId) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Validate input
       const validatedData = recommendationSchema.parse({
@@ -155,11 +145,11 @@ const SendRecommendation = () => {
         notes: formData.notes,
         confidenceScore: formData.confidenceScore[0],
         placeId: formData.placeId,
-        mapsUrl: formData.mapsUrl
+        mapsUrl: formData.mapsUrl,
       });
 
       const { data: insertData, error } = await supabase
-        .from('recommendations')
+        .from("recommendations")
         .insert({
           request_id: requestId,
           recommender_id: user.id,
@@ -168,7 +158,7 @@ const SendRecommendation = () => {
           notes: validatedData.notes || null,
           confidence_score: validatedData.confidenceScore,
           ...(validatedData.placeId && { place_id: validatedData.placeId }),
-          ...(validatedData.mapsUrl && { maps_url: validatedData.mapsUrl })
+          ...(validatedData.mapsUrl && { maps_url: validatedData.mapsUrl }),
         })
         .select()
         .single();
@@ -178,27 +168,37 @@ const SendRecommendation = () => {
       // Award points and schedule visit reminder using new system
       if (insertData) {
         try {
-          await supabase.functions.invoke('process-recommendation-points', {
+          await supabase.functions.invoke("process-recommendation-points", {
             body: {
               recommendationId: insertData.id,
-              action: 'create',
+              action: "create",
             },
           });
         } catch (pointsError) {
-          console.error('Error processing points:', pointsError);
+          console.error("Error processing points:", pointsError);
           // Don't block the success flow if points fail
         }
 
-
+        // Trigger email notification for the requester
+        try {
+          console.log("📧 Triggering email-recommendation-received for recommendation:", insertData.id);
+          await supabase.functions.invoke("email-recommendation-received", {
+            body: { recommendationId: insertData.id },
+          });
+        } catch (emailError) {
+          console.error("Error sending recommendation email:", emailError);
+          // Don't block success flow
+        }
+      }
 
       // Update streak for recommenders (points are handled by edge function)
-      if (hasRole('recommender')) {
+      if (hasRole("recommender")) {
         try {
           // Fetch current streak and last feedback date
           const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('streak_count, last_feedback_date')
-            .eq('id', user.id)
+            .from("profiles")
+            .select("streak_count, last_feedback_date")
+            .eq("id", user.id)
             .single();
 
           if (profileError) throw profileError;
@@ -208,9 +208,9 @@ const SendRecommendation = () => {
 
           // Update streak only (points are updated by process-recommendation-points edge function)
           const { error: updateError } = await supabase
-            .from('profiles')
+            .from("profiles")
             .update({ streak_count: newStreak })
-            .eq('id', user.id);
+            .eq("id", user.id);
 
           if (updateError) throw updateError;
 
@@ -219,8 +219,8 @@ const SendRecommendation = () => {
           setShowStreakPopup(true);
 
           // Check if we should show feedback modal
-          const shouldShowFeedback = (newStreak % 3 === 0 || newStreak % 4 === 0);
-          
+          const shouldShowFeedback = newStreak % 3 === 0 || newStreak % 4 === 0;
+
           let daysSinceLastFeedback = Infinity;
           if (profileData?.last_feedback_date) {
             const lastFeedbackDate = new Date(profileData.last_feedback_date);
@@ -237,26 +237,26 @@ const SendRecommendation = () => {
             setTimeout(() => {
               setShowFeedbackModal(true);
             }, 1500);
-            
+
             // Skip automatic redirect - will be handled by feedback modal close
           } else {
             // No feedback modal, redirect after 2.5 seconds
             setTimeout(() => {
-              navigate('/browse-requests');
+              navigate("/browse-requests");
             }, 2500);
           }
         } catch (streakError) {
-          console.error('Error updating streak:', streakError);
+          console.error("Error updating streak:", streakError);
           // Don't block the success flow if streak update fails
           // Still redirect on error
           setTimeout(() => {
-            navigate('/browse-requests');
+            navigate("/browse-requests");
           }, 2500);
         }
       } else {
         // Not showing streak popup, redirect after 2.5 seconds
         setTimeout(() => {
-          navigate('/browse-requests');
+          navigate("/browse-requests");
         }, 2500);
       }
 
@@ -272,7 +272,7 @@ const SendRecommendation = () => {
           variant: "destructive",
         });
       } else {
-        console.error('Error sending recommendation:', error);
+        console.error("Error sending recommendation:", error);
         toast({
           title: "Error",
           description: "Failed to send your recommendation. Please try again.",
@@ -294,17 +294,17 @@ const SendRecommendation = () => {
       mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       restaurantName: name,
       restaurantAddress: address,
-      placeId: placeId || '',
-      mapsUrl: mapsUrl || ''
+      placeId: placeId || "",
+      mapsUrl: mapsUrl || "",
     }));
   };
 
   const handleChange = (field: string, value: string | number[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   if (!user) return null;
@@ -325,12 +325,8 @@ const SendRecommendation = () => {
         <Card className="max-w-md text-center">
           <CardContent className="py-12">
             <h2 className="text-xl font-semibold mb-4">Request not found</h2>
-            <p className="text-muted-foreground mb-6">
-              This request may have expired or been removed.
-            </p>
-            <Button onClick={() => navigate('/browse-requests')}>
-              Browse Other Requests
-            </Button>
+            <p className="text-muted-foreground mb-6">This request may have expired or been removed.</p>
+            <Button onClick={() => navigate("/browse-requests")}>Browse Other Requests</Button>
           </CardContent>
         </Card>
       </div>
@@ -341,14 +337,14 @@ const SendRecommendation = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/browse-requests')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/browse-requests")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <h1 className="text-2xl font-bold">Send Recommendation</h1>
         </div>
       </header>
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Request Details */}
@@ -358,20 +354,25 @@ const SendRecommendation = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p><strong>Looking for:</strong> {request.food_type}</p>
+                <p>
+                  <strong>Looking for:</strong> {request.food_type}
+                </p>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
-                    {request.location_address ? 
-                      `${request.location_address}, ${request.location_city}, ${request.location_state}` : 
-                      `${request.location_city}, ${request.location_state}`
-                    }
+                    {request.location_address
+                      ? `${request.location_address}, ${request.location_city}, ${request.location_state}`
+                      : `${request.location_city}, ${request.location_state}`}
                   </span>
                 </div>
-                <p><strong>Requested by:</strong> {request.profiles?.display_name || 'Anonymous'}</p>
+                <p>
+                  <strong>Requested by:</strong> {request.profiles?.display_name || "Anonymous"}
+                </p>
                 {request.additional_notes && (
                   <div className="bg-muted/50 p-3 rounded-md mt-3">
-                    <p className="text-sm"><strong>Additional notes:</strong> {request.additional_notes}</p>
+                    <p className="text-sm">
+                      <strong>Additional notes:</strong> {request.additional_notes}
+                    </p>
                   </div>
                 )}
               </div>
@@ -380,75 +381,68 @@ const SendRecommendation = () => {
 
           {/* Recommendation Form */}
           <Card>
-              <CardHeader>
-                <CardTitle>Your Recommendation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <Label htmlFor="restaurantSearch">Restaurant Name *</Label>
-                    <RestaurantSearchInput
-                      value={formData.restaurantName}
-                      onChange={handleRestaurantChange}
-                      placeholder={`Search restaurants in ${request.location_city}...`}
-                      required
-                      location={requestLocation}
-                    />
-                    {formData.restaurantAddress && (
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-xs text-muted-foreground">
-                          📍 {formData.restaurantAddress}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
-                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-                            // Use location.assign instead of window.open to avoid popup blockers
-                            window.location.assign(mapsUrl);
-                          }}
-                          className="text-xs h-6"
-                        >
-                          <MapPin className="h-3 w-3 mr-1" />
-                          Open in Maps
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  
-                  
-                  <div>
-                    <Label htmlFor="notes">Why do you recommend this place?</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Share what makes this place special - the food, atmosphere, service, etc."
-                      value={formData.notes}
-                      onChange={(e) => handleChange('notes', e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate('/browse-requests')}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting || !formData.restaurantName}
-                      className="flex-1"
-                    >
-                      {isSubmitting ? 'Sending...' : 'Send Recommendation'}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+            <CardHeader>
+              <CardTitle>Your Recommendation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <Label htmlFor="restaurantSearch">Restaurant Name *</Label>
+                  <RestaurantSearchInput
+                    value={formData.restaurantName}
+                    onChange={handleRestaurantChange}
+                    placeholder={`Search restaurants in ${request.location_city}...`}
+                    required
+                    location={requestLocation}
+                  />
+                  {formData.restaurantAddress && (
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-muted-foreground">📍 {formData.restaurantAddress}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
+                          const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                          // Use location.assign instead of window.open to avoid popup blockers
+                          window.location.assign(mapsUrl);
+                        }}
+                        className="text-xs h-6"
+                      >
+                        <MapPin className="h-3 w-3 mr-1" />
+                        Open in Maps
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="notes">Why do you recommend this place?</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Share what makes this place special - the food, atmosphere, service, etc."
+                    value={formData.notes}
+                    onChange={(e) => handleChange("notes", e.target.value)}
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/browse-requests")}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting || !formData.restaurantName} className="flex-1">
+                    {isSubmitting ? "Sending..." : "Send Recommendation"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </main>
 
@@ -466,7 +460,7 @@ const SendRecommendation = () => {
           // When feedback modal closes, navigate away
           if (!open) {
             setTimeout(() => {
-              navigate('/browse-requests');
+              navigate("/browse-requests");
             }, 500);
           }
         }}
