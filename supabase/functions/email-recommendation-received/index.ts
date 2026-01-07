@@ -37,27 +37,46 @@ const handler = async (req: Request): Promise<Response> => {
         const { data: recommendation, error: recError } = await supabase
             .from('recommendations')
             .select(`
-        *,
-        food_requests (
-          id,
-          food_type,
-          requester_id,
-          location_city
-        ),
-        profiles:recommender_id (
-          display_name
-        )
-      `)
+              id,
+              request_id,
+              restaurant_name,
+              restaurant_address,
+              notes,
+              recommender_id,
+              food_requests!inner(
+                id,
+                food_type,
+                requester_id,
+                location_city
+              )
+            `)
             .eq('id', recommendationId)
             .single();
 
         if (recError || !recommendation) {
             console.error('Recommendation fetch error:', recError);
-            return new Response(JSON.stringify({ error: 'Recommendation not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify({ error: 'Recommendation not found' }), {
+              status: 404,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
         }
 
-        const { food_requests: request, profiles: recommender } = recommendation;
+        const request = (recommendation as any).food_requests;
         const requesterId = request.requester_id;
+
+        // Fetch recommender display name (no FK relationship in schema)
+        let recommenderName = 'A local foodie';
+        if ((recommendation as any).recommender_id) {
+          const { data: recommenderProfile, error: recommenderError } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', (recommendation as any).recommender_id)
+            .single();
+
+          if (!recommenderError && recommenderProfile?.display_name) {
+            recommenderName = recommenderProfile.display_name;
+          }
+        }
 
         // 2. Fetch Requester Profile & Email Prefs
         const { data: requesterProfile, error: profileError } = await supabase
@@ -89,7 +108,6 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const emailTo = authUser.user.email;
-        const recommenderName = recommender?.display_name || 'A local foodie';
 
         // 5. Send Email
         const { data: emailData, error: emailError } = await resend.emails.send({
