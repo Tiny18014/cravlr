@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.get-maps-config]
 verify_jwt = true
+
+[functions.email-request-broadcast]
+verify_jwt = false
+
+[functions.email-recommendation-received]
+verify_jwt = false
