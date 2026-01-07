@@ -5,149 +5,128 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const requestSchema = z.object({
-  requestId: z.string().uuid({ message: 'Invalid request ID format' })
+    requestId: z.string().uuid({ message: 'Invalid request ID format' })
 });
 
 // Calculate distance between two points using Haversine formula (Fallback)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    // 1. Parse Input
-    const payload = await req.json();
-    const parseResult = requestSchema.safeParse(payload);
-
-    if (!parseResult.success) {
-      // Check if it's the raw webhook payload (nested in 'record')
-      if (payload.record && payload.record.id) {
-        payload.requestId = payload.record.id;
-      } else {
-         return new Response(JSON.stringify({ error: 'Invalid input' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+    if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders });
     }
 
-    const requestId = payload.requestId || payload.record?.id;
-    if (!requestId) throw new Error("No Request ID found");
+    try {
+        // 1. Parse Input
+        const payload = await req.json();
+        const parseResult = requestSchema.safeParse(payload);
 
-    console.log(`📧 Processing email broadcast for request ${requestId}`);
+        if (!parseResult.success) {
+            // Check if it's the raw webhook payload (nested in 'record')
+            if (payload.record && payload.record.id) {
+                payload.requestId = payload.record.id;
+            } else {
+                return new Response(JSON.stringify({ error: 'Invalid input' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+        }
 
-    // 2. Fetch Request Details
-    const { data: request, error: reqError } = await supabase
-      .from('food_requests')
-      .select('*, profiles(display_name)')
-      .eq('id', requestId)
-      .single();
+        const requestId = payload.requestId || payload.record?.id;
+        if (!requestId) throw new Error("No Request ID found");
 
-    if (reqError || !request) {
-      console.error('Request not found:', reqError);
-      return new Response(JSON.stringify({ error: 'Request not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+        console.log(`📧 Processing email broadcast for request ${requestId}`);
 
-    // 3. Find Eligible Users
-    // Strategy: Fetch all potential recommenders and filter in-memory for precision & hybrid matching
-    // Note: We cannot rely on 'email' column in profiles as it's not standard. We fetch eligible IDs then get emails.
-    const { data: potentialUsers, error: usersError } = await supabase
-      .from('profiles')
-      .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, email_notifications_enabled, email_new_requests')
-      .neq('id', request.requester_id) // Don't notify self
-      .eq('email_notifications_enabled', true) // Must have global email enabled
-      .eq('email_new_requests', true); // Must have specific email preference enabled
+        // 2. Fetch Request Details
+        const { data: request, error: reqError } = await supabase
+            .from('food_requests')
+            .select('*, profiles(display_name)')
+            .eq('id', requestId)
+            .single();
 
-    if (usersError) throw usersError;
+        if (reqError || !request) {
+            console.error('Request not found:', reqError);
+            return new Response(JSON.stringify({ error: 'Request not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
-    const hasCoordinates = request.lat && request.lng;
-    const requestCity = (request.location_city || '').trim().toLowerCase();
+        // 3. Find Eligible Users
+        // Strategy: Fetch all potential recommenders and filter in-memory for precision & hybrid matching
+        // (Optimization: We fetch filtered columns to reduce data transfer)
+        const { data: potentialUsers, error: usersError } = await supabase
+            .from('profiles')
+            .select('id, email, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, email_notifications_enabled, email_new_requests')
+            .neq('id', request.requester_id) // Don't notify self
+            .eq('email_notifications_enabled', true) // Must have global email enabled
+            .eq('email_new_requests', true) // Must have specific email preference enabled
+            .not('email', 'is', null); // Must have an email address
 
-    const eligibleProfiles = (potentialUsers || []).filter(u => {
-      // Safety checks
-      if (u.notify_recommender === false) return false;
-      if (u.recommender_paused === true) return false;
+        if (usersError) throw usersError;
 
-      // A. Geospatial Match
-      if (hasCoordinates && u.profile_lat && u.profile_lng) {
-        const dist = calculateDistance(request.lat, request.lng, u.profile_lat, u.profile_lng);
-        const radius = u.notification_radius_km || 20; // Default 20km
-        if (dist <= radius) return true;
-      }
+        const hasCoordinates = request.lat && request.lng;
+        const requestCity = (request.location_city || '').trim().toLowerCase();
 
-      // B. City Match (Fallback or for non-geo users)
-      const userCity = (u.location_city || '').trim().toLowerCase();
-      if (userCity && requestCity && (userCity.includes(requestCity) || requestCity.includes(userCity))) {
-        return true;
-      }
+        const eligibleUsers = (potentialUsers || []).filter(u => {
+            // Safety checks
+            if (u.notify_recommender === false) return false;
+            if (u.recommender_paused === true) return false;
+            if (!u.email) return false;
 
-      return false;
-    });
+            // A. Geospatial Match
+            if (hasCoordinates && u.profile_lat && u.profile_lng) {
+                const dist = calculateDistance(request.lat, request.lng, u.profile_lat, u.profile_lng);
+                const radius = u.notification_radius_km || 20; // Default 20km
+                if (dist <= radius) return true;
+            }
 
-    console.log(`📍 Found ${eligibleProfiles.length} eligible profiles for email broadcast`);
+            // B. City Match (Fallback or for non-geo users)
+            const userCity = (u.location_city || '').trim().toLowerCase();
+            if (userCity && requestCity && (userCity.includes(requestCity) || requestCity.includes(userCity))) {
+                return true;
+            }
 
-    if (eligibleProfiles.length === 0) {
-      return new Response(JSON.stringify({ message: 'No eligible users found', count: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // 4. Send Emails (Batching)
-    // We need to fetch emails for these users. Since batch operations on Auth Admin are limited, we'll do it carefully.
-    // For MVP, we'll process in chunks and fetch emails individually or via listUsers if possible.
-    // Given the lack of "getUsersByIds", we'll loop sequentially or with limited concurrency.
-
-    // NOTE: This can be slow for large broadcasts. Future improvement: Use a secure DB function or sync emails to a protected table.
-
-    let totalSent = 0;
-    const profilesWithEmails: any[] = [];
-
-    // Fetch emails
-    for (const profile of eligibleProfiles) {
-      const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
-      if (authUser?.user?.email) {
-        profilesWithEmails.push({
-          ...profile,
-          email: authUser.user.email
+            return false;
         });
-      }
-    }
 
-    console.log(`📍 Resolved ${profilesWithEmails.length} emails from Auth`);
+        console.log(`📍 Found ${eligibleUsers.length} eligible users for email broadcast`);
 
-    if (profilesWithEmails.length === 0) {
-      return new Response(JSON.stringify({ message: 'No emails found for eligible users', count: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+        if (eligibleUsers.length === 0) {
+            return new Response(JSON.stringify({ message: 'No eligible users found', count: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
-    const CHUNK_SIZE = 90; // Safe margin for Resend
-    const chunks = [];
-    for (let i = 0; i < profilesWithEmails.length; i += CHUNK_SIZE) {
-      chunks.push(profilesWithEmails.slice(i, i + CHUNK_SIZE));
-    }
+        // 4. Send Emails (Batching)
+        // Resend's batch sending limit is 100. We should slice if necessary, but for MVP assuming <100 eligible per request is safe or we loop chunks.
+        const CHUNK_SIZE = 90; // Safe margin
+        const chunks = [];
+        for (let i = 0; i < eligibleUsers.length; i += CHUNK_SIZE) {
+            chunks.push(eligibleUsers.slice(i, i + CHUNK_SIZE));
+        }
 
-    for (const chunk of chunks) {
-      const emailBatch = chunk.map(user => ({
-        from: 'Cravlr <notifications@cravlr.com>',
-        to: [user.email],
-        subject: `🍽️ Someone needs a recommendation in ${request.location_city}!`,
-        html: `
+        let totalSent = 0;
+
+        for (const chunk of chunks) {
+            const emailBatch = chunk.map(user => ({
+                from: 'Cravlr <notifications@cravlr.com>',
+                to: [user.email],
+                subject: `🍽️ Someone needs a recommendation in ${request.location_city}!`,
+                html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>New Food Request! 🌮</h2>
             <p>Hi ${user.display_name || 'there'},</p>
@@ -167,30 +146,30 @@ const handler = async (req: Request): Promise<Response> => {
             </p>
           </div>
         `
-      }));
+            }));
 
-      try {
-        const { data, error } = await resend.batch.send(emailBatch);
-        if (error) {
-          console.error('Resend batch error:', error);
-        } else {
-          totalSent += data?.data?.length || 0;
-          console.log(`Batch sent: ${data?.data?.length}`);
+            try {
+                const { data, error } = await resend.batch.send(emailBatch);
+                if (error) {
+                    console.error('Resend batch error:', error);
+                } else {
+                    totalSent += data?.data?.length || 0;
+                    console.log(`Batch sent: ${data?.data?.length}`);
+                }
+            } catch (err) {
+                console.error('Batch exception:', err);
+            }
         }
-      } catch (err) {
-        console.error('Batch exception:', err);
-      }
+
+        return new Response(JSON.stringify({ success: true, sent: totalSent }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+
+    } catch (error: any) {
+        console.error("Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    return new Response(JSON.stringify({ success: true, sent: totalSent }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-
-  } catch (error: any) {
-    console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
 };
 
 serve(handler);

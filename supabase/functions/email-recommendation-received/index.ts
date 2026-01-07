@@ -5,43 +5,43 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const recommendationSchema = z.object({
-  recommendationId: z.string().uuid()
+    recommendationId: z.string().uuid()
 });
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const payload = await req.json();
-
-    // Normalize payload (Direct vs Webhook)
-    let recommendationId = payload.recommendationId;
-    if (!recommendationId && payload.record && payload.record.id) {
-      recommendationId = payload.record.id;
+    if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders });
     }
 
-    if (!recommendationId) {
-      return new Response(JSON.stringify({ error: 'Missing recommendationId' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    try {
+        const payload = await req.json();
 
-    console.log(`📧 Processing recommendation email for ID: ${recommendationId}`);
+        // Normalize payload (Direct vs Webhook)
+        let recommendationId = payload.recommendationId;
+        if (!recommendationId && payload.record && payload.record.id) {
+            recommendationId = payload.record.id;
+        }
 
-    // 1. Fetch Recommendation & Request Details
-    const { data: recommendation, error: recError } = await supabase
-      .from('recommendations')
-      .select(`
+        if (!recommendationId) {
+            return new Response(JSON.stringify({ error: 'Missing recommendationId' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        console.log(`📧 Processing recommendation email for ID: ${recommendationId}`);
+
+        // 1. Fetch Recommendation & Request Details
+        const { data: recommendation, error: recError } = await supabase
+            .from('recommendations')
+            .select(`
         *,
         food_requests (
           id,
@@ -53,55 +53,55 @@ const handler = async (req: Request): Promise<Response> => {
           display_name
         )
       `)
-      .eq('id', recommendationId)
-      .single();
+            .eq('id', recommendationId)
+            .single();
 
-    if (recError || !recommendation) {
-      console.error('Recommendation fetch error:', recError);
-      return new Response(JSON.stringify({ error: 'Recommendation not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+        if (recError || !recommendation) {
+            console.error('Recommendation fetch error:', recError);
+            return new Response(JSON.stringify({ error: 'Recommendation not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
-    const { food_requests: request, profiles: recommender } = recommendation;
-    const requesterId = request.requester_id;
+        const { food_requests: request, profiles: recommender } = recommendation;
+        const requesterId = request.requester_id;
 
-    // 2. Fetch Requester Profile & Email Prefs
-    const { data: requesterProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('display_name, email_notifications_enabled, email_recommendations')
-      .eq('id', requesterId)
-      .single();
+        // 2. Fetch Requester Profile & Email Prefs
+        const { data: requesterProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('display_name, email_notifications_enabled, email_recommendations')
+            .eq('id', requesterId)
+            .single();
 
-    if (profileError || !requesterProfile) {
-      console.error('Requester profile not found');
-      return new Response(JSON.stringify({ error: 'Requester not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+        if (profileError || !requesterProfile) {
+            console.error('Requester profile not found');
+            return new Response(JSON.stringify({ error: 'Requester not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
-    // 3. Check Preferences
-    if (!requesterProfile.email_notifications_enabled) {
-      console.log('Skipping: User has globally disabled email notifications');
-      return new Response(JSON.stringify({ skipped: true, reason: 'global_disabled' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    if (requesterProfile.email_recommendations === false) {
-      console.log('Skipping: User has disabled recommendation emails');
-      return new Response(JSON.stringify({ skipped: true, reason: 'type_disabled' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+        // 3. Check Preferences
+        if (!requesterProfile.email_notifications_enabled) {
+            console.log('Skipping: User has globally disabled email notifications');
+            return new Response(JSON.stringify({ skipped: true, reason: 'global_disabled' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (requesterProfile.email_recommendations === false) {
+            console.log('Skipping: User has disabled recommendation emails');
+            return new Response(JSON.stringify({ skipped: true, reason: 'type_disabled' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
-    // 4. Get Requester Email (from Auth)
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(requesterId);
-    if (authError || !authUser?.user?.email) {
-      console.error('Auth user/email not found');
-      return new Response(JSON.stringify({ error: 'Email address not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+        // 4. Get Requester Email (from Auth)
+        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(requesterId);
+        if (authError || !authUser?.user?.email) {
+            console.error('Auth user/email not found');
+            return new Response(JSON.stringify({ error: 'Email address not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
-    const emailTo = authUser.user.email;
-    const recommenderName = recommender?.display_name || 'A local foodie';
+        const emailTo = authUser.user.email;
+        const recommenderName = recommender?.display_name || 'A local foodie';
 
-    // 5. Send Email
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: 'Cravlr <notifications@cravlr.com>',
-      to: [emailTo],
-      subject: `🎉 New Recommendation for ${request.food_type}!`,
-      html: `
+        // 5. Send Email
+        const { data: emailData, error: emailError } = await resend.emails.send({
+            from: 'Cravlr <notifications@cravlr.com>',
+            to: [emailTo],
+            subject: `🎉 New Recommendation for ${request.food_type}!`,
+            html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>You got a recommendation! 🍽️</h2>
           <p>Hi ${requesterProfile.display_name || 'there'},</p>
@@ -124,24 +124,24 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
         </div>
       `
-    });
+        });
 
-    if (emailError) {
-      console.error('Resend error:', emailError);
-      throw emailError;
+        if (emailError) {
+            console.error('Resend error:', emailError);
+            throw emailError;
+        }
+
+        console.log(`✅ Email sent to ${emailTo}`);
+
+        return new Response(JSON.stringify({ success: true, id: emailData?.id }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+
+    } catch (error: any) {
+        console.error("Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    console.log(`✅ Email sent to ${emailTo}`);
-
-    return new Response(JSON.stringify({ success: true, id: emailData?.id }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-
-  } catch (error: any) {
-    console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
 };
 
 serve(handler);
