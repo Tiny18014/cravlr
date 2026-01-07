@@ -228,6 +228,14 @@ const RequestFood = () => {
         } else {
           console.log('✅ Notification results:', notifyData);
         }
+
+        // Also trigger email broadcast
+        console.log('📧 Triggering email-request-broadcast for request:', data.id);
+        const { error: emailError } = await supabase.functions.invoke('email-request-broadcast', {
+          body: { requestId: data.id }
+        });
+        if (emailError) console.error('❌ Error triggering email broadcast:', emailError);
+
       } catch (notificationError) {
         console.error('❌ Exception notifying area users:', notificationError);
       }

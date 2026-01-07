@@ -1,9 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
-import { Resend } from "npm:resend@2.0.0";
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -33,50 +31,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
-}
-
-// Check if email was already sent (idempotency)
-async function wasEmailAlreadySent(
-  userId: string,
-  eventType: string,
-  entityId: string
-): Promise<boolean> {
-  const { data } = await supabase
-    .from('email_notification_logs')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('event_type', eventType)
-    .eq('entity_id', entityId)
-    .maybeSingle();
-
-  return !!data;
-}
-
-// Log email notification
-async function logEmailNotification(
-  userId: string,
-  eventType: string,
-  entityId: string,
-  emailTo: string,
-  subject: string,
-  providerMessageId: string | null,
-  status: 'sent' | 'failed',
-  errorMessage?: string
-): Promise<void> {
-  try {
-    await supabase.from('email_notification_logs').insert({
-      user_id: userId,
-      event_type: eventType,
-      entity_id: entityId,
-      email_to: emailTo,
-      subject: subject,
-      provider_message_id: providerMessageId,
-      status: status,
-      error_message: errorMessage
-    });
-  } catch (error) {
-    console.error('Error logging email notification:', error);
-  }
 }
 
 // Send push notification via OneSignal
@@ -221,7 +175,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch potential recommenders using a simpler query to avoid OR complexity issues
     const { data: potentialUsers, error: usersError } = await supabase
       .from('profiles')
-      .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
+      .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state')
       .neq('id', request.requester_id);
 
     if (usersError) {
@@ -297,129 +251,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const pushResult = await sendPushNotification(userIds, pushTitle, pushMessage, pushData);
 
-    // Send notification emails to eligible users who have email enabled
-    const emailPromises = eligibleUsers.map(async (targetUser) => {
-      try {
-        console.log(`📧 Processing email for ${targetUser.id}`);
-
-        // Check email preferences
-        const emailEnabled = targetUser.email_notifications_enabled !== false;
-        const newRequestsEnabled = targetUser.email_new_requests !== false;
-
-        if (!emailEnabled || !newRequestsEnabled) {
-          console.log(`📧 Skipping email for user ${targetUser.id} - email preferences disabled`);
-          return { skipped: true, reason: 'preferences' };
-        }
-
-        // Check for duplicate email (idempotency)
-        const alreadySent = await wasEmailAlreadySent(targetUser.id, 'new_request', requestId);
-        if (alreadySent) {
-          console.log(`📧 Skipping email for user ${targetUser.id} - already sent`);
-          return { skipped: true, reason: 'duplicate' };
-        }
-
-        const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
-
-        if (authUserError || !authUser?.user?.email) {
-          console.log(`No email found for user ${targetUser.id}`);
-          return { skipped: true, reason: 'no_email' };
-        }
-
-        const emailTo = authUser.user.email;
-        const subject = `🍽️ New ${request.food_type} request in ${request.location_city}!`;
-
-        const emailResponse = await resend.emails.send({
-          from: "Cravlr <notifications@cravlr.com>",
-          to: [emailTo],
-          subject: subject,
-          html: `
-            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #F7F5F8;">
-              <div style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); padding: 30px; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">🍽️ New Food Request!</h1>
-              </div>
-              
-              <div style="padding: 30px; background-color: white;">
-                <p style="font-size: 16px; color: #1C1C1C;">Hi ${targetUser.display_name || 'there'}!</p>
-                
-                <p style="font-size: 16px; color: #1C1C1C;">Someone near you is looking for a great <strong>${request.food_type}</strong> spot in ${locationDisplay}!</p>
-                
-                <div style="background-color: #F9EFF5; padding: 20px; border-radius: 16px; margin: 24px 0; border-left: 4px solid #A03272;">
-                  <h2 style="color: #A03272; margin-top: 0; font-size: 18px;">📍 Request Details</h2>
-                  <p style="margin: 8px 0; color: #1C1C1C;"><strong>Food Type:</strong> ${request.food_type}</p>
-                  <p style="margin: 8px 0; color: #1C1C1C;"><strong>Location:</strong> ${locationDisplay}</p>
-                  ${request.location_address ? `<p style="margin: 8px 0; color: #1C1C1C;"><strong>Near:</strong> ${request.location_address}</p>` : ''}
-                  ${request.additional_notes ? `<p style="margin: 8px 0; color: #1C1C1C;"><strong>Notes:</strong> ${request.additional_notes}</p>` : ''}
-                  <p style="margin: 8px 0; color: #1C1C1C;"><strong>Requested by:</strong> ${requesterProfile?.display_name || 'A fellow foodie'}</p>
-                </div>
-                
-                <p style="font-size: 16px; color: #1C1C1C;">Know a great spot? Share your recommendation and earn points!</p>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/recommend/${requestId}"
-                     style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 28px; 
-                            text-decoration: none; border-radius: 24px; display: inline-block; font-weight: 600;
-                            box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
-                    View Request & Recommend
-                  </a>
-                </div>
-              </div>
-              
-              <div style="padding: 20px; text-align: center; background-color: #F7F5F8;">
-                <p style="font-size: 12px; color: #6B6B6B; margin: 0;">
-                  You received this because you're registered near ${locationDisplay}.<br>
-                  <a href="${Deno.env.get('SITE_URL') || 'https://cravlr.com'}/profile" style="color: #A03272;">Update your notification preferences</a>
-                </p>
-                <p style="margin-top: 16px; font-size: 14px; color: #1C1C1C;">
-                  Happy recommending! 🎉<br>
-                  <strong>The Cravlr Team</strong>
-                </p>
-              </div>
-            </div>
-          `,
-          text: `Hi ${targetUser.display_name || 'there'}! Someone near you is looking for a great ${request.food_type} spot in ${locationDisplay}. Know a great spot? Visit Cravlr to share your recommendation and earn points!`,
-        });
-
-        // Log successful email
-        await logEmailNotification(
-          targetUser.id,
-          'new_request',
-          requestId,
-          emailTo,
-          subject,
-          emailResponse.data?.id || null,
-          'sent'
-        );
-
-        console.log(`✅ Email sent to ${emailTo}:`, emailResponse.data?.id);
-        return { success: true, emailId: emailResponse.data?.id };
-      } catch (emailError: any) {
-        // Log failed email (don't crash the loop)
-        await logEmailNotification(
-          targetUser.id,
-          'new_request',
-          requestId,
-          'unknown', // Might not have email yet
-          'New Request',
-          null,
-          'failed',
-          emailError.message
-        );
-
-        console.error(`❌ Error sending email to user ${targetUser.id}:`, emailError);
-        return { success: false, error: emailError.message };
-      }
-    });
-
-    const emailResults = await Promise.all(emailPromises);
-    const successfulEmails = emailResults.filter(r => r.success).length;
-    const skippedEmails = emailResults.filter(r => r.skipped).length;
-
-    console.log(`📧 Sent ${successfulEmails} emails, skipped ${skippedEmails}, sent ${pushResult.sentCount} push notifications`);
+    console.log(`✅ Sent ${pushResult.sentCount} push notifications`);
 
     return new Response(JSON.stringify({
       success: true,
-      emailsSent: successfulEmails,
-      emailsSkipped: skippedEmails,
       pushNotificationsSent: pushResult.sentCount,
       totalEligibleUsers: eligibleUsers.length
     }), {
