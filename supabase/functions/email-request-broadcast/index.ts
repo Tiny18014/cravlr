@@ -13,11 +13,7 @@ const corsHeaders = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const requestSchema = z.object({
-    requestId: z.string().uuid({ message: 'Invalid request ID format' })
-});
-
-// Calculate distance between two points using Haversine formula (Fallback)
+// Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -38,55 +34,58 @@ const handler = async (req: Request): Promise<Response> => {
     try {
         // 1. Parse Input
         const payload = await req.json();
-        const parseResult = requestSchema.safeParse(payload);
-
-        if (!parseResult.success) {
-            // Check if it's the raw webhook payload (nested in 'record')
-            if (payload.record && payload.record.id) {
-                payload.requestId = payload.record.id;
-            } else {
-                return new Response(JSON.stringify({ error: 'Invalid input' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-            }
+        
+        // Accept requestId directly or from webhook record
+        let requestId = payload.requestId;
+        if (!requestId && payload.record?.id) {
+            requestId = payload.record.id;
         }
-
-        const requestId = payload.requestId || payload.record?.id;
-        if (!requestId) throw new Error("No Request ID found");
+        
+        if (!requestId) {
+            return new Response(JSON.stringify({ error: 'Missing requestId' }), { 
+                status: 400, 
+                headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            });
+        }
 
         console.log(`📧 Processing email broadcast for request ${requestId}`);
 
         // 2. Fetch Request Details
         const { data: request, error: reqError } = await supabase
             .from('food_requests')
-            .select('*, profiles(display_name)')
+            .select('*')
             .eq('id', requestId)
             .single();
 
         if (reqError || !request) {
             console.error('Request not found:', reqError);
-            return new Response(JSON.stringify({ error: 'Request not found' }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify({ error: 'Request not found' }), { 
+                status: 404, 
+                headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            });
         }
 
-        // 3. Find Eligible Users
-        // Strategy: Fetch all potential recommenders and filter in-memory for precision & hybrid matching
-        // (Optimization: We fetch filtered columns to reduce data transfer)
+        // 3. Find Eligible Users from profiles (without email filter since email is in auth.users)
         const { data: potentialUsers, error: usersError } = await supabase
             .from('profiles')
-            .select('id, email, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, email_notifications_enabled, email_new_requests')
+            .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, email_notifications_enabled, email_new_requests')
             .neq('id', request.requester_id) // Don't notify self
             .eq('email_notifications_enabled', true) // Must have global email enabled
-            .eq('email_new_requests', true) // Must have specific email preference enabled
-            .not('email', 'is', null); // Must have an email address
+            .eq('email_new_requests', true); // Must have specific email preference enabled
 
-        if (usersError) throw usersError;
+        if (usersError) {
+            console.error('Error fetching users:', usersError);
+            throw usersError;
+        }
 
         const hasCoordinates = request.lat && request.lng;
         const requestCity = (request.location_city || '').trim().toLowerCase();
 
+        // Filter by location/distance
         const eligibleUsers = (potentialUsers || []).filter(u => {
             // Safety checks
             if (u.notify_recommender === false) return false;
             if (u.recommender_paused === true) return false;
-            if (!u.email) return false;
 
             // A. Geospatial Match
             if (hasCoordinates && u.profile_lat && u.profile_lng) {
@@ -107,15 +106,44 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`📍 Found ${eligibleUsers.length} eligible users for email broadcast`);
 
         if (eligibleUsers.length === 0) {
-            return new Response(JSON.stringify({ message: 'No eligible users found', count: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify({ message: 'No eligible users found', count: 0 }), { 
+                status: 200, 
+                headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            });
         }
 
-        // 4. Send Emails (Batching)
-        // Resend's batch sending limit is 100. We should slice if necessary, but for MVP assuming <100 eligible per request is safe or we loop chunks.
-        const CHUNK_SIZE = 90; // Safe margin
+        // 4. Get emails from auth.users for eligible users
+        const usersWithEmails: Array<{ id: string; display_name: string | null; email: string }> = [];
+        
+        for (const user of eligibleUsers) {
+            try {
+                const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user.id);
+                if (!authError && authUser?.user?.email) {
+                    usersWithEmails.push({
+                        id: user.id,
+                        display_name: user.display_name,
+                        email: authUser.user.email
+                    });
+                }
+            } catch (err) {
+                console.log(`Could not get email for user ${user.id}`);
+            }
+        }
+
+        console.log(`📧 Found ${usersWithEmails.length} users with emails`);
+
+        if (usersWithEmails.length === 0) {
+            return new Response(JSON.stringify({ message: 'No users with emails found', count: 0 }), { 
+                status: 200, 
+                headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            });
+        }
+
+        // 5. Send Emails (Batching)
+        const CHUNK_SIZE = 90; // Resend's batch limit is 100
         const chunks = [];
-        for (let i = 0; i < eligibleUsers.length; i += CHUNK_SIZE) {
-            chunks.push(eligibleUsers.slice(i, i + CHUNK_SIZE));
+        for (let i = 0; i < usersWithEmails.length; i += CHUNK_SIZE) {
+            chunks.push(usersWithEmails.slice(i, i + CHUNK_SIZE));
         }
 
         let totalSent = 0;
@@ -126,25 +154,25 @@ const handler = async (req: Request): Promise<Response> => {
                 to: [user.email],
                 subject: `🍽️ Someone needs a recommendation in ${request.location_city}!`,
                 html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>New Food Request! 🌮</h2>
-            <p>Hi ${user.display_name || 'there'},</p>
-            <p>Someone near you is craving <strong>${request.food_type}</strong>!</p>
-            <p><strong>Location:</strong> ${request.location_city}${request.location_state ? `, ${request.location_state}` : ''}</p>
-            <p>${request.additional_notes ? `<strong>Notes:</strong> "${request.additional_notes}"` : ''}</p>
-
-            <div style="margin: 20px 0;">
-              <a href="https://cravlr.com/browse-requests" style="background: #A03272; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                Recommend a Place
-              </a>
-            </div>
-
-            <p style="font-size: 12px; color: #666;">
-              You received this because you are a recommender in this area.
-              <a href="https://cravlr.com/profile">Update preferences</a>
-            </p>
-          </div>
-        `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2>New Food Request! 🌮</h2>
+                        <p>Hi ${user.display_name || 'there'},</p>
+                        <p>Someone near you is craving <strong>${request.food_type}</strong>!</p>
+                        <p><strong>Location:</strong> ${request.location_city}${request.location_state ? `, ${request.location_state}` : ''}</p>
+                        ${request.additional_notes ? `<p><strong>Notes:</strong> "${request.additional_notes}"</p>` : ''}
+                        
+                        <div style="margin: 20px 0;">
+                            <a href="https://cravlr.com/browse-requests" style="background: #A03272; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                Recommend a Place
+                            </a>
+                        </div>
+                        
+                        <p style="font-size: 12px; color: #666;">
+                            You received this because you are a recommender in this area.
+                            <a href="https://cravlr.com/profile">Update preferences</a>
+                        </p>
+                    </div>
+                `
             }));
 
             try {
@@ -152,13 +180,15 @@ const handler = async (req: Request): Promise<Response> => {
                 if (error) {
                     console.error('Resend batch error:', error);
                 } else {
-                    totalSent += data?.data?.length || 0;
-                    console.log(`Batch sent: ${data?.data?.length}`);
+                    totalSent += data?.data?.length || chunk.length;
+                    console.log(`✅ Batch sent: ${data?.data?.length || chunk.length} emails`);
                 }
             } catch (err) {
                 console.error('Batch exception:', err);
             }
         }
+
+        console.log(`✅ Total emails sent: ${totalSent}`);
 
         return new Response(JSON.stringify({ success: true, sent: totalSent }), {
             status: 200,
@@ -166,8 +196,11 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
     } catch (error: any) {
-        console.error("Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        console.error("Error in email-request-broadcast:", error);
+        return new Response(JSON.stringify({ error: error.message }), { 
+            status: 500, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
     }
 };
 
