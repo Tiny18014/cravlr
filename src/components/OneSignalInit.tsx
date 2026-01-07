@@ -175,13 +175,12 @@ await new Promise(r => setTimeout(r, 100));
 }
 
 // 2. Initialize using react-onesignal
-await OneSignal.init({
-appId: onesignalAppId!,
-allowLocalhostAsSecureOrigin: true,
-notifyButton: { enable: false },
-// Use our custom service worker (which imports OneSignal SDK) to avoid conflicts
-serviceWorkerPath: '/sw.js',
-});
+        await OneSignal.init({
+        appId: onesignalAppId!,
+        allowLocalhostAsSecureOrigin: true,
+        // Use our custom service worker (which imports OneSignal SDK) to avoid conflicts
+        serviceWorkerPath: '/sw.js',
+        });
 
 onesignalInitialized = true;
 console.log('✅ OneSignal initialized!');
@@ -191,25 +190,7 @@ try {
 await OneSignal.login(user.id);
 console.log('✅ OneSignal user logged in');
 
-          // Sync phone number if available in metadata
-          if (user.user_metadata?.phone_number) {
-            console.log('🔔 Syncing phone number to OneSignal...');
-            await OneSignal.User.addSms(user.user_metadata.phone_number);
-          } else {
-            // Try fetching from profile if not in metadata
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('phone_number')
-              .eq('id', user.id)
-              .single();
-
-            if (profile?.phone_number) {
-              console.log('🔔 Syncing phone number from profile to OneSignal...');
-              await OneSignal.User.addSms(profile.phone_number);
-            }
-          }
 } catch (e) {
-          console.warn('⚠️ OneSignal login/sync warning:', e);
           console.warn('⚠️ OneSignal login warning:', e);
 }
 

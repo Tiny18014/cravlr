@@ -1,18 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-
-declare global {
-  interface Window {
-    OneSignal: any;
-  }
-}
 
 interface PushNotificationState {
   isSupported: boolean;
   isSubscribed: boolean;
   isLoading: boolean;
-  permission: NotificationPermission;
+  permission: NotificationPermission | 'default';
 }
 
 export function usePushNotifications() {
@@ -27,35 +20,28 @@ export function usePushNotifications() {
   useEffect(() => {
     const initializeOneSignal = async () => {
       try {
-        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-          // Register service worker
-          await navigator.serviceWorker.register('/sw.js');
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'Notification' in window) {
+          setState(prev => ({
+            ...prev,
+            isSupported: true,
+            isLoading: false,
+            permission: Notification.permission
+          }));
 
-          // Initialize OneSignal
-          if (window.OneSignal) {
-            await window.OneSignal.init({
-              appId: 'YOUR_ONESIGNAL_APP_ID', // User needs to replace with their OneSignal App ID
-              serviceWorkerParam: { scope: '/' },
-              serviceWorkerPath: '/sw.js',
-              allowLocalhostAsSecureOrigin: true,
-            });
-
-            // Check if user is subscribed
-            const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-            const permission = await window.OneSignal.getNotificationPermission();
-
-            setState({
-              isSupported: true,
-              isSubscribed,
-              isLoading: false,
-              permission
-            });
-
-            // Store user ID for targeting
-            if (user && isSubscribed) {
-              await window.OneSignal.setExternalUserId(user.id);
-            }
+          // Check if OneSignal is available and user is subscribed
+          const OS = (window as any).OneSignal;
+          if (OS?.User?.PushSubscription) {
+            const subscriptionId = await OS.User.PushSubscription.id;
+            const optedIn = await OS.User.PushSubscription.optedIn;
+            
+            setState(prev => ({
+              ...prev,
+              isSubscribed: !!subscriptionId && optedIn,
+              permission: Notification.permission
+            }));
           }
+        } else {
+          setState(prev => ({ ...prev, isLoading: false }));
         }
       } catch (error) {
         console.error('Error initializing push notifications:', error);
@@ -63,50 +49,56 @@ export function usePushNotifications() {
       }
     };
 
-    initializeOneSignal();
+    // Wait a bit for OneSignal to initialize
+    const timeout = setTimeout(initializeOneSignal, 2000);
+    return () => clearTimeout(timeout);
   }, [user]);
 
-  const requestPermission = async () => {
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
-      if (window.OneSignal) {
-        await window.OneSignal.showNativePrompt();
-        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-        const permission = await window.OneSignal.getNotificationPermission();
+      const OS = (window as any).OneSignal;
+      if (OS?.Slidedown) {
+        await OS.Slidedown.promptPush();
+        
+        // Wait for permission to be processed
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const permission = Notification.permission;
+        const subscriptionId = await OS.User?.PushSubscription?.id;
+        const optedIn = await OS.User?.PushSubscription?.optedIn;
 
         setState(prev => ({
           ...prev,
-          isSubscribed,
+          isSubscribed: !!subscriptionId && optedIn,
           permission,
           isLoading: false
         }));
 
-        // Store user ID for targeting
-        if (user && isSubscribed) {
-          await window.OneSignal.setExternalUserId(user.id);
-        }
-
-        return isSubscribed;
+        return permission === 'granted';
       }
+      
+      setState(prev => ({ ...prev, isLoading: false }));
       return false;
     } catch (error) {
       console.error('Error requesting permission:', error);
       setState(prev => ({ ...prev, isLoading: false }));
       return false;
     }
-  };
+  }, []);
 
-  const unsubscribe = async () => {
+  const unsubscribe = useCallback(async () => {
     try {
-      if (window.OneSignal) {
-        await window.OneSignal.setSubscription(false);
+      const OS = (window as any).OneSignal;
+      if (OS?.User?.PushSubscription) {
+        await OS.User.PushSubscription.optOut();
         setState(prev => ({ ...prev, isSubscribed: false }));
       }
     } catch (error) {
       console.error('Error unsubscribing:', error);
     }
-  };
+  }, []);
 
   return {
     ...state,

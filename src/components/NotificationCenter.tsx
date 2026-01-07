@@ -34,13 +34,8 @@ export function NotificationCenter() {
 
     if (data) {
       setNotifications(data);
-      // Determine unread count robustly
-      const unread = data.filter(n => {
-          // Check for 'read' boolean OR 'read_at' timestamp
-          if (n.read === true) return false;
-          if (n.read_at && new Date(n.read_at).getTime() > 0) return false;
-          return true; // It is unread
-      });
+      // Determine unread count - use the 'read' boolean field
+      const unread = data.filter(n => n.read !== true);
       setUnreadCount(unread.length);
     }
   };
@@ -72,17 +67,13 @@ export function NotificationCenter() {
       .update({ read: true })
       .eq('id', id);
 
-    if (error && error.code === '42703') {
-       // Fallback to 'read_at'
-       await supabase
-        .from('notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', id);
+    if (error) {
+       console.error('Error marking notification as read:', error);
     }
 
     // Optimistic update
     setNotifications(prev => prev.map(n =>
-        n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n
+        n.id === id ? { ...n, read: true } : n
     ));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
@@ -132,8 +123,8 @@ export function NotificationCenter() {
                 </div>
             ) : (
                 notifications.map((n) => {
-                    const payload = n.payload || {};
-                    const isUnread = n.read === false || !n.read_at;
+                    const payload = (n as any).payload || {};
+                    const isUnread = n.read !== true;
 
                     return (
                         <div

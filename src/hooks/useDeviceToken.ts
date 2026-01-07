@@ -2,12 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-declare global {
-  interface Window {
-    OneSignal: any;
-  }
-}
-
 interface UseDeviceTokenReturn {
   isRegistered: boolean;
   isLoading: boolean;
@@ -41,7 +35,7 @@ export function useDeviceToken(): UseDeviceTokenReturn {
 
     const checkRegistration = async () => {
       // Wait for OneSignal to be ready
-      const OS = window.OneSignal;
+      const OS = (window as any).OneSignal;
       if (!OS) {
         // Retry after a delay
         const timeout = setTimeout(checkRegistration, 2000);
@@ -116,7 +110,7 @@ export function useDeviceToken(): UseDeviceTokenReturn {
     console.log('🔔 useDeviceToken: Starting registration flow...');
 
     try {
-      const OS = window.OneSignal;
+      const OS = (window as any).OneSignal;
       
       if (!OS) {
         console.warn('🔔 useDeviceToken: OneSignal not available yet');
@@ -131,10 +125,10 @@ export function useDeviceToken(): UseDeviceTokenReturn {
       // Wait for permission to be processed
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const permission = await OS.Notifications.permission;
+      const permission = Notification.permission;
       console.log('🔔 useDeviceToken: Permission after prompt:', permission);
       
-      if (permission) {
+      if (permission === 'granted') {
         const subscriptionId = await OS.User.PushSubscription.id;
         console.log('🔔 useDeviceToken: Got subscription ID:', subscriptionId);
         
@@ -162,13 +156,12 @@ export function useDeviceToken(): UseDeviceTokenReturn {
     if (!user) return;
 
     try {
-      const OS = window.OneSignal;
+      const OS = (window as any).OneSignal;
       if (OS) {
         const subscriptionId = await OS.User?.PushSubscription?.id;
         if (subscriptionId) {
           await supabase.functions.invoke('register-device-token', {
-            method: 'DELETE',
-            body: { token: subscriptionId },
+            body: { token: subscriptionId, action: 'delete' },
           });
         }
         await OS.User?.PushSubscription?.optOut();
