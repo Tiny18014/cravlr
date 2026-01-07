@@ -12,11 +12,8 @@ if (window.location.hostname !== 'localhost') {
 // Register service worker for PWA and push notifications
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
-        // Force an update check so users don't get stuck on an old cached SW
-        registration.update().catch(() => {});
         console.log('SW registered: ', registration);
       })
       .catch((registrationError) => {

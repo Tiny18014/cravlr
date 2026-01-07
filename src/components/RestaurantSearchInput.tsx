@@ -127,6 +127,7 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
       
       // Fetch premium status for all suggestions
       const placeIds = combinedSuggestions.map(s => s.placeId).filter(Boolean);
+      // Guard against empty array which causes PostgREST 400
       if (placeIds.length > 0) {
         const { data: businessData } = await supabase
           .from('business_claims')

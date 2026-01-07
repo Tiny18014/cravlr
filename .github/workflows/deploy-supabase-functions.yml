@@ -1,0 +1,50 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Verify Secrets
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "❌ Error: SUPABASE_ACCESS_TOKEN is missing in GitHub Secrets."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_PROJECT_ID" ]; then
+            # Fallback: Try to read from config.toml if not in secrets, but secret is better
+            echo "⚠️ SUPABASE_PROJECT_ID not in secrets, checking config.toml..."
+          fi
+
+      - name: Deploy Edge Functions
+        run: |
+          # If project_id is in config.toml, we can just run deploy.
+          # If we need to link, we might need 'supabase link --project-ref $SUPABASE_PROJECT_ID'
+          # But usually 'supabase functions deploy --project-ref $SUPABASE_PROJECT_ID' works.
+
+          if [ -n "$SUPABASE_PROJECT_ID" ]; then
+            supabase functions deploy --project-ref $SUPABASE_PROJECT_ID --force
+          else
+            # Rely on config.toml project_id
+            supabase functions deploy --force
+          fi
