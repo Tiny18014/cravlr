@@ -9,11 +9,22 @@ const urlsToCache = [
   '/manifest.json'
 ];
 
-// Install event
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
+  // Activate updated SW ASAP
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+    (async () => {
+      // Clean up legacy caches from older SW versions
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((k) => k.startsWith('cravlr-')).map((k) => caches.delete(k))
+      );
+
+      await self.clients.claim();
+    })()
   );
 });
 

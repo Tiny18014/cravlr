@@ -1,439 +1,143 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
-import { Resend } from "npm:resend@2.0.0";
-import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
-// OneSignal configuration for push notifications
-const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID");
-const ONESIGNAL_API_KEY = Deno.env.get("ONESIGNAL_API_KEY");
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
-const requestSchema = z.object({
-  requestId: z.string().uuid({ message: 'Invalid request ID format' })
-});
-
-// Calculate distance between two points using Haversine formula
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-// Check if email was already sent (idempotency)
-async function wasEmailAlreadySent(
-  userId: string,
-  eventType: string,
-  entityId: string
-): Promise<boolean> {
-  const { data } = await supabase
-    .from('email_notification_logs')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('event_type', eventType)
-    .eq('entity_id', entityId)
-    .maybeSingle();
-
-  return !!data;
-}
-
-// Log email notification
-async function logEmailNotification(
-  userId: string,
-  eventType: string,
-  entityId: string,
-  emailTo: string,
-  subject: string,
-  providerMessageId: string | null,
-  status: 'sent' | 'failed',
-  errorMessage?: string
-): Promise<void> {
-  try {
-    await supabase.from('email_notification_logs').insert({
-      user_id: userId,
-      event_type: eventType,
-      entity_id: entityId,
-      email_to: emailTo,
-      subject: subject,
-      provider_message_id: providerMessageId,
-      status: status,
-      error_message: errorMessage
-    });
-  } catch (error) {
-    console.error('Error logging email notification:', error);
-  }
-}
-
-// Send push notification via OneSignal
-async function sendPushNotification(
-  userIds: string[],
-  title: string,
-  message: string,
-  data: Record<string, any>
-): Promise<{ success: boolean; sentCount: number }> {
-  // Validate UUID format for App ID
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-  if (!ONESIGNAL_APP_ID || !uuidRegex.test(ONESIGNAL_APP_ID)) {
-    console.error('❌ OneSignal skipped: Invalid or missing App ID (must be a UUID)');
-    return { success: false, sentCount: 0 };
-  }
-
-  if (!ONESIGNAL_API_KEY || userIds.length === 0) {
-    console.log('Push notifications skipped - missing config or no recipients');
-    return { success: false, sentCount: 0 };
-  }
-
-  try {
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-      },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        include_aliases: {
-          external_id: userIds
-        },
-        target_channel: "push",
-        headings: { en: title },
-        contents: { en: message },
-        data: data,
-        ios_badgeType: 'Increase',
-        ios_badgeCount: 1,
-        android_channel_id: 'cravlr_requests',
-        priority: 10,
-        web_push_topic: 'new_request',
-      }),
-    });
-
-    const result = await response.json();
-
-    if (result.errors) {
-      console.error('OneSignal errors:', result.errors);
-      return { success: false, sentCount: 0 };
-    }
-
-    console.log(`✅ Push notification sent to ${result.recipients || 0} devices`);
-    return { success: true, sentCount: result.recipients || userIds.length };
-  } catch (error) {
-    console.error('Error sending push notification:', error);
-    return { success: false, sentCount: 0 };
-  }
-}
-
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    // Get authenticated user
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  // Check for cron secret (for scheduled jobs processing ALL reminders)
+  const cronSecret = req.headers.get('x-cron-secret');
+  const expectedSecret = Deno.env.get('CRON_SECRET');
+  const isCronJob = expectedSecret && cronSecret === expectedSecret;
 
-    if (authError || !user) {
-      console.error('Authentication error:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  // Check for user JWT (for client polling - processes only that user's reminders)
+  const authHeader = req.headers.get('Authorization');
+  let authenticatedUserId: string | null = null;
 
-    // Parse and validate request body
-    const body = await req.json();
-    const validationResult = requestSchema.safeParse(body);
-
-    if (!validationResult.success) {
-      return new Response(
-        JSON.stringify({
-          error: 'Invalid input',
-          details: validationResult.error.issues.map(i => i.message)
-        }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    const { requestId } = validationResult.data;
-
-    console.log(`📍 Processing area notification for request ${requestId}`);
-
-    // Get request details
-    const { data: request, error: requestError } = await supabase
-      .from('food_requests')
-      .select('*')
-      .eq('id', requestId)
-      .single();
-
-    if (requestError || !request) {
-      console.error('Error fetching request:', requestError);
-      return new Response(
-        JSON.stringify({ error: 'Request not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify the authenticated user owns this request
-    if (request.requester_id !== user.id) {
-      console.error('❌ User does not own this request');
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: You can only send notifications for your own requests' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get requester profile
-    const { data: requesterProfile } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', request.requester_id)
-      .single();
-
-    // Find users who are eligible for notifications
-    const hasCoordinates = request.lat && request.lng;
-
-    console.log(`📍 Finding users for request. Coordinates: ${hasCoordinates ? 'Yes' : 'No'}. City: ${request.location_city}`);
-
-    // Fetch potential recommenders using a simpler query to avoid OR complexity issues
-    const { data: potentialUsers, error: usersError } = await supabase
-      .from('profiles')
-      .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, location_state, email_notifications_enabled, email_new_requests')
-      .neq('id', request.requester_id);
-
-    if (usersError) {
-      console.error('Error fetching users:', usersError);
-      throw new Error('Failed to find users');
-    }
-
-    console.log(`📍 Found ${potentialUsers?.length || 0} total profiles (excluding requester). Filtering...`);
-
-    const eligibleUsers = (potentialUsers || []).filter(u => {
-      // 1. Check Preferences
-      if (u.notify_recommender === false) return false; // Explicitly disabled
-      if (u.recommender_paused === true) return false; // Explicitly paused
-
-      // 2. If Request has coords AND User has coords -> Check Radius
-      if (hasCoordinates && u.profile_lat && u.profile_lng) {
-        const distance = calculateDistance(
-          request.lat,
-          request.lng,
-          u.profile_lat,
-          u.profile_lng
-        );
-        const radius = u.notification_radius_km || 20;
-        const inRange = distance <= radius;
-        if (inRange) console.log(`✅ User ${u.display_name} matched by distance (${Math.round(distance)}km)`);
-        return inRange;
-      }
-
-      // 3. Fallback: Fuzzy City Matching
-      const userCity = (u.location_city || '').trim().toLowerCase();
-      const requestCity = (request.location_city || '').trim().toLowerCase();
-
-      if (!userCity || !requestCity) return false;
-
-      const match = userCity.includes(requestCity) || requestCity.includes(userCity);
-      if (match) console.log(`✅ User ${u.display_name} matched by city (${userCity} ~= ${requestCity})`);
-      return match;
+  if (!isCronJob && authHeader) {
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
     });
-
-    console.log(`📍 Final Match: Found ${eligibleUsers.length} users within radius/city`);
-
-    if (eligibleUsers.length === 0) {
-      console.log('No eligible users found');
-      return new Response(JSON.stringify({
-        message: 'No eligible users found',
-        notificationsSent: 0
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (!userError && user) {
+      authenticatedUserId = user.id;
     }
+  }
 
-    console.log(`Found ${eligibleUsers.length} eligible users to notify`);
-
-    // Get user IDs for push notifications (Targeting via External ID)
-    const userIds = eligibleUsers.map(u => u.id);
-    console.log(`Targeting ${userIds.length} users for push via External ID`);
-
-    // Send push notifications
-    const locationDisplay = request.location_state
-      ? `${request.location_city}, ${request.location_state}`
-      : request.location_city;
-
-    const pushTitle = '🍽️ New food request nearby!';
-    const pushMessage = `Someone's craving ${request.food_type} in ${locationDisplay}. Know a great spot?`;
-    const pushData = {
-      type: 'NEW_REQUEST_NEARBY',
-      requestId: request.id,
-      foodType: request.food_type,
-      location: locationDisplay,
-      url: `/recommend/${request.id}`
-    };
-
-    const pushResult = await sendPushNotification(userIds, pushTitle, pushMessage, pushData);
-
-    // Send notification emails to eligible users who have email enabled
-    const emailPromises = eligibleUsers.map(async (targetUser) => {
-      try {
-        console.log(`📧 Processing email for ${targetUser.id}`);
-
-        // Check email preferences
-        const emailEnabled = targetUser.email_notifications_enabled !== false;
-        const newRequestsEnabled = targetUser.email_new_requests !== false;
-
-        if (!emailEnabled || !newRequestsEnabled) {
-          console.log(`📧 Skipping email for user ${targetUser.id} - email preferences disabled`);
-          return { skipped: true, reason: 'preferences' };
-        }
-
-        // Check for duplicate email (idempotency)
-        const alreadySent = await wasEmailAlreadySent(targetUser.id, 'new_request', requestId);
-        if (alreadySent) {
-          console.log(`📧 Skipping email for user ${targetUser.id} - already sent`);
-          return { skipped: true, reason: 'duplicate' };
-        }
-
-        const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(targetUser.id);
-
-        if (authUserError || !authUser?.user?.email) {
-          console.log(`No email found for user ${targetUser.id}`);
-          return { skipped: true, reason: 'no_email' };
-        }
-
-        const emailTo = authUser.user.email;
-        const subject = `🍽️ New ${request.food_type} request in ${request.location_city}!`;
-
-        const emailResponse = await resend.emails.send({
-          from: "Cravlr <notifications@cravlr.com>",
-          to: [emailTo],
-          subject: subject,
-          html: `
-            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #F7F5F8;">
-              <div style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); padding: 30px; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">🍽️ New Food Request!</h1>
-              </div>
-              
-              <div style="padding: 30px; background-color: white;">
-                <p style="font-size: 16px; color: #1C1C1C;">Hi ${targetUser.display_name || 'there'}!</p>
-                
-                <p style="font-size: 16px; color: #1C1C1C;">Someone near you is looking for a great <strong>${request.food_type}</strong> spot in ${locationDisplay}!</p>
-                
-                <div style="background-color: #F9EFF5; padding: 20px; border-radius: 16px; margin: 24px 0; border-left: 4px solid #A03272;">
-                  <h2 style="color: #A03272; margin-top: 0; font-size: 18px;">📍 Request Details</h2>
-                  <p style="margin: 8px 0; color: #1C1C1C;"><strong>Food Type:</strong> ${request.food_type}</p>
-                  <p style="margin: 8px 0; color: #1C1C1C;"><strong>Location:</strong> ${locationDisplay}</p>
-                  ${request.location_address ? `<p style="margin: 8px 0; color: #1C1C1C;"><strong>Near:</strong> ${request.location_address}</p>` : ''}
-                  ${request.additional_notes ? `<p style="margin: 8px 0; color: #1C1C1C;"><strong>Notes:</strong> ${request.additional_notes}</p>` : ''}
-                  <p style="margin: 8px 0; color: #1C1C1C;"><strong>Requested by:</strong> ${requesterProfile?.display_name || 'A fellow foodie'}</p>
-                </div>
-                
-                <p style="font-size: 16px; color: #1C1C1C;">Know a great spot? Share your recommendation and earn points!</p>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://cravlr.com/browse-requests"
-                     style="background: linear-gradient(135deg, #A03272 0%, #7A2156 100%); color: white; padding: 14px 28px; 
-                            text-decoration: none; border-radius: 24px; display: inline-block; font-weight: 600;
-                            box-shadow: 0 4px 12px rgba(160, 50, 114, 0.3);">
-                    View Request & Recommend
-                  </a>
-                </div>
-              </div>
-              
-              <div style="padding: 20px; text-align: center; background-color: #F7F5F8;">
-                <p style="font-size: 12px; color: #6B6B6B; margin: 0;">
-                  You received this because you're registered near ${locationDisplay}.<br>
-                  <a href="https://cravlr.com/profile" style="color: #A03272;">Update your notification preferences</a>
-                </p>
-                <p style="margin-top: 16px; font-size: 14px; color: #1C1C1C;">
-                  Happy recommending! 🎉<br>
-                  <strong>The Cravlr Team</strong>
-                </p>
-              </div>
-            </div>
-          `,
-          text: `Hi ${targetUser.display_name || 'there'}! Someone near you is looking for a great ${request.food_type} spot in ${locationDisplay}. Know a great spot? Visit Cravlr to share your recommendation and earn points!`,
-        });
-
-        // Log successful email
-        await logEmailNotification(
-          targetUser.id,
-          'new_request',
-          requestId,
-          emailTo,
-          subject,
-          emailResponse.data?.id || null,
-          'sent'
-        );
-
-        console.log(`✅ Email sent to ${emailTo}:`, emailResponse.data?.id);
-        return { success: true, emailId: emailResponse.data?.id };
-      } catch (emailError: any) {
-        // Log failed email (don't crash the loop)
-        await logEmailNotification(
-          targetUser.id,
-          'new_request',
-          requestId,
-          'unknown', // Might not have email yet
-          'New Request',
-          null,
-          'failed',
-          emailError.message
-        );
-
-        console.error(`❌ Error sending email to user ${targetUser.id}:`, emailError);
-        return { success: false, error: emailError.message };
-      }
-    });
-
-    const emailResults = await Promise.all(emailPromises);
-    const successfulEmails = emailResults.filter(r => r.success).length;
-    const skippedEmails = emailResults.filter(r => r.skipped).length;
-
-    console.log(`📧 Sent ${successfulEmails} emails, skipped ${skippedEmails}, sent ${pushResult.sentCount} push notifications`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      emailsSent: successfulEmails,
-      emailsSkipped: skippedEmails,
-      pushNotificationsSent: pushResult.sentCount,
-      totalEligibleUsers: eligibleUsers.length
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
-
-  } catch (error: any) {
-    console.error("Error in notify-area-users function:", error);
+  // Require either cron secret or valid user JWT
+  if (!isCronJob && !authenticatedUserId) {
+    console.error('❌ Unauthorized: No valid cron secret or user JWT');
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-};
 
-serve(handler);
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log(isCronJob
+      ? '🔔 Processing ALL visit reminders (cron job)...'
+      : `🔔 Processing visit reminders for user ${authenticatedUserId}...`
+    );
+
+    // Build query - filter by user if authenticated via JWT
+    let query = supabase
+      .from('visit_reminders')
+      .select(`
+        id,
+        recommendation_id,
+        scheduled_for,
+        recommendations!inner(
+          id,
+          request_id,
+          restaurant_name,
+          food_requests!inner(
+            id,
+            requester_id,
+            food_type,
+            location_city
+          )
+        )
+      `)
+      .eq('sent', false)
+      .lte('scheduled_for', new Date().toISOString());
+
+    const { data: reminders, error: reminderError } = await query;
+
+    if (reminderError) {
+      console.error('Error fetching reminders:', reminderError);
+      throw reminderError;
+    }
+
+    // Filter to user's reminders if authenticated via JWT (not cron)
+    const filteredReminders = !isCronJob && authenticatedUserId
+      ? (reminders || []).filter((r: any) => r.recommendations?.food_requests?.requester_id === authenticatedUserId)
+      : (reminders || []);
+
+    console.log(`📋 Found ${filteredReminders.length} due reminders`);
+
+    const results = [];
+    for (const reminder of filteredReminders) {
+      try {
+        const recommendation = reminder.recommendations as any;
+        const foodRequest = recommendation.food_requests;
+        const requesterId = foodRequest.requester_id;
+        const requestId = foodRequest.id;
+
+        console.log(`📨 Creating notification for requester ${requesterId}, request ${requestId}`);
+
+        // Create in-app notification
+        const { error: notifError } = await supabase.from('notifications').insert({
+          requester_id: requesterId,
+          request_id: requestId,
+          type: 'visit_reminder',
+          title: 'Did you visit the restaurant?',
+          message: `Did you visit ${recommendation.restaurant_name} for ${foodRequest.food_type}?`,
+          read: false,
+        });
+
+        if (notifError) {
+          console.error('Error creating notification:', notifError);
+          throw notifError;
+        }
+
+        // Mark reminder as sent
+        await supabase
+          .from('visit_reminders')
+          .update({ sent: true })
+          .eq('id', reminder.id);
+
+        console.log(`✅ Reminder ${reminder.id} processed successfully`);
+        results.push({ success: true, reminderId: reminder.id });
+      } catch (error: any) {
+        console.error(`❌ Error processing reminder ${reminder.id}:`, error);
+        results.push({ success: false, reminderId: reminder.id, error: error.message });
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        processed: results.length,
+        results
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error: any) {
+    console.error('❌ Error processing visit reminders:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

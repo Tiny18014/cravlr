@@ -12,9 +12,6 @@ verify_jwt = false
 [functions.process-visit-reminders]
 verify_jwt = false
 
-[functions.check-paused-recommenders]
-verify_jwt = false
-
 [functions.user-location]
 verify_jwt = true
 
@@ -27,8 +24,8 @@ verify_jwt = true
 [functions.get-maps-config]
 verify_jwt = true
 
-[functions.test-email]
+[functions.email-request-broadcast]
 verify_jwt = false
 
-[functions.send-recommendation-email]
-verify_jwt = true
+[functions.email-recommendation-received]
+verify_jwt = false

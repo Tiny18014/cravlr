@@ -189,14 +189,15 @@ const SendRecommendation = () => {
           // Don't block the success flow if points fail
         }
 
-        // Send email notification to the requester
+        // Trigger email notification for the requester
         try {
-          await supabase.functions.invoke('send-recommendation-email', {
+          console.log('📧 Triggering email-recommendation-received for recommendation:', insertData.id);
+          await supabase.functions.invoke('email-recommendation-received', {
             body: { recommendationId: insertData.id },
           });
         } catch (emailError) {
           console.error('Error sending recommendation email:', emailError);
-          // Don't block the success flow if email fails
+          // Don't block success flow
         }
       }
 
