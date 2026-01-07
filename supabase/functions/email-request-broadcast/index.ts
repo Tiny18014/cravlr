@@ -69,25 +69,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     // 3. Find Eligible Users
     // Strategy: Fetch all potential recommenders and filter in-memory for precision & hybrid matching
-    // (Optimization: We fetch filtered columns to reduce data transfer)
+    // Note: We cannot rely on 'email' column in profiles as it's not standard. We fetch eligible IDs then get emails.
     const { data: potentialUsers, error: usersError } = await supabase
       .from('profiles')
-      .select('id, email, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, email_notifications_enabled, email_new_requests')
+      .select('id, display_name, notify_recommender, recommender_paused, profile_lat, profile_lng, notification_radius_km, location_city, email_notifications_enabled, email_new_requests')
       .neq('id', request.requester_id) // Don't notify self
       .eq('email_notifications_enabled', true) // Must have global email enabled
-      .eq('email_new_requests', true) // Must have specific email preference enabled
-      .not('email', 'is', null); // Must have an email address
+      .eq('email_new_requests', true); // Must have specific email preference enabled
 
     if (usersError) throw usersError;
 
     const hasCoordinates = request.lat && request.lng;
     const requestCity = (request.location_city || '').trim().toLowerCase();
 
-    const eligibleUsers = (potentialUsers || []).filter(u => {
+    const eligibleProfiles = (potentialUsers || []).filter(u => {
       // Safety checks
       if (u.notify_recommender === false) return false;
       if (u.recommender_paused === true) return false;
-      if (!u.email) return false;
 
       // A. Geospatial Match
       if (hasCoordinates && u.profile_lat && u.profile_lng) {
@@ -105,21 +103,44 @@ const handler = async (req: Request): Promise<Response> => {
       return false;
     });
 
-    console.log(`📍 Found ${eligibleUsers.length} eligible users for email broadcast`);
+    console.log(`📍 Found ${eligibleProfiles.length} eligible profiles for email broadcast`);
 
-    if (eligibleUsers.length === 0) {
+    if (eligibleProfiles.length === 0) {
       return new Response(JSON.stringify({ message: 'No eligible users found', count: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // 4. Send Emails (Batching)
-    // Resend's batch sending limit is 100. We should slice if necessary, but for MVP assuming <100 eligible per request is safe or we loop chunks.
-    const CHUNK_SIZE = 90; // Safe margin
-    const chunks = [];
-    for (let i = 0; i < eligibleUsers.length; i += CHUNK_SIZE) {
-      chunks.push(eligibleUsers.slice(i, i + CHUNK_SIZE));
-    }
+    // We need to fetch emails for these users. Since batch operations on Auth Admin are limited, we'll do it carefully.
+    // For MVP, we'll process in chunks and fetch emails individually or via listUsers if possible.
+    // Given the lack of "getUsersByIds", we'll loop sequentially or with limited concurrency.
+
+    // NOTE: This can be slow for large broadcasts. Future improvement: Use a secure DB function or sync emails to a protected table.
 
     let totalSent = 0;
+    const profilesWithEmails: any[] = [];
+
+    // Fetch emails
+    for (const profile of eligibleProfiles) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+      if (authUser?.user?.email) {
+        profilesWithEmails.push({
+          ...profile,
+          email: authUser.user.email
+        });
+      }
+    }
+
+    console.log(`📍 Resolved ${profilesWithEmails.length} emails from Auth`);
+
+    if (profilesWithEmails.length === 0) {
+      return new Response(JSON.stringify({ message: 'No emails found for eligible users', count: 0 }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const CHUNK_SIZE = 90; // Safe margin for Resend
+    const chunks = [];
+    for (let i = 0; i < profilesWithEmails.length; i += CHUNK_SIZE) {
+      chunks.push(profilesWithEmails.slice(i, i + CHUNK_SIZE));
+    }
 
     for (const chunk of chunks) {
       const emailBatch = chunk.map(user => ({
