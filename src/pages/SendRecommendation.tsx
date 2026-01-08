@@ -189,6 +189,33 @@ const SendRecommendation = () => {
           // Don't block the success flow if points fail
         }
 
+        // Trigger push notification for the requester
+        try {
+          console.log('🔔 Triggering notify-new-recommendation for recommendation:', insertData.id);
+          const { data: pushResult, error: pushInvokeError } = await supabase.functions.invoke(
+            'notify-new-recommendation',
+            {
+              body: { 
+                type: 'INSERT',
+                table: 'recommendations',
+                record: {
+                  id: insertData.id,
+                  request_id: insertData.request_id,
+                  recommender_id: insertData.recommender_id,
+                }
+              },
+            }
+          );
+
+          if (pushInvokeError) {
+            console.error('❌ notify-new-recommendation failed:', pushInvokeError);
+          } else {
+            console.log('🔔 notify-new-recommendation response:', pushResult);
+          }
+        } catch (pushError) {
+          console.error('❌ Network error calling notify-new-recommendation:', pushError);
+        }
+
         // Trigger email notification for the requester
         try {
           console.log('📧 Triggering email-recommendation-received for recommendation:', insertData.id);
@@ -206,7 +233,6 @@ const SendRecommendation = () => {
           }
         } catch (emailError) {
           console.error('❌ Network error calling email-recommendation-received:', emailError);
-          // Don't block success flow
         }
       }
 
