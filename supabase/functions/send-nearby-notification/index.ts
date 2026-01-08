@@ -249,31 +249,31 @@ serve(async (req) => {
       }
     }
 
-    // Create in-app notifications with deduplication (using request_id)
-    // Use upsert with ON CONFLICT to prevent duplicates
+    // Create in-app notifications for matched recommenders
+    // Only use columns that exist in the recommender_notifications table
     const inAppNotifications = matchedUsers.map(userId => ({
       recommender_id: userId,
-      request_id: request.id,
       type: 'new_request_nearby',
       title: notificationPayload.title,
       message: notificationPayload.body,
-      restaurant_name: request.location_city || 'Nearby',
+      restaurant_name: `${request.location_city} | ${request.id}`, // Include request_id in restaurant_name for deduplication
       recommendation_id: null,
-      push_attempted: notificationsSent > 0,
-      push_sent: notificationsSent > 0,
+      read: false,
     }));
 
+    let inAppCreated = 0;
     if (inAppNotifications.length > 0) {
-      // Insert with ON CONFLICT DO NOTHING to skip duplicates
-      const { error: insertError } = await supabaseAdmin
+      // Insert notifications - restaurant_name field includes request_id for reference
+      const { data: insertedData, error: insertError } = await supabaseAdmin
         .from('recommender_notifications')
-        .upsert(inAppNotifications, { 
-          onConflict: 'recommender_id,request_id,type',
-          ignoreDuplicates: true 
-        });
+        .insert(inAppNotifications)
+        .select('id');
       
       if (insertError) {
-        console.log('Insert notification result:', insertError.message);
+        console.log('Insert notification error:', insertError.message);
+      } else {
+        inAppCreated = insertedData?.length || 0;
+        console.log(`Created ${inAppCreated} in-app notifications`);
       }
     }
 
@@ -282,7 +282,7 @@ serve(async (req) => {
         success: true, 
         matchedUsers: matchedUsers.length,
         notificationsSent,
-        inAppCreated: inAppNotifications.length,
+        inAppCreated,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
