@@ -218,15 +218,15 @@ const RequestFood = () => {
       if (error) throw error;
 
       try {
-        console.log('🔔 Triggering notify-area-users for request:', data.id);
-        const { data: notifyData, error: notifyError } = await supabase.functions.invoke('notify-area-users', {
+        console.log('🔔 Triggering send-nearby-notification for request:', data.id);
+        const { data: notifyData, error: notifyError } = await supabase.functions.invoke('send-nearby-notification', {
           body: { requestId: data.id }
         });
 
         if (notifyError) {
-          console.error('❌ Error response from notify-area-users:', notifyError);
+          console.error('❌ Error response from send-nearby-notification:', notifyError);
         } else {
-          console.log('✅ Notification results:', notifyData);
+          console.log('✅ Push notification results:', notifyData);
         }
 
         // Also trigger email broadcast
