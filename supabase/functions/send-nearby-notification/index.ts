@@ -10,6 +10,7 @@ const corsHeaders = {
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const APP_URL = Deno.env.get('APP_URL') || 'https://cravlr.com';
 
 // Haversine formula to calculate distance between two points
 function calculateDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -224,7 +225,7 @@ serve(async (req) => {
             headings: { en: notificationPayload.title },
             contents: { en: notificationPayload.body },
             data: notificationPayload.data,
-            url: `${SUPABASE_URL?.replace('.supabase.co', '.lovableproject.com') || ''}/send-recommendation?requestId=${request.id}`,
+            url: `${APP_URL}/browse-requests`,
             buttons: [
               { id: 'help', text: 'Help Out' },
               { id: 'dismiss', text: 'Not Now' }
