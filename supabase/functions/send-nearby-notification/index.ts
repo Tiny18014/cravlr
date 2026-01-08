@@ -249,20 +249,32 @@ serve(async (req) => {
       }
     }
 
-    // Also create in-app notifications
+    // Create in-app notifications with deduplication (using request_id)
+    // Use upsert with ON CONFLICT to prevent duplicates
     const inAppNotifications = matchedUsers.map(userId => ({
       recommender_id: userId,
+      request_id: request.id,
       type: 'new_request_nearby',
       title: notificationPayload.title,
       message: notificationPayload.body,
       restaurant_name: request.location_city || 'Nearby',
       recommendation_id: null,
+      push_attempted: notificationsSent > 0,
+      push_sent: notificationsSent > 0,
     }));
 
     if (inAppNotifications.length > 0) {
-      await supabaseAdmin
+      // Insert with ON CONFLICT DO NOTHING to skip duplicates
+      const { error: insertError } = await supabaseAdmin
         .from('recommender_notifications')
-        .insert(inAppNotifications);
+        .upsert(inAppNotifications, { 
+          onConflict: 'recommender_id,request_id,type',
+          ignoreDuplicates: true 
+        });
+      
+      if (insertError) {
+        console.log('Insert notification result:', insertError.message);
+      }
     }
 
     return new Response(

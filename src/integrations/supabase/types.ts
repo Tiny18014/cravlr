@@ -434,6 +434,8 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          push_attempted: boolean | null
+          push_sent: boolean | null
           read: boolean
           request_id: string
           requester_id: string
@@ -444,6 +446,8 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          push_attempted?: boolean | null
+          push_sent?: boolean | null
           read?: boolean
           request_id: string
           requester_id: string
@@ -454,6 +458,8 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          push_attempted?: boolean | null
+          push_sent?: boolean | null
           read?: boolean
           request_id?: string
           requester_id?: string
