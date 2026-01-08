@@ -49,7 +49,6 @@ async function sendPushNotification(
         data: data,
         ios_badgeType: 'Increase',
         ios_badgeCount: 1,
-        android_channel_id: 'cravlr_recommendations',
         priority: 10,
         web_push_topic: 'new_recommendation',
       }),
