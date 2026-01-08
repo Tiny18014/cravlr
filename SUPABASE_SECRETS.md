@@ -20,5 +20,5 @@ To enable notifications, you need to add the following secrets to your Supabase 
 The application uses OneSignal for Push Notifications.
 - **Frontend**: Initializes OneSignal and asks for permission. Stores the player ID in the `device_tokens` table.
 - **Backend**:
-    - `notify-area-users`: Sends push notifications to recommenders when a new request is nearby.
-    - `send-recommendation-email`: Sends push notifications to the requester when they receive a recommendation.
+    - `send-nearby-notification`: Sends push notifications to recommenders when a new request is nearby.
+    - `email-recommendation-received`: Sends email notifications to the requester when they receive a recommendation.
