@@ -40,6 +40,31 @@ export function NotificationCenter() {
     }
   };
 
+  // Mark all as read when notification center opens
+  const markAllAsRead = async () => {
+    if (!user || notifications.length === 0) return;
+    
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .in('id', unreadIds);
+
+    if (!error) {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    }
+  };
+
+  // When sheet opens, mark all as read
+  useEffect(() => {
+    if (isOpen) {
+      markAllAsRead();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     fetchNotifications();
 
@@ -58,7 +83,7 @@ export function NotificationCenter() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, isOpen]);
+  }, [user]);
 
   const markAsRead = async (id: string) => {
     // Try update 'read' column first (most likely)
@@ -80,12 +105,13 @@ export function NotificationCenter() {
 
   const handleNotificationClick = (n: any) => {
     markAsRead(n.id);
-    const payload = n.payload || {};
-    // Navigate based on type
-    if (n.type === 'new_request' && payload.requestId) {
-        navigate(`/recommend/${payload.requestId}`);
-    } else if (n.type === 'request_results' && payload.requestId) {
-        navigate(`/requests/${payload.requestId}/results`);
+    // Navigate based on type - use request_id directly from notification
+    if (n.type === 'visit_reminder' && n.request_id) {
+        navigate(`/requests/${n.request_id}/results`);
+    } else if (n.type === 'new_recommendation' && n.request_id) {
+        navigate(`/requests/${n.request_id}/results`);
+    } else if (n.request_id) {
+        navigate(`/requests/${n.request_id}/results`);
     }
     setIsOpen(false);
   };
@@ -123,7 +149,6 @@ export function NotificationCenter() {
                 </div>
             ) : (
                 notifications.map((n) => {
-                    const payload = (n as any).payload || {};
                     const isUnread = n.read !== true;
 
                     return (
@@ -137,10 +162,10 @@ export function NotificationCenter() {
                             <div className="flex justify-between items-start gap-3">
                                 <div className="flex-1">
                                     <h4 className={`text-sm ${isUnread ? 'font-semibold text-primary' : 'font-medium'}`}>
-                                        {payload.title || 'Notification'}
+                                        {n.title || 'Notification'}
                                     </h4>
                                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                        {payload.message || 'You have a new update.'}
+                                        {n.message || 'You have a new update.'}
                                     </p>
                                     <span className="text-[10px] text-muted-foreground/60 mt-2 block">
                                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
