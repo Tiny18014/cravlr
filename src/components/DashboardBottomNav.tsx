@@ -27,7 +27,7 @@ export function DashboardBottomNav() {
 
   const markDashboardAsRead = async () => {
     if (!user || dashboard === 0) return;
-    const dashboardTypes = ['request_results', 'request_accepted', 'request_declined', 'new_recommendation'];
+    const dashboardTypes = ['request_results', 'request_accepted', 'request_declined', 'new_recommendation', 'visit_reminder'];
     await supabase
       .from('notifications')
       .update({ read: true })

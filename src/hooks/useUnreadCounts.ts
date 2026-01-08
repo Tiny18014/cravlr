@@ -30,7 +30,7 @@ export function useUnreadCounts(): UnreadCounts {
       }
 
       const requestTypes = ['new_request'];
-      const dashboardTypes = ['request_results', 'request_accepted', 'request_declined', 'new_recommendation'];
+      const dashboardTypes = ['request_results', 'request_accepted', 'request_declined', 'new_recommendation', 'visit_reminder'];
 
       const requests = data?.filter(n => requestTypes.includes(n.type)).length || 0;
       const dashboard = data?.filter(n => dashboardTypes.includes(n.type)).length || 0;
