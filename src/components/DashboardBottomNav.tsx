@@ -17,12 +17,13 @@ export function DashboardBottomNav() {
 
   const markRequestsAsRead = async () => {
     if (!user || requests === 0) return;
+    // Mark recommender notifications as read (new_request_nearby)
     await supabase
-      .from('notifications')
+      .from('recommender_notifications')
       .update({ read: true })
-      .eq('requester_id', user.id)
+      .eq('recommender_id', user.id)
       .eq('read', false)
-      .eq('type', 'new_request');
+      .eq('type', 'new_request_nearby');
   };
 
   const markDashboardAsRead = async () => {
