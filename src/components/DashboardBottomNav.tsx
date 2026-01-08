@@ -1,10 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, ClipboardList, Trophy } from 'lucide-react';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 
 export function DashboardBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { requests, dashboard } = useUnreadCounts();
+  
   const isHome = location.pathname === '/' || location.pathname === '/welcome';
   const isRequests = location.pathname === '/browse-requests';
   const isDashboard = location.pathname === '/dashboard';
@@ -28,7 +31,12 @@ export function DashboardBottomNav() {
             isRequests ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
           }`}
         >
-          <ClipboardList className={`h-5 w-5 ${isRequests ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
+          <div className="relative">
+            <ClipboardList className={`h-5 w-5 ${isRequests ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
+            {requests > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-card" />
+            )}
+          </div>
           <span className={`text-xs font-medium ${isRequests ? 'text-primary' : 'text-muted-foreground'}`}>Requests</span>
         </button>
         
@@ -38,7 +46,12 @@ export function DashboardBottomNav() {
             isDashboard ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
           }`}
         >
-          <Trophy className={`h-5 w-5 ${isDashboard ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
+          <div className="relative">
+            <Trophy className={`h-5 w-5 ${isDashboard ? 'text-primary' : 'text-muted-foreground'}`} strokeWidth={2} />
+            {dashboard > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-card" />
+            )}
+          </div>
           <span className={`text-xs font-medium ${isDashboard ? 'text-primary' : 'text-muted-foreground'}`}>Dashboard</span>
         </button>
       </div>
