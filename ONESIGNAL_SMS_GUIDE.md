@@ -24,7 +24,7 @@ You need a Twilio account with an active phone number to send SMS.
 The code has already been updated to support SMS:
 
 *   **Frontend (`OneSignalInit.tsx`):** Automatically syncs the user's phone number from their profile to OneSignal when they log in.
-*   **Backend (`notify-area-users` & `send-recommendation-email`):** Automatically targets *all* active channels for the user (Push and SMS).
+*   **Backend (`send-nearby-notification` & `email-recommendation-received`):** Automatically targets *all* active channels for the user (Push and SMS).
 
 ## 4. Testing SMS
 

@@ -46,9 +46,9 @@ You need to add these keys to your Supabase Edge Functions secrets.
 
 ## 5. Deployment
 
-Once the secrets are set, redeploy your Edge Functions (specifically `notify-area-users` and `send-recommendation-email`).
+Once the secrets are set, redeploy your Edge Functions (specifically `send-nearby-notification` and `email-recommendation-received`).
 
 ## Troubleshooting
 
 *   **"AppID doesn't match existing apps"**: This error usually means the `ONESIGNAL_APP_ID` in your Supabase secrets is incorrect or formatted wrongly. Ensure it is the **App ID** (UUID) and not the API Key.
-*   **Notifications not arriving**: Check the Logs in OneSignal Dashboard -> Delivery. Also check Supabase Edge Function logs for `notify-area-users`.
+*   **Notifications not arriving**: Check the Logs in OneSignal Dashboard -> Delivery. Also check Supabase Edge Function logs for `send-nearby-notification`.
