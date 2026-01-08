@@ -2,15 +2,49 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, ClipboardList, Trophy } from 'lucide-react';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function DashboardBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const { requests, dashboard } = useUnreadCounts();
   
   const isHome = location.pathname === '/' || location.pathname === '/welcome';
   const isRequests = location.pathname === '/browse-requests';
   const isDashboard = location.pathname === '/dashboard';
+
+  const markRequestsAsRead = async () => {
+    if (!user || requests === 0) return;
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('requester_id', user.id)
+      .eq('read', false)
+      .eq('type', 'new_request');
+  };
+
+  const markDashboardAsRead = async () => {
+    if (!user || dashboard === 0) return;
+    const dashboardTypes = ['request_results', 'request_accepted', 'request_declined', 'new_recommendation'];
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('requester_id', user.id)
+      .eq('read', false)
+      .in('type', dashboardTypes);
+  };
+
+  const handleRequestsClick = () => {
+    markRequestsAsRead();
+    navigate("/browse-requests");
+  };
+
+  const handleDashboardClick = () => {
+    markDashboardAsRead();
+    navigate("/dashboard");
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-3 safe-area-inset-bottom z-50">
@@ -26,7 +60,7 @@ export function DashboardBottomNav() {
         </button>
         
         <button
-          onClick={() => navigate("/browse-requests")}
+          onClick={handleRequestsClick}
           className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
             isRequests ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
           }`}
@@ -41,7 +75,7 @@ export function DashboardBottomNav() {
         </button>
         
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={handleDashboardClick}
           className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
             isDashboard ? 'bg-primary/10' : 'opacity-60 hover:opacity-100'
           }`}
