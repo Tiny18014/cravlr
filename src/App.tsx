@@ -9,6 +9,7 @@ import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { UnifiedNotificationProvider } from "@/contexts/UnifiedNotificationContext";
 import { UnifiedNotificationDisplay } from "@/components/UnifiedNotificationDisplay";
 import { OneSignalInit } from "@/components/OneSignalInit";
+import { GlobalNotificationBanner } from "@/components/GlobalNotificationBanner";
 import { UnifiedRequestManager } from "@/providers/UnifiedRequestManager";
 import { PopupDebugBinder } from "@/components/PopupDebugBinder";
 import DebugDBRealtime from "@/components/DebugDBRealtime";
@@ -90,6 +91,7 @@ const AppContent = () => {
         <Toaster />
         <Sonner />
         <OneSignalInit />
+        <GlobalNotificationBanner />
         <BrowserRouter>
           <LocationListener setCurrentPath={setCurrentPath} />
           <UnifiedRequestManager />
