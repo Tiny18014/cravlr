@@ -580,6 +580,7 @@ export type Database = {
           notification_radius_km: number | null
           notify_recommender: boolean | null
           persona: string | null
+          phone_number: string | null
           points_this_month: number | null
           points_total: number | null
           profile_country: string | null
@@ -589,6 +590,10 @@ export type Database = {
           recommender_paused: boolean | null
           recommender_paused_at: string | null
           search_range: string | null
+          sms_new_requests: boolean | null
+          sms_notifications_enabled: boolean | null
+          sms_recommendations: boolean | null
+          sms_visit_reminders: boolean | null
           streak_count: number
           total_points: number
           updated_at: string
@@ -609,6 +614,7 @@ export type Database = {
           notification_radius_km?: number | null
           notify_recommender?: boolean | null
           persona?: string | null
+          phone_number?: string | null
           points_this_month?: number | null
           points_total?: number | null
           profile_country?: string | null
@@ -618,6 +624,10 @@ export type Database = {
           recommender_paused?: boolean | null
           recommender_paused_at?: string | null
           search_range?: string | null
+          sms_new_requests?: boolean | null
+          sms_notifications_enabled?: boolean | null
+          sms_recommendations?: boolean | null
+          sms_visit_reminders?: boolean | null
           streak_count?: number
           total_points?: number
           updated_at?: string
@@ -638,6 +648,7 @@ export type Database = {
           notification_radius_km?: number | null
           notify_recommender?: boolean | null
           persona?: string | null
+          phone_number?: string | null
           points_this_month?: number | null
           points_total?: number | null
           profile_country?: string | null
@@ -647,6 +658,10 @@ export type Database = {
           recommender_paused?: boolean | null
           recommender_paused_at?: string | null
           search_range?: string | null
+          sms_new_requests?: boolean | null
+          sms_notifications_enabled?: boolean | null
+          sms_recommendations?: boolean | null
+          sms_visit_reminders?: boolean | null
           streak_count?: number
           total_points?: number
           updated_at?: string

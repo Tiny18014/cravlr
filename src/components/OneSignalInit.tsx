@@ -187,11 +187,26 @@ console.log('✅ OneSignal initialized!');
 
 // Login user
 try {
-await OneSignal.login(user.id);
-console.log('✅ OneSignal user logged in');
+  await OneSignal.login(user.id);
+  console.log('✅ OneSignal user logged in');
 
+  // Sync phone number to OneSignal for SMS
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('phone_number')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.phone_number) {
+    try {
+      await OneSignal.User.addSms(profile.phone_number);
+      console.log('✅ OneSignal SMS number synced:', profile.phone_number);
+    } catch (smsErr) {
+      console.warn('⚠️ OneSignal SMS sync warning:', smsErr);
+    }
+  }
 } catch (e) {
-          console.warn('⚠️ OneSignal login warning:', e);
+  console.warn('⚠️ OneSignal login warning:', e);
 }
 
 // Set up click handler
