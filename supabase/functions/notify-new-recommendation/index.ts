@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // OneSignal configuration
 const ONESIGNAL_APP_ID = Deno.env.get("ONESIGNAL_APP_ID");
 const ONESIGNAL_API_KEY = Deno.env.get("ONESIGNAL_API_KEY");
+const APP_URL = Deno.env.get("APP_URL") || "https://cravlr.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +48,7 @@ async function sendPushNotification(
         headings: { en: title },
         contents: { en: message },
         data: data,
+        url: data.url ? `${APP_URL}${data.url}` : `${APP_URL}/dashboard`,
         ios_badgeType: 'Increase',
         ios_badgeCount: 1,
         priority: 10,
