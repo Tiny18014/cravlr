@@ -48,6 +48,49 @@ async function logEmailAttempt(params: {
   }
 }
 
+// Send SMS via OneSignal
+async function sendSmsViaOneSignal(userId: string, message: string): Promise<boolean> {
+  const appId = Deno.env.get("ONESIGNAL_APP_ID");
+  const apiKey = Deno.env.get("ONESIGNAL_API_KEY");
+
+  if (!appId || !apiKey) {
+    console.log("📱 SMS: OneSignal not configured, skipping SMS");
+    return false;
+  }
+
+  try {
+    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${apiKey}`,
+      },
+      body: JSON.stringify({
+        app_id: appId,
+        include_aliases: {
+          external_id: [userId],
+        },
+        target_channel: "sms",
+        name: "Recommendation SMS",
+        contents: { en: message },
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (result.errors) {
+      console.error("📱 SMS send error:", result.errors);
+      return false;
+    }
+
+    console.log("📱 SMS sent successfully via OneSignal:", result.id);
+    return true;
+  } catch (error) {
+    console.error("📱 SMS send exception:", error);
+    return false;
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -70,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`📧 Processing recommendation email for ID: ${recommendationId}`);
+    console.log(`📧 Processing recommendation notification for ID: ${recommendationId}`);
 
     // 1. Fetch Recommendation & Request Details
     const { data: recommendation, error: recError } = await supabase
@@ -105,10 +148,10 @@ const handler = async (req: Request): Promise<Response> => {
     const request = (recommendation as any).food_requests;
     const requesterId = request.requester_id as string;
 
-    // Fetch requester profile preferences
+    // Fetch requester profile preferences (including SMS preferences)
     const { data: requesterProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("display_name, email_notifications_enabled, email_recommendations")
+      .select("display_name, email_notifications_enabled, email_recommendations, sms_notifications_enabled, sms_recommendations, phone_number")
       .eq("id", requesterId)
       .single();
 
@@ -134,50 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailTo = authUser.user.email;
 
-    // 2. Check Preferences
-    if (!requesterProfile.email_notifications_enabled) {
-      console.log("Skipping: User has globally disabled email notifications");
-      await logEmailAttempt({
-        status: "skipped",
-        event_type: "recommendation_received",
-        entity_id: recommendationId,
-        user_id: requesterId,
-        email_to: emailTo,
-        subject: null,
-        error_message: "global_disabled",
-      });
-
-      return new Response(
-        JSON.stringify({ skipped: true, reason: "global_disabled", emailTo }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (requesterProfile.email_recommendations === false) {
-      console.log("Skipping: User has disabled recommendation emails");
-      await logEmailAttempt({
-        status: "skipped",
-        event_type: "recommendation_received",
-        entity_id: recommendationId,
-        user_id: requesterId,
-        email_to: emailTo,
-        subject: null,
-        error_message: "type_disabled",
-      });
-
-      return new Response(
-        JSON.stringify({ skipped: true, reason: "type_disabled", emailTo }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Fetch recommender display name (no FK relationship in schema)
+    // Fetch recommender display name
     let recommenderName = "A local foodie";
     if ((recommendation as any).recommender_id) {
       const { data: recommenderProfile, error: recommenderError } = await supabase
@@ -192,71 +192,98 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const subject = `🎉 New Recommendation for ${request.food_type}!`;
+    let emailSent = false;
+    let smsSent = false;
 
-    // 3. Send Email
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Cravlr <notifications@cravlr.com>",
-      to: [emailTo],
-      subject,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>You got a recommendation! 🍽️</h2>
-          <p>Hi ${requesterProfile.display_name || "there"},</p>
-          <p><strong>${recommenderName}</strong> just recommended a place for your <strong>${request.food_type}</strong> request.</p>
+    // 2. Send Email if enabled
+    if (requesterProfile.email_notifications_enabled !== false && 
+        requesterProfile.email_recommendations !== false) {
+      
+      const { data: emailData, error: emailError } = await resend.emails.send({
+        from: "Cravlr <notifications@cravlr.com>",
+        to: [emailTo],
+        subject,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>You got a recommendation! 🍽️</h2>
+            <p>Hi ${requesterProfile.display_name || "there"},</p>
+            <p><strong>${recommenderName}</strong> just recommended a place for your <strong>${request.food_type}</strong> request.</p>
 
-          <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #A03272; margin: 20px 0;">
-            <h3 style="margin-top: 0;">${recommendation.restaurant_name}</h3>
-            ${recommendation.restaurant_address ? `<p>📍 ${recommendation.restaurant_address}</p>` : ""}
-            ${recommendation.notes ? `<p><em>\"${recommendation.notes}\"</em></p>` : ""}
+            <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #A03272; margin: 20px 0;">
+              <h3 style="margin-top: 0;">${recommendation.restaurant_name}</h3>
+              ${recommendation.restaurant_address ? `<p>📍 ${recommendation.restaurant_address}</p>` : ""}
+              ${recommendation.notes ? `<p><em>"${recommendation.notes}"</em></p>` : ""}
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://cravlr.com/dashboard" style="background: #A03272; color: white; padding: 12px 24px; text-decoration: none; border-radius: 24px; font-weight: bold;">
+                View Recommendation
+              </a>
+            </div>
+
+            <p style="font-size: 12px; color: #666; text-align: center;">
+              <a href="https://cravlr.com/profile">Manage Notifications</a>
+            </p>
           </div>
+        `,
+      });
 
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="https://cravlr.com/dashboard" style="background: #A03272; color: white; padding: 12px 24px; text-decoration: none; border-radius: 24px; font-weight: bold;">
-              View Recommendation
-            </a>
-          </div>
-
-          <p style="font-size: 12px; color: #666; text-align: center;">
-            <a href="https://cravlr.com/profile">Manage Notifications</a>
-          </p>
-        </div>
-      `,
-    });
-
-    if (emailError) {
-      console.error("Resend error:", emailError);
+      if (emailError) {
+        console.error("Resend error:", emailError);
+        await logEmailAttempt({
+          status: "error",
+          event_type: "recommendation_received",
+          entity_id: recommendationId,
+          user_id: requesterId,
+          email_to: emailTo,
+          subject,
+          error_message: emailError.message,
+        });
+      } else {
+        emailSent = true;
+        await logEmailAttempt({
+          status: "sent",
+          event_type: "recommendation_received",
+          entity_id: recommendationId,
+          user_id: requesterId,
+          email_to: emailTo,
+          subject,
+          provider_message_id: emailData?.id ?? null,
+        });
+        console.log(`✅ Email sent to ${emailTo}`);
+      }
+    } else {
+      console.log("📧 Email skipped: User has disabled email notifications");
       await logEmailAttempt({
-        status: "error",
+        status: "skipped",
         event_type: "recommendation_received",
         entity_id: recommendationId,
         user_id: requesterId,
         email_to: emailTo,
-        subject,
-        error_message: emailError.message,
-      });
-
-      return new Response(JSON.stringify({ error: emailError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        subject: null,
+        error_message: requesterProfile.email_notifications_enabled === false ? "global_disabled" : "type_disabled",
       });
     }
 
-    await logEmailAttempt({
-      status: "sent",
-      event_type: "recommendation_received",
-      entity_id: recommendationId,
-      user_id: requesterId,
-      email_to: emailTo,
-      subject,
-      provider_message_id: emailData?.id ?? null,
-    });
-
-    console.log(`✅ Email sent to ${emailTo}`);
+    // 3. Send SMS if enabled and phone number exists
+    if (requesterProfile.sms_notifications_enabled !== false && 
+        requesterProfile.sms_recommendations !== false &&
+        requesterProfile.phone_number) {
+      
+      const smsMessage = `🍽️ Cravlr: ${recommenderName} recommended ${recommendation.restaurant_name} for your ${request.food_type} request! Check it out: cravlr.com/dashboard`;
+      
+      smsSent = await sendSmsViaOneSignal(requesterId, smsMessage);
+      console.log(`📱 SMS ${smsSent ? 'sent' : 'failed'} for user ${requesterId}`);
+    } else {
+      console.log("📱 SMS skipped:", 
+        !requesterProfile.phone_number ? "No phone number" : "SMS notifications disabled");
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        providerMessageId: emailData?.id ?? null,
+        emailSent,
+        smsSent,
         emailTo,
       }),
       {
