@@ -36,53 +36,104 @@ export const GlobalNotificationBanner: React.FC = () => {
       return;
     }
 
-    let isMounted = true;
-    let checkCount = 0;
-    const maxChecks = 10; // Try for up to 10 seconds
+    // If the browser doesn't support notifications, don't show a banner.
+    if (!('Notification' in window)) {
+      setIsSubscribed(true);
+      return;
+    }
 
-    const checkSubscription = async () => {
+    const denied = Notification.permission === 'denied';
+    setPermissionDenied(denied);
+    if (denied) {
+      setIsSubscribed(true);
+      return;
+    }
+
+    let isMounted = true;
+    let listenerAttached = false;
+    let timeoutId: number | undefined;
+    let OSRef: any = null;
+
+    let checkCount = 0;
+    const maxChecks = 15; // give OneSignal time to init + login
+
+    const readSubscription = async () => {
       const OS = (window as any).OneSignal;
-      
-      if (!OS || !OS.User?.PushSubscription) {
-        checkCount++;
-        if (checkCount < maxChecks && isMounted) {
-          setTimeout(checkSubscription, 1000);
-        } else if (isMounted) {
-          // OneSignal never loaded, assume not subscribed
-          console.log('🔔 GlobalBanner: OneSignal not available after timeout');
-          setIsSubscribed(false);
-        }
-        return;
-      }
+      if (!OS?.User?.PushSubscription) return null;
+
+      // OneSignal SDK properties can be sync or promise-like depending on wrapper.
+      const subscriptionId = await Promise.resolve(OS.User.PushSubscription.id);
+      const optedIn = await Promise.resolve(OS.User.PushSubscription.optedIn);
+
+      return { OS, subscriptionId, optedIn };
+    };
+
+    const onSubscriptionChange = (event: any) => {
+      const current = event?.current;
+      // Treat having an id as "subscribed" (optedIn can be undefined during init/login)
+      const subscribed = Boolean(current?.id);
+      console.log('🔔 GlobalBanner: Subscription changed -', { id: current?.id, optedIn: current?.optedIn });
+      if (isMounted) setIsSubscribed(subscribed);
+    };
+
+    const check = async () => {
+      checkCount++;
 
       try {
-        const subscriptionId = OS.User.PushSubscription.id;
-        const optedIn = OS.User.PushSubscription.optedIn;
-        
-        console.log('🔔 GlobalBanner: Subscription check -', { subscriptionId, optedIn });
-        
-        if (isMounted) {
-          setIsSubscribed(Boolean(subscriptionId && optedIn));
-          
-          // Also check if permission was denied
-          if ('Notification' in window && Notification.permission === 'denied') {
-            setPermissionDenied(true);
+        const result = await readSubscription();
+        if (!isMounted) return;
+
+        if (result) {
+          const { OS, subscriptionId, optedIn } = result;
+
+          // Attach listener once (helps avoid false negatives right after refresh)
+          if (!listenerAttached && OS?.User?.PushSubscription?.addEventListener) {
+            listenerAttached = true;
+            OSRef = OS;
+            OS.User.PushSubscription.addEventListener('change', onSubscriptionChange);
+          }
+
+          console.log('🔔 GlobalBanner: Subscription check -', { subscriptionId, optedIn, checkCount });
+
+          // If we have a subscription id, treat as subscribed (even if optedIn hasn't settled yet)
+          if (subscriptionId) {
+            setIsSubscribed(true);
+            return;
           }
         }
+
+        if (checkCount >= maxChecks) {
+          console.log('🔔 GlobalBanner: Subscription not detected after timeout; showing banner');
+          setIsSubscribed(false);
+          return;
+        }
+
+        timeoutId = window.setTimeout(check, 1000);
       } catch (error) {
         console.log('🔔 GlobalBanner: Error checking subscription:', error);
-        if (isMounted) {
+        if (checkCount >= maxChecks && isMounted) {
           setIsSubscribed(false);
+          return;
         }
+        timeoutId = window.setTimeout(check, 1000);
       }
     };
 
-    // Start checking after a short delay to let OneSignal initialize
-    const timeout = setTimeout(checkSubscription, 2000);
+    // Start shortly after render to let OneSignalInit run
+    timeoutId = window.setTimeout(check, 1500);
 
     return () => {
       isMounted = false;
-      clearTimeout(timeout);
+      if (timeoutId) window.clearTimeout(timeoutId);
+
+      // Best-effort cleanup
+      try {
+        if (listenerAttached && OSRef?.User?.PushSubscription?.removeEventListener) {
+          OSRef.User.PushSubscription.removeEventListener('change', onSubscriptionChange);
+        }
+      } catch {
+        // ignore
+      }
     };
   }, [user]);
 
@@ -97,21 +148,32 @@ export const GlobalNotificationBanner: React.FC = () => {
 
   const handleEnable = async () => {
     setIsEnabling(true);
+
+    const OS = (window as any).OneSignal;
+    if (!OS?.Slidedown?.promptPush) {
+      console.warn('🔔 GlobalBanner: OneSignal prompt not available');
+      setIsEnabling(false);
+      return;
+    }
+
     try {
-      const OS = (window as any).OneSignal;
-      if (OS?.Slidedown) {
-        await OS.Slidedown.promptPush();
-        
-        // Wait and recheck subscription
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const subscriptionId = OS.User?.PushSubscription?.id;
-        const optedIn = OS.User?.PushSubscription?.optedIn;
-        
-        if (subscriptionId && optedIn) {
-          setIsSubscribed(true);
-          setIsDismissed(true);
-        }
+      // Protect against hanging promises
+      await Promise.race([
+        OS.Slidedown.promptPush(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Push prompt timed out')), 10000)),
+      ]);
+
+      // Re-check subscription (give it a moment to settle)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const subscriptionId = await Promise.resolve(OS.User?.PushSubscription?.id);
+      const optedIn = await Promise.resolve(OS.User?.PushSubscription?.optedIn);
+
+      console.log('🔔 GlobalBanner: Post-enable check -', { subscriptionId, optedIn });
+
+      if (subscriptionId) {
+        setIsSubscribed(true);
+        setIsDismissed(true);
       }
     } catch (error) {
       console.error('🔔 GlobalBanner: Error enabling notifications:', error);
