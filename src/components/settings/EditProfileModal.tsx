@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface EditProfileModalProps {
   open: boolean;
@@ -29,6 +30,15 @@ export const EditProfileModal = ({
   const [phoneNumber, setPhoneNumber] = useState(currentPhone || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Reset form when modal opens with new values
+  useEffect(() => {
+    if (open) {
+      setDisplayName(currentName);
+      setPhoneNumber(currentPhone || '');
+      setError('');
+    }
+  }, [open, currentName, currentPhone]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,19 +90,12 @@ export const EditProfileModal = ({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone-number">Phone Number</Label>
-            <Input
-              id="phone-number"
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+1 (555) 000-0000"
-            />
-            <p className="text-xs text-muted-foreground">
-              Used for notifications and account recovery
-            </p>
-          </div>
+          <PhoneInput
+            value={phoneNumber}
+            onChange={setPhoneNumber}
+            required={false}
+            description="Used for SMS notifications and account recovery"
+          />
 
           <div className="flex gap-3 pt-2">
             <Button
