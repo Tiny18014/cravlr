@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bell, X } from 'lucide-react';
-import { useDeviceToken } from '@/hooks/useDeviceToken';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
 
 /**
  * Global notification banner that appears for logged-in users
  * who haven't subscribed to push notifications yet.
  * Shows as a fixed banner at the top of the screen.
+ * Waits for OneSignal to be fully ready before determining visibility.
  */
 export const GlobalNotificationBanner: React.FC = () => {
   const { user } = useAuth();
-  const { isRegistered, isLoading, permissionState, registerToken } = useDeviceToken();
   const [isDismissed, setIsDismissed] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
-  const [hasChecked, setHasChecked] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null); // null = still checking
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   // Check localStorage for previous dismissal
   useEffect(() => {
@@ -28,26 +27,94 @@ export const GlobalNotificationBanner: React.FC = () => {
         setIsDismissed(true);
       }
     }
-    setHasChecked(true);
   }, []);
 
+  // Wait for OneSignal to be ready and check subscription status
+  useEffect(() => {
+    if (!user) {
+      setIsSubscribed(null);
+      return;
+    }
+
+    let isMounted = true;
+    let checkCount = 0;
+    const maxChecks = 10; // Try for up to 10 seconds
+
+    const checkSubscription = async () => {
+      const OS = (window as any).OneSignal;
+      
+      if (!OS || !OS.User?.PushSubscription) {
+        checkCount++;
+        if (checkCount < maxChecks && isMounted) {
+          setTimeout(checkSubscription, 1000);
+        } else if (isMounted) {
+          // OneSignal never loaded, assume not subscribed
+          console.log('🔔 GlobalBanner: OneSignal not available after timeout');
+          setIsSubscribed(false);
+        }
+        return;
+      }
+
+      try {
+        const subscriptionId = OS.User.PushSubscription.id;
+        const optedIn = OS.User.PushSubscription.optedIn;
+        
+        console.log('🔔 GlobalBanner: Subscription check -', { subscriptionId, optedIn });
+        
+        if (isMounted) {
+          setIsSubscribed(Boolean(subscriptionId && optedIn));
+          
+          // Also check if permission was denied
+          if ('Notification' in window && Notification.permission === 'denied') {
+            setPermissionDenied(true);
+          }
+        }
+      } catch (error) {
+        console.log('🔔 GlobalBanner: Error checking subscription:', error);
+        if (isMounted) {
+          setIsSubscribed(false);
+        }
+      }
+    };
+
+    // Start checking after a short delay to let OneSignal initialize
+    const timeout = setTimeout(checkSubscription, 2000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, [user]);
+
   // Determine if we should show the banner
+  // Only show once we've confirmed user is NOT subscribed (isSubscribed === false)
   const shouldShow = 
-    hasChecked &&
     user &&
     !isDismissed &&
-    !isRegistered &&
-    permissionState !== 'denied' &&
-    permissionState !== 'unsupported' &&
-    !isLoading;
+    isSubscribed === false && // Explicitly false, not null (still loading)
+    !permissionDenied &&
+    'Notification' in window;
 
   const handleEnable = async () => {
     setIsEnabling(true);
     try {
-      const success = await registerToken();
-      if (success) {
-        setIsDismissed(true);
+      const OS = (window as any).OneSignal;
+      if (OS?.Slidedown) {
+        await OS.Slidedown.promptPush();
+        
+        // Wait and recheck subscription
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const subscriptionId = OS.User?.PushSubscription?.id;
+        const optedIn = OS.User?.PushSubscription?.optedIn;
+        
+        if (subscriptionId && optedIn) {
+          setIsSubscribed(true);
+          setIsDismissed(true);
+        }
       }
+    } catch (error) {
+      console.error('🔔 GlobalBanner: Error enabling notifications:', error);
     } finally {
       setIsEnabling(false);
     }
