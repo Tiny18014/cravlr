@@ -259,44 +259,96 @@ serve(async (req) => {
     }
 
     // Send SMS to eligible users via OneSignal
+    // NOTE: "smsSent" here means "accepted by OneSignal" (not guaranteed delivered).
     let smsSent = 0;
     if (ONESIGNAL_APP_ID && ONESIGNAL_API_KEY && smsEligibleUsers.length > 0) {
-      const smsMessage = `🍽️ Cravlr: ${requesterName} is craving ${bodyText} in ${cityDisplay}. Can you help? cravlr.com/browse-requests`;
-      
+      const smsMessage = `🍽️ Cravlr: ${requesterName} is craving ${bodyText} in ${cityDisplay}. Can you help? ${APP_URL}/browse-requests`;
+
+      console.log(
+        "📱 SMS eligible users:",
+        smsEligibleUsers.map((u) => ({ id: u.id, phone_number: u.phone_number }))
+      );
+
       for (const smsUser of smsEligibleUsers) {
         try {
+          // Step 1: Ensure OneSignal knows this user's SMS subscription (idempotent upsert)
+          const upsertResponse = await fetch(
+            `https://onesignal.com/api/v1/apps/${ONESIGNAL_APP_ID}/users`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${ONESIGNAL_API_KEY}`,
+              },
+              body: JSON.stringify({
+                identity: { external_id: smsUser.id },
+                subscriptions: [
+                  {
+                    type: "SMS",
+                    token: smsUser.phone_number,
+                    enabled: true,
+                  },
+                ],
+              }),
+            }
+          );
+
+          const upsertData = await upsertResponse.json().catch(() => ({}));
+          console.log(
+            `📱 OneSignal SMS subscription upsert (${smsUser.id}) status=${upsertResponse.status}`,
+            upsertData
+          );
+
+          if (!upsertResponse.ok) {
+            console.error(
+              `📱 SMS subscription upsert failed for user ${smsUser.id}`,
+              upsertData
+            );
+            continue;
+          }
+
+          // Step 2: Send the SMS directly to the phone number
           const smsPayload = {
             app_id: ONESIGNAL_APP_ID,
-            include_aliases: {
-              external_id: [smsUser.id],
-            },
-            target_channel: "sms",
-            name: "New Request SMS",
+            include_phone_numbers: [smsUser.phone_number],
             contents: { en: smsMessage },
+            name: "New Request SMS",
           };
 
-          const smsResponse = await fetch('https://onesignal.com/api/v1/notifications', {
-            method: 'POST',
+          const smsResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+              "Content-Type": "application/json",
+              Authorization: `Basic ${ONESIGNAL_API_KEY}`,
             },
             body: JSON.stringify(smsPayload),
           });
 
-          const smsResult = await smsResponse.json();
-          if (!smsResult.errors) {
+          const smsResult = await smsResponse.json().catch(() => ({}));
+          console.log(
+            `📱 OneSignal SMS send (${smsUser.phone_number}) status=${smsResponse.status}`,
+            smsResult
+          );
+
+          const recipients =
+            typeof (smsResult as any)?.recipients === "number" ? (smsResult as any).recipients : undefined;
+
+          if (smsResponse.ok && !(smsResult as any)?.errors && (recipients === undefined || recipients > 0)) {
             smsSent++;
-            console.log(`📱 SMS sent to user ${smsUser.id}`);
-          } else {
-            console.error(`📱 SMS error for user ${smsUser.id}:`, smsResult.errors);
+          } else if ((smsResult as any)?.errors) {
+            console.error(
+              `📱 SMS error for ${smsUser.phone_number} (user ${smsUser.id}):`,
+              (smsResult as any).errors
+            );
           }
         } catch (smsError) {
           console.error(`📱 SMS exception for user ${smsUser.id}:`, smsError);
         }
       }
-      console.log(`📱 Total SMS sent: ${smsSent}/${smsEligibleUsers.length}`);
+
+      console.log(`📱 Total SMS accepted: ${smsSent}/${smsEligibleUsers.length}`);
     }
+
     // Create in-app notifications for matched recommenders
     // Only use columns that exist in the recommender_notifications table
     const inAppNotifications = matchedUsers.map(userId => ({
