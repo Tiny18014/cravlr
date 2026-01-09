@@ -49,7 +49,12 @@ async function logEmailAttempt(params: {
 }
 
 // Send SMS via OneSignal
-async function sendSmsViaOneSignal(userId: string, message: string): Promise<boolean> {
+// NOTE: returns true if OneSignal accepted the request (not guaranteed delivered).
+async function sendSmsViaOneSignal(params: {
+  userId: string;
+  phoneNumber: string;
+  message: string;
+}): Promise<boolean> {
   const appId = Deno.env.get("ONESIGNAL_APP_ID");
   const apiKey = Deno.env.get("ONESIGNAL_API_KEY");
 
@@ -59,31 +64,72 @@ async function sendSmsViaOneSignal(userId: string, message: string): Promise<boo
   }
 
   try {
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${apiKey}`,
-      },
-      body: JSON.stringify({
-        app_id: appId,
-        include_aliases: {
-          external_id: [userId],
+    // 1) Ensure SMS subscription exists for this user (idempotent upsert)
+    const upsertResponse = await fetch(
+      `https://onesignal.com/api/v1/apps/${appId}/users`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${apiKey}`,
         },
-        target_channel: "sms",
-        name: "Recommendation SMS",
-        contents: { en: message },
-      }),
-    });
+        body: JSON.stringify({
+          identity: { external_id: params.userId },
+          subscriptions: [
+            {
+              type: "SMS",
+              token: params.phoneNumber,
+              enabled: true,
+            },
+          ],
+        }),
+      }
+    );
 
-    const result = await response.json();
-    
-    if (result.errors) {
-      console.error("📱 SMS send error:", result.errors);
+    const upsertData = await upsertResponse.json().catch(() => ({}));
+    console.log(
+      `📱 SMS subscription upsert status=${upsertResponse.status} user=${params.userId} phone=${params.phoneNumber}`,
+      upsertData
+    );
+
+    if (!upsertResponse.ok) {
+      console.error("📱 SMS subscription upsert failed:", upsertData);
       return false;
     }
 
-    console.log("📱 SMS sent successfully via OneSignal:", result.id);
+    // 2) Send SMS directly to the phone number
+    const smsResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${apiKey}`,
+      },
+      body: JSON.stringify({
+        app_id: appId,
+        include_phone_numbers: [params.phoneNumber],
+        name: "Recommendation SMS",
+        contents: { en: params.message },
+      }),
+    });
+
+    const result = await smsResponse.json().catch(() => ({}));
+    console.log(
+      `📱 SMS send status=${smsResponse.status} user=${params.userId} phone=${params.phoneNumber}`,
+      result
+    );
+
+    if (!smsResponse.ok || (result as any)?.errors) {
+      console.error("📱 SMS send error:", (result as any)?.errors ?? result);
+      return false;
+    }
+
+    const recipients =
+      typeof (result as any)?.recipients === "number" ? (result as any).recipients : undefined;
+
+    // Some OneSignal responses may omit recipients for SMS; treat ok response as accepted.
+    if (recipients !== undefined && recipients <= 0) return false;
+
+    console.log("📱 SMS accepted by OneSignal:", (result as any)?.id);
     return true;
   } catch (error) {
     console.error("📱 SMS send exception:", error);
@@ -266,14 +312,18 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // 3. Send SMS if enabled and phone number exists
-    if (requesterProfile.sms_notifications_enabled !== false && 
+    if (requesterProfile.sms_notifications_enabled !== false &&
         requesterProfile.sms_recommendations !== false &&
         requesterProfile.phone_number) {
-      
+
       const smsMessage = `🍽️ Cravlr: ${recommenderName} recommended ${recommendation.restaurant_name} for your ${request.food_type} request! Check it out: cravlr.com/dashboard`;
-      
-      smsSent = await sendSmsViaOneSignal(requesterId, smsMessage);
-      console.log(`📱 SMS ${smsSent ? 'sent' : 'failed'} for user ${requesterId}`);
+
+      smsSent = await sendSmsViaOneSignal({
+        userId: requesterId,
+        phoneNumber: requesterProfile.phone_number,
+        message: smsMessage,
+      });
+      console.log(`📱 SMS ${smsSent ? 'accepted' : 'failed'} for user ${requesterId}`);
     } else {
       console.log("📱 SMS skipped:", 
         !requesterProfile.phone_number ? "No phone number" : "SMS notifications disabled");
