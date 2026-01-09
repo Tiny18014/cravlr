@@ -117,7 +117,7 @@ serve(async (req) => {
     // 3. Within radius OR same city/state
     const { data: eligibleProfiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select('id, display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km')
+      .select('id, display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km, phone_number, sms_notifications_enabled, sms_new_requests')
       .eq('notify_recommender', true)
       .neq('recommender_paused', true)
       .neq('id', user.id);
@@ -129,6 +129,7 @@ serve(async (req) => {
 
     // Filter by location
     const matchedUsers: string[] = [];
+    const smsEligibleUsers: { id: string; phone_number: string }[] = [];
     const requestLat = request.lat;
     const requestLng = request.lng;
 
@@ -155,6 +156,13 @@ serve(async (req) => {
 
       if (isMatch) {
         matchedUsers.push(profile.id);
+        
+        // Check if user is eligible for SMS
+        if (profile.phone_number && 
+            profile.sms_notifications_enabled !== false && 
+            profile.sms_new_requests !== false) {
+          smsEligibleUsers.push({ id: profile.id, phone_number: profile.phone_number });
+        }
       }
     }
 
@@ -250,6 +258,45 @@ serve(async (req) => {
       }
     }
 
+    // Send SMS to eligible users via OneSignal
+    let smsSent = 0;
+    if (ONESIGNAL_APP_ID && ONESIGNAL_API_KEY && smsEligibleUsers.length > 0) {
+      const smsMessage = `🍽️ Cravlr: ${requesterName} is craving ${bodyText} in ${cityDisplay}. Can you help? cravlr.com/browse-requests`;
+      
+      for (const smsUser of smsEligibleUsers) {
+        try {
+          const smsPayload = {
+            app_id: ONESIGNAL_APP_ID,
+            include_aliases: {
+              external_id: [smsUser.id],
+            },
+            target_channel: "sms",
+            name: "New Request SMS",
+            contents: { en: smsMessage },
+          };
+
+          const smsResponse = await fetch('https://onesignal.com/api/v1/notifications', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+            },
+            body: JSON.stringify(smsPayload),
+          });
+
+          const smsResult = await smsResponse.json();
+          if (!smsResult.errors) {
+            smsSent++;
+            console.log(`📱 SMS sent to user ${smsUser.id}`);
+          } else {
+            console.error(`📱 SMS error for user ${smsUser.id}:`, smsResult.errors);
+          }
+        } catch (smsError) {
+          console.error(`📱 SMS exception for user ${smsUser.id}:`, smsError);
+        }
+      }
+      console.log(`📱 Total SMS sent: ${smsSent}/${smsEligibleUsers.length}`);
+    }
     // Create in-app notifications for matched recommenders
     // Only use columns that exist in the recommender_notifications table
     const inAppNotifications = matchedUsers.map(userId => ({
@@ -283,6 +330,7 @@ serve(async (req) => {
         success: true, 
         matchedUsers: matchedUsers.length,
         notificationsSent,
+        smsSent,
         inAppCreated,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

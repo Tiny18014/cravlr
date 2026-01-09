@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   MapPin, Bell, Utensils, Shield, MessageSquareHeart, 
-  Lock, Trash2, Save, Mail, User
+  Lock, Trash2, Save, Mail, User, Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -27,6 +27,7 @@ import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal';
 import { DeleteAccountFlow } from '@/components/settings/DeleteAccountFlow';
 import { EmailPreferencesSettings } from '@/components/settings/EmailPreferencesSettings';
+import { SmsPreferencesSettings } from '@/components/settings/SmsPreferencesSettings';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
 import { SettingsLayout, SettingsNavItem } from '@/components/settings/SettingsLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -51,6 +52,7 @@ const settingsNavItems: SettingsNavItem[] = [
   { id: 'preferences', label: 'Preferences', icon: MapPin },
   { id: 'push-notifications', label: 'Push Notifications', icon: Bell },
   { id: 'email-notifications', label: 'Email Notifications', icon: Mail },
+  { id: 'sms-notifications', label: 'SMS Notifications', icon: Smartphone },
   { id: 'privacy-security', label: 'Privacy & Security', icon: Shield },
   { id: 'help-feedback', label: 'Help & Feedback', icon: MessageSquareHeart },
   { id: 'account', label: 'Account', icon: Shield },
@@ -478,6 +480,13 @@ const Profile = () => {
         return (
           <SettingsSection title="Email Notifications" icon={Mail}>
             <EmailPreferencesSettings />
+          </SettingsSection>
+        );
+
+      case 'sms-notifications':
+        return (
+          <SettingsSection title="SMS Notifications" icon={Smartphone}>
+            <SmsPreferencesSettings />
           </SettingsSection>
         );
 
