@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Building2, Shield, Phone, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Building2, Shield, Mail, ShieldCheck } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
+import { PhoneInput } from '@/components/PhoneInput';
 
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -216,23 +217,13 @@ const AuthBusiness = () => {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Business Phone Number
-                  </Label>
-                  <Input
-                    id="phoneNumber"
-                    type="tel"
-                    placeholder="+1 (555) 123-4567"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    required={!isLogin}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Required for business verification
-                  </p>
-                </div>
+                <PhoneInput
+                  value={phoneNumber}
+                  onChange={setPhoneNumber}
+                  required={true}
+                  label="Business Phone Number"
+                  description="Required for business verification"
+                />
               </div>
             )}
             

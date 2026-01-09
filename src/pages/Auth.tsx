@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, Mail, ShieldCheck, Building2, Users, Star } from 'lucide-react';
+import { Mail, ShieldCheck, Building2, Users, Star } from 'lucide-react';
+import { PhoneInput } from '@/components/PhoneInput';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -227,25 +228,13 @@ const Auth = () => {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    {userType === 'business' ? 'Business Phone Number' : 'Phone Number (Optional)'}
-                  </Label>
-                  <Input
-                    id="phoneNumber"
-                    type="tel"
-                    placeholder="+1 (555) 123-4567"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    required={userType === 'business'}
-                  />
-                  {userType === 'business' && (
-                    <p className="text-xs text-muted-foreground">
-                      Required for business verification
-                    </p>
-                  )}
-                </div>
+                <PhoneInput
+                  value={phoneNumber}
+                  onChange={setPhoneNumber}
+                  required={userType === 'business'}
+                  label={userType === 'business' ? 'Business Phone Number' : 'Phone Number'}
+                  description={userType === 'business' ? 'Required for business verification' : 'For SMS notifications (optional)'}
+                />
               </div>
             )}
             
