@@ -10,12 +10,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Users, Mail } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
+import { PhoneInput } from '@/components/PhoneInput';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   
@@ -122,7 +124,7 @@ const AuthFoodlover = () => {
         }
       } else {
         // Signup flow - all users get both requester and recommender roles
-        const { error } = await signUp(email, password, displayName, 'regular');
+        const { error } = await signUp(email, password, displayName, 'regular', phoneNumber || undefined);
         if (error) {
           toast({
             title: "Signup Failed",
@@ -213,16 +215,25 @@ const AuthFoodlover = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Name</Label>
-                <Input
-                  id="displayName"
-                  type="text"
-                  placeholder="Your name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
+          {!isLogin && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Name</Label>
+                  <Input
+                    id="displayName"
+                    type="text"
+                    placeholder="Your name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <PhoneInput
+                  value={phoneNumber}
+                  onChange={setPhoneNumber}
+                  required={false}
+                  description="For SMS notifications about your food requests"
                 />
               </div>
             )}
