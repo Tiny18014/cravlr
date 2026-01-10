@@ -1,62 +1,57 @@
-import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Phone } from 'lucide-react';
+import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Phone } from "lucide-react";
 
 // Common country codes with flags
 const countryCodes = [
-  { code: '+1', country: 'US', flag: '🇺🇸', name: 'United States' },
-  { code: '+1', country: 'CA', flag: '🇨🇦', name: 'Canada' },
-  { code: '+44', country: 'GB', flag: '🇬🇧', name: 'United Kingdom' },
-  { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India' },
-  { code: '+61', country: 'AU', flag: '🇦🇺', name: 'Australia' },
-  { code: '+49', country: 'DE', flag: '🇩🇪', name: 'Germany' },
-  { code: '+33', country: 'FR', flag: '🇫🇷', name: 'France' },
-  { code: '+39', country: 'IT', flag: '🇮🇹', name: 'Italy' },
-  { code: '+34', country: 'ES', flag: '🇪🇸', name: 'Spain' },
-  { code: '+81', country: 'JP', flag: '🇯🇵', name: 'Japan' },
-  { code: '+86', country: 'CN', flag: '🇨🇳', name: 'China' },
-  { code: '+82', country: 'KR', flag: '🇰🇷', name: 'South Korea' },
-  { code: '+55', country: 'BR', flag: '🇧🇷', name: 'Brazil' },
-  { code: '+52', country: 'MX', flag: '🇲🇽', name: 'Mexico' },
-  { code: '+31', country: 'NL', flag: '🇳🇱', name: 'Netherlands' },
-  { code: '+46', country: 'SE', flag: '🇸🇪', name: 'Sweden' },
-  { code: '+47', country: 'NO', flag: '🇳🇴', name: 'Norway' },
-  { code: '+45', country: 'DK', flag: '🇩🇰', name: 'Denmark' },
-  { code: '+358', country: 'FI', flag: '🇫🇮', name: 'Finland' },
-  { code: '+48', country: 'PL', flag: '🇵🇱', name: 'Poland' },
-  { code: '+43', country: 'AT', flag: '🇦🇹', name: 'Austria' },
-  { code: '+41', country: 'CH', flag: '🇨🇭', name: 'Switzerland' },
-  { code: '+32', country: 'BE', flag: '🇧🇪', name: 'Belgium' },
-  { code: '+351', country: 'PT', flag: '🇵🇹', name: 'Portugal' },
-  { code: '+353', country: 'IE', flag: '🇮🇪', name: 'Ireland' },
-  { code: '+64', country: 'NZ', flag: '🇳🇿', name: 'New Zealand' },
-  { code: '+65', country: 'SG', flag: '🇸🇬', name: 'Singapore' },
-  { code: '+60', country: 'MY', flag: '🇲🇾', name: 'Malaysia' },
-  { code: '+63', country: 'PH', flag: '🇵🇭', name: 'Philippines' },
-  { code: '+66', country: 'TH', flag: '🇹🇭', name: 'Thailand' },
-  { code: '+62', country: 'ID', flag: '🇮🇩', name: 'Indonesia' },
-  { code: '+84', country: 'VN', flag: '🇻🇳', name: 'Vietnam' },
-  { code: '+27', country: 'ZA', flag: '🇿🇦', name: 'South Africa' },
-  { code: '+234', country: 'NG', flag: '🇳🇬', name: 'Nigeria' },
-  { code: '+20', country: 'EG', flag: '🇪🇬', name: 'Egypt' },
-  { code: '+971', country: 'AE', flag: '🇦🇪', name: 'UAE' },
-  { code: '+966', country: 'SA', flag: '🇸🇦', name: 'Saudi Arabia' },
-  { code: '+972', country: 'IL', flag: '🇮🇱', name: 'Israel' },
-  { code: '+90', country: 'TR', flag: '🇹🇷', name: 'Turkey' },
-  { code: '+7', country: 'RU', flag: '🇷🇺', name: 'Russia' },
-  { code: '+380', country: 'UA', flag: '🇺🇦', name: 'Ukraine' },
-  { code: '+54', country: 'AR', flag: '🇦🇷', name: 'Argentina' },
-  { code: '+56', country: 'CL', flag: '🇨🇱', name: 'Chile' },
-  { code: '+57', country: 'CO', flag: '🇨🇴', name: 'Colombia' },
-  { code: '+51', country: 'PE', flag: '🇵🇪', name: 'Peru' },
+  { code: "+977", country: "NP", flag: "🇳🇵", name: "Nepal" },
+  { code: "+1", country: "US", flag: "🇺🇸", name: "United States" },
+  { code: "+1", country: "CA", flag: "🇨🇦", name: "Canada" },
+  { code: "+44", country: "GB", flag: "🇬🇧", name: "United Kingdom" },
+  { code: "+91", country: "IN", flag: "🇮🇳", name: "India" },
+  { code: "+61", country: "AU", flag: "🇦🇺", name: "Australia" },
+  { code: "+49", country: "DE", flag: "🇩🇪", name: "Germany" },
+  { code: "+33", country: "FR", flag: "🇫🇷", name: "France" },
+  { code: "+39", country: "IT", flag: "🇮🇹", name: "Italy" },
+  { code: "+34", country: "ES", flag: "🇪🇸", name: "Spain" },
+  { code: "+81", country: "JP", flag: "🇯🇵", name: "Japan" },
+  { code: "+86", country: "CN", flag: "🇨🇳", name: "China" },
+  { code: "+82", country: "KR", flag: "🇰🇷", name: "South Korea" },
+  { code: "+55", country: "BR", flag: "🇧🇷", name: "Brazil" },
+  { code: "+52", country: "MX", flag: "🇲🇽", name: "Mexico" },
+  { code: "+31", country: "NL", flag: "🇳🇱", name: "Netherlands" },
+  { code: "+46", country: "SE", flag: "🇸🇪", name: "Sweden" },
+  { code: "+47", country: "NO", flag: "🇳🇴", name: "Norway" },
+  { code: "+45", country: "DK", flag: "🇩🇰", name: "Denmark" },
+  { code: "+358", country: "FI", flag: "🇫🇮", name: "Finland" },
+  { code: "+48", country: "PL", flag: "🇵🇱", name: "Poland" },
+  { code: "+43", country: "AT", flag: "🇦🇹", name: "Austria" },
+  { code: "+41", country: "CH", flag: "🇨🇭", name: "Switzerland" },
+  { code: "+32", country: "BE", flag: "🇧🇪", name: "Belgium" },
+  { code: "+351", country: "PT", flag: "🇵🇹", name: "Portugal" },
+  { code: "+353", country: "IE", flag: "🇮🇪", name: "Ireland" },
+  { code: "+64", country: "NZ", flag: "🇳🇿", name: "New Zealand" },
+  { code: "+65", country: "SG", flag: "🇸🇬", name: "Singapore" },
+  { code: "+60", country: "MY", flag: "🇲🇾", name: "Malaysia" },
+  { code: "+63", country: "PH", flag: "🇵🇭", name: "Philippines" },
+  { code: "+66", country: "TH", flag: "🇹🇭", name: "Thailand" },
+  { code: "+62", country: "ID", flag: "🇮🇩", name: "Indonesia" },
+  { code: "+84", country: "VN", flag: "🇻🇳", name: "Vietnam" },
+  { code: "+27", country: "ZA", flag: "🇿🇦", name: "South Africa" },
+  { code: "+234", country: "NG", flag: "🇳🇬", name: "Nigeria" },
+  { code: "+20", country: "EG", flag: "🇪🇬", name: "Egypt" },
+  { code: "+971", country: "AE", flag: "🇦🇪", name: "UAE" },
+  { code: "+966", country: "SA", flag: "🇸🇦", name: "Saudi Arabia" },
+  { code: "+972", country: "IL", flag: "🇮🇱", name: "Israel" },
+  { code: "+90", country: "TR", flag: "🇹🇷", name: "Turkey" },
+  { code: "+7", country: "RU", flag: "🇷🇺", name: "Russia" },
+  { code: "+380", country: "UA", flag: "🇺🇦", name: "Ukraine" },
+  { code: "+54", country: "AR", flag: "🇦🇷", name: "Argentina" },
+  { code: "+56", country: "CL", flag: "🇨🇱", name: "Chile" },
+  { code: "+57", country: "CO", flag: "🇨🇴", name: "Colombia" },
+  { code: "+51", country: "PE", flag: "🇵🇪", name: "Peru" },
 ];
 
 interface PhoneInputProps {
@@ -72,14 +67,14 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   value,
   onChange,
   required = false,
-  label = 'Phone Number',
-  placeholder = '555 123 4567',
+  label = "Phone Number",
+  placeholder = "555 123 4567",
   description,
 }) => {
   // Parse the value to extract country code and number
   const parsePhoneNumber = (phone: string) => {
-    if (!phone) return { countryCode: '+1', number: '' };
-    
+    if (!phone) return { countryCode: "+1", number: "" };
+
     // Try to find matching country code
     for (const country of countryCodes) {
       if (phone.startsWith(country.code)) {
@@ -89,9 +84,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         };
       }
     }
-    
+
     // Default to US if no match
-    return { countryCode: '+1', number: phone.replace(/^\+\d+\s*/, '') };
+    return { countryCode: "+1", number: phone.replace(/^\+\d+\s*/, "") };
   };
 
   const parsed = parsePhoneNumber(value);
@@ -100,26 +95,29 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
   const handleCountryChange = (newCode: string) => {
     setCountryCode(newCode);
-    const fullNumber = phoneNumber ? `${newCode}${phoneNumber}` : '';
+    const fullNumber = phoneNumber ? `${newCode}${phoneNumber}` : "";
     onChange(fullNumber);
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numbers, spaces, and dashes
-    const cleanValue = e.target.value.replace(/[^\d\s-]/g, '');
+    const cleanValue = e.target.value.replace(/[^\d\s-]/g, "");
     setPhoneNumber(cleanValue);
-    const fullNumber = cleanValue ? `${countryCode}${cleanValue.replace(/[\s-]/g, '')}` : '';
+    const fullNumber = cleanValue ? `${countryCode}${cleanValue.replace(/[\s-]/g, "")}` : "";
     onChange(fullNumber);
   };
 
   // Get unique country codes for display (some countries share codes)
-  const uniqueCountryCodes = countryCodes.reduce((acc, country) => {
-    const key = `${country.code}-${country.country}`;
-    if (!acc.find(c => `${c.code}-${c.country}` === key)) {
-      acc.push(country);
-    }
-    return acc;
-  }, [] as typeof countryCodes);
+  const uniqueCountryCodes = countryCodes.reduce(
+    (acc, country) => {
+      const key = `${country.code}-${country.country}`;
+      if (!acc.find((c) => `${c.code}-${c.country}` === key)) {
+        acc.push(country);
+      }
+      return acc;
+    },
+    [] as typeof countryCodes,
+  );
 
   return (
     <div className="space-y-2">
@@ -129,7 +127,10 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         {!required && <span className="text-muted-foreground text-xs">(Optional)</span>}
       </Label>
       <div className="flex gap-2">
-        <Select value={`${countryCode}-${uniqueCountryCodes.find(c => c.code === countryCode)?.country || 'US'}`} onValueChange={(val) => handleCountryChange(val.split('-')[0])}>
+        <Select
+          value={`${countryCode}-${uniqueCountryCodes.find((c) => c.code === countryCode)?.country || "US"}`}
+          onValueChange={(val) => handleCountryChange(val.split("-")[0])}
+        >
           <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Code" />
           </SelectTrigger>
@@ -154,9 +155,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           className="flex-1"
         />
       </div>
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
     </div>
   );
 };
