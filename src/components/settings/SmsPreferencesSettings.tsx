@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Smartphone, Bell, MessageSquare, Clock, Phone } from "lucide-react";
+import { Smartphone, Bell, MessageSquare, Clock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSmsPreferences } from "@/hooks/useSmsPreferences";
+import { PhoneInput } from "@/components/PhoneInput";
 
 export const SmsPreferencesSettings = () => {
   const { preferences, saving, updatePreference, updatePhoneNumber, hasPhoneNumber } = useSmsPreferences();
@@ -55,57 +55,51 @@ export const SmsPreferencesSettings = () => {
     <div className="space-y-4">
       {/* Phone Number Section */}
       <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-        <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4 text-muted-foreground" />
-          <Label className="text-sm font-medium">Phone Number</Label>
-        </div>
-        
         {!hasPhoneNumber || isEditingPhone ? (
-          <div className="flex gap-2">
-            <Input
-              type="tel"
-              placeholder="+1 (555) 123-4567"
+          <div className="space-y-3">
+            <PhoneInput
               value={phoneInput}
-              onChange={(e) => setPhoneInput(e.target.value)}
-              className="flex-1"
+              onChange={setPhoneInput}
+              label="Phone Number"
+              placeholder="555 123 4567"
+              description="Add a phone number to receive SMS notifications"
             />
-            <Button 
-              size="sm" 
-              onClick={handleSavePhone}
-              disabled={saving || !phoneInput}
-            >
-              Save
-            </Button>
-            {hasPhoneNumber && (
+            <div className="flex gap-2">
               <Button 
                 size="sm" 
-                variant="ghost"
-                onClick={() => {
-                  setPhoneInput(preferences.phone_number || "");
-                  setIsEditingPhone(false);
-                }}
+                onClick={handleSavePhone}
+                disabled={saving || !phoneInput}
               >
-                Cancel
+                Save
               </Button>
-            )}
+              {hasPhoneNumber && (
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => {
+                    setPhoneInput(preferences.phone_number || "");
+                    setIsEditingPhone(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{preferences.phone_number}</span>
-            <Button 
-              size="sm" 
-              variant="ghost"
-              onClick={() => setIsEditingPhone(true)}
-            >
-              Edit
-            </Button>
+            <Label className="text-sm font-medium">Phone Number</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{preferences.phone_number}</span>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => setIsEditingPhone(true)}
+              >
+                Edit
+              </Button>
+            </div>
           </div>
-        )}
-        
-        {!hasPhoneNumber && (
-          <p className="text-xs text-muted-foreground">
-            Add a phone number to receive SMS notifications
-          </p>
         )}
       </div>
 
