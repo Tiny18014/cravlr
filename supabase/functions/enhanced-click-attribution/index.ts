@@ -22,20 +22,56 @@ interface EnhancedClickData {
   device_fingerprint?: string;
 }
 
-// Zod validation schema for input
+// Sanitize string to prevent log injection and data corruption
+function sanitizeString(value: string | undefined | null, maxLength: number): string {
+  if (!value) return '';
+  
+  // Remove control characters (CRLF injection prevention)
+  let sanitized = value.replace(/[\x00-\x1F\x7F]/g, '');
+  
+  // Truncate to max length
+  sanitized = sanitized.slice(0, maxLength);
+  
+  return sanitized;
+}
+
+// Validate and sanitize IP address
+function sanitizeIpAddress(ip: string | undefined | null): string {
+  if (!ip) return 'unknown';
+  
+  // Remove control characters
+  let sanitized = ip.replace(/[\x00-\x1F\x7F]/g, '');
+  
+  // Truncate to reasonable length (max 45 chars for IPv6)
+  sanitized = sanitized.slice(0, 45);
+  
+  // Basic validation - should contain only valid IP characters
+  const ipPattern = /^[0-9a-fA-F.:]+$/;
+  
+  // Handle X-Forwarded-For which may contain multiple IPs
+  const firstIp = sanitized.split(',')[0].trim();
+  
+  if (!ipPattern.test(firstIp)) {
+    return 'unknown';
+  }
+  
+  return firstIp;
+}
+
+// Zod validation schema for input with additional sanitization
 const clickDataSchema = z.object({
-  referral_code: z.string().min(1).max(50),
-  user_agent: z.string().max(500),
-  ip_address: z.string().max(100),
-  screen_resolution: z.string().max(20).optional(),
-  timezone: z.string().max(50).optional(),
-  language: z.string().max(10).optional(),
-  referrer: z.string().max(2000).optional(),
-  utm_source: z.string().max(100).optional(),
-  utm_medium: z.string().max(100).optional(),
-  utm_campaign: z.string().max(100).optional(),
-  session_id: z.string().max(100).optional(),
-  device_fingerprint: z.string().max(100).optional()
+  referral_code: z.string().min(1).max(50).transform(v => sanitizeString(v, 50)),
+  user_agent: z.string().max(500).transform(v => sanitizeString(v, 500)),
+  ip_address: z.string().max(100).transform(v => sanitizeIpAddress(v)),
+  screen_resolution: z.string().max(20).optional().transform(v => v ? sanitizeString(v, 20) : undefined),
+  timezone: z.string().max(50).optional().transform(v => v ? sanitizeString(v, 50) : undefined),
+  language: z.string().max(10).optional().transform(v => v ? sanitizeString(v, 10) : undefined),
+  referrer: z.string().max(2000).optional().transform(v => v ? sanitizeString(v, 2000) : undefined),
+  utm_source: z.string().max(100).optional().transform(v => v ? sanitizeString(v, 100) : undefined),
+  utm_medium: z.string().max(100).optional().transform(v => v ? sanitizeString(v, 100) : undefined),
+  utm_campaign: z.string().max(100).optional().transform(v => v ? sanitizeString(v, 100) : undefined),
+  session_id: z.string().max(100).optional().transform(v => v ? sanitizeString(v, 100) : undefined),
+  device_fingerprint: z.string().max(100).optional().transform(v => v ? sanitizeString(v, 100) : undefined)
 });
 
 const handler = async (req: Request): Promise<Response> => {
