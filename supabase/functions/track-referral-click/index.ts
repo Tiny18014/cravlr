@@ -19,6 +19,43 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
+// Sanitize User-Agent header to prevent log injection and data corruption
+function sanitizeUserAgent(userAgent: string | null): string {
+  if (!userAgent) return '';
+  
+  // Remove control characters (CRLF injection prevention)
+  let sanitized = userAgent.replace(/[\x00-\x1F\x7F]/g, '');
+  
+  // Truncate to max 500 characters
+  sanitized = sanitized.slice(0, 500);
+  
+  return sanitized;
+}
+
+// Validate and sanitize IP address
+function sanitizeIpAddress(ip: string | null): string {
+  if (!ip) return 'unknown';
+  
+  // Remove control characters
+  let sanitized = ip.replace(/[\x00-\x1F\x7F]/g, '');
+  
+  // Truncate to reasonable length (max 45 chars for IPv6)
+  sanitized = sanitized.slice(0, 45);
+  
+  // Basic validation - should contain only valid IP characters
+  // IPv4: digits and dots, IPv6: hex digits, colons, and dots
+  const ipPattern = /^[0-9a-fA-F.:]+$/;
+  
+  // Handle X-Forwarded-For which may contain multiple IPs
+  const firstIp = sanitized.split(',')[0].trim();
+  
+  if (!ipPattern.test(firstIp)) {
+    return 'unknown';
+  }
+  
+  return firstIp;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -111,11 +148,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Track the click with rate limiting and duplicate detection
-    const userAgent = req.headers.get('User-Agent') || '';
-    const clientIP = req.headers.get('CF-Connecting-IP') || 
-                     req.headers.get('X-Forwarded-For') || 
-                     req.headers.get('X-Real-IP') || 
-                     'unknown';
+    // Sanitize headers to prevent log injection and data corruption
+    const userAgent = sanitizeUserAgent(req.headers.get('User-Agent'));
+    const clientIP = sanitizeIpAddress(
+      req.headers.get('CF-Connecting-IP') || 
+      req.headers.get('X-Forwarded-For') || 
+      req.headers.get('X-Real-IP')
+    );
 
     // Rate limiting: Check for recent clicks from same IP (10 per hour)
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
