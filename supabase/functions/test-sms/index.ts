@@ -76,6 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
         include_phone_numbers: [phoneNumber],
+        sms_from: "+18124145308",
         contents: { en: "🍽️ Cravlr Test: Your SMS notifications are working! You'll receive alerts about food requests near you." },
         name: "Test SMS",
       }),

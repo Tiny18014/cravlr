@@ -212,6 +212,7 @@ const handler = async (req: Request): Promise<Response> => {
                         body: JSON.stringify({
                             app_id: ONESIGNAL_APP_ID,
                             include_phone_numbers: [user.phone_number],
+                            sms_from: "+18124145308",
                             contents: { en: smsMessage },
                             name: "New Request Broadcast SMS",
                         }),
