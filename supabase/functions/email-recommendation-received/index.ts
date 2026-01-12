@@ -107,6 +107,7 @@ async function sendSmsViaOneSignal(params: {
       body: JSON.stringify({
         app_id: appId,
         include_phone_numbers: [params.phoneNumber],
+        sms_from: "+18124145308",
         name: "Recommendation SMS",
         contents: { en: params.message },
       }),
