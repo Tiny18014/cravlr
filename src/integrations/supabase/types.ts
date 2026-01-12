@@ -1160,6 +1160,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      award_points_with_feedback: {
+        Args: { base_points: number; feedback_bonus?: number; rec_id: string }
+        Returns: undefined
+      }
       bootstrap_first_admin: { Args: never; Returns: undefined }
       calculate_recommender_level: {
         Args: { total_points: number }
@@ -1213,6 +1217,10 @@ export type Database = {
         Returns: undefined
       }
       self_assign_initial_roles: { Args: never; Returns: undefined }
+      update_recommender_reputation: {
+        Args: { rec_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "requester" | "recommender" | "admin"
