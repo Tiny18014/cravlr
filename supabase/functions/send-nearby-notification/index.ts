@@ -10,7 +10,7 @@ const corsHeaders = {
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
 const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-const APP_URL = Deno.env.get('APP_URL') || 'https://cravlr.com';
+const APP_URL = Deno.env.get('APP_URL') || 'https://cravlr.lovable.app';
 
 // Haversine formula to calculate distance between two points
 function calculateDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -30,7 +30,7 @@ const notificationSchema = z.object({
 });
 
 serve(async (req) => {
-  console.log('🔔 Send nearby notification endpoint called');
+  console.log('[send-nearby-notification] Starting...');
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,6 +40,7 @@ serve(async (req) => {
     // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[send-nearby-notification] No auth header provided');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -55,17 +56,23 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
+      console.error('[send-nearby-notification] Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('[send-nearby-notification] Authenticated user:', user.id);
+
     // Parse request
     const body = await req.json();
+    console.log('[send-nearby-notification] Request body:', body);
+    
     const validationResult = notificationSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.error('[send-nearby-notification] Validation error:', validationResult.error);
       return new Response(
         JSON.stringify({ error: 'Invalid input' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -73,6 +80,7 @@ serve(async (req) => {
     }
 
     const { requestId } = validationResult.data;
+    console.log('[send-nearby-notification] Processing request ID:', requestId);
 
     // Get service role client for cross-user queries
     const supabaseAdmin = createClient(
@@ -88,14 +96,18 @@ serve(async (req) => {
       .single();
 
     if (requestError || !request) {
+      console.error('[send-nearby-notification] Request not found:', requestError);
       return new Response(
         JSON.stringify({ error: 'Request not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('[send-nearby-notification] Found request:', { id: request.id, food_type: request.food_type, city: request.location_city });
+
     // Verify ownership
     if (request.requester_id !== user.id) {
+      console.error('[send-nearby-notification] Forbidden - user does not own request');
       return new Response(
         JSON.stringify({ error: 'Forbidden' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -110,11 +122,9 @@ serve(async (req) => {
       .single();
 
     const requesterName = requesterProfile?.display_name || 'Someone';
+    console.log('[send-nearby-notification] Requester name:', requesterName);
 
     // Find eligible recommenders
-    // 1. notify_recommender = true
-    // 2. recommender_paused = false
-    // 3. Within radius OR same city/state
     const { data: eligibleProfiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('id, display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km, phone_number, sms_notifications_enabled, sms_new_requests')
@@ -123,9 +133,11 @@ serve(async (req) => {
       .neq('id', user.id);
 
     if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
+      console.error('[send-nearby-notification] Error fetching profiles:', profilesError);
       throw profilesError;
     }
+
+    console.log('[send-nearby-notification] Total eligible profiles:', eligibleProfiles?.length || 0);
 
     // Filter by location
     const matchedUsers: string[] = [];
@@ -166,9 +178,11 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Found ${matchedUsers.length} matched recommenders`);
+    console.log('[send-nearby-notification] Matched recommenders:', matchedUsers.length);
+    console.log('[send-nearby-notification] SMS eligible users:', smsEligibleUsers.length);
 
     if (matchedUsers.length === 0) {
+      console.log('[send-nearby-notification] No nearby recommenders found');
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -188,8 +202,10 @@ serve(async (req) => {
       .eq('is_active', true);
 
     if (tokensError) {
-      console.error('Error fetching device tokens:', tokensError);
+      console.error('[send-nearby-notification] Error fetching device tokens:', tokensError);
     }
+
+    console.log('[send-nearby-notification] Device tokens found:', deviceTokens?.length || 0);
 
     // Build notification content
     const cityDisplay = request.location_city || 'your area';
@@ -205,6 +221,11 @@ serve(async (req) => {
       bodyText = `Craving ${cuisines} (${flavors})`;
     }
 
+    // Generate deep link URL
+    const deepLinkPath = `/send-recommendation?requestId=${request.id}`;
+    const deepLinkUrl = `${APP_URL}${deepLinkPath}`;
+    console.log('[send-nearby-notification] Generated deep link:', deepLinkUrl);
+
     const notificationPayload = {
       title: `🍽️ New Craving in ${cityDisplay}`,
       body: bodyText,
@@ -213,9 +234,40 @@ serve(async (req) => {
         requestId: request.id,
         requestCity: request.location_city,
         foodType: request.food_type,
+        deepLink: deepLinkPath,
       },
-      deepLink: `/send-recommendation?requestId=${request.id}`,
     };
+
+    // Create in-app notifications FIRST (before sending push/SMS)
+    console.log('[send-nearby-notification] Creating in-app notifications...');
+    const inAppNotifications = matchedUsers.map(userId => ({
+      recommender_id: userId,
+      request_id: request.id,
+      type: 'new_request_nearby',
+      title: notificationPayload.title,
+      message: notificationPayload.body,
+      restaurant_name: `${request.location_city} | ${request.food_type}`,
+      recommendation_id: null,
+      read: false,
+    }));
+
+    let inAppCreated = 0;
+    if (inAppNotifications.length > 0) {
+      const { data: insertedData, error: insertError } = await supabaseAdmin
+        .from('recommender_notifications')
+        .upsert(inAppNotifications, { 
+          onConflict: 'recommender_id,request_id,type',
+          ignoreDuplicates: true 
+        })
+        .select('id');
+      
+      if (insertError) {
+        console.error('[send-nearby-notification] DB insert error:', insertError);
+      } else {
+        inAppCreated = insertedData?.length || 0;
+        console.log('[send-nearby-notification] DB insert success - created:', inAppCreated);
+      }
+    }
 
     let notificationsSent = 0;
 
@@ -233,12 +285,14 @@ serve(async (req) => {
             headings: { en: notificationPayload.title },
             contents: { en: notificationPayload.body },
             data: notificationPayload.data,
-            url: `${APP_URL}/browse-requests`,
+            url: deepLinkUrl,
             buttons: [
               { id: 'help', text: 'Help Out' },
               { id: 'dismiss', text: 'Not Now' }
             ],
           };
+
+          console.log('[send-nearby-notification] Sending to OneSignal:', { playerIds: playerIds.length, url: deepLinkUrl });
 
           const response = await fetch('https://onesignal.com/api/v1/notifications', {
             method: 'POST',
@@ -250,28 +304,38 @@ serve(async (req) => {
           });
 
           const result = await response.json();
-          console.log('OneSignal response:', result);
+          console.log('[send-nearby-notification] OneSignal response:', result);
           notificationsSent = result.recipients || playerIds.length;
         } catch (pushError) {
-          console.error('OneSignal push error:', pushError);
+          console.error('[send-nearby-notification] OneSignal push error:', pushError);
         }
       }
     }
 
     // Send SMS to eligible users via OneSignal
-    // NOTE: "smsSent" here means "accepted by OneSignal" (not guaranteed delivered).
     let smsSent = 0;
     if (ONESIGNAL_APP_ID && ONESIGNAL_API_KEY && smsEligibleUsers.length > 0) {
-      const smsMessage = `🍽️ Cravlr: ${requesterName} is craving ${bodyText} in ${cityDisplay}. Can you help? ${APP_URL}/browse-requests`;
+      // SMS with deep link
+      const smsMessage = `🍽️ Cravlr: ${requesterName} is craving ${bodyText} in ${cityDisplay}. Help them out: ${deepLinkUrl}`;
 
-      console.log(
-        "📱 SMS eligible users:",
-        smsEligibleUsers.map((u) => ({ id: u.id, phone_number: u.phone_number }))
-      );
+      console.log('[send-nearby-notification] SMS message:', smsMessage);
 
       for (const smsUser of smsEligibleUsers) {
         try {
-          // Step 1: Ensure OneSignal knows this user's SMS subscription (idempotent upsert)
+          // Step 1: Ensure OneSignal knows this user's SMS subscription
+          const upsertPayload = {
+            identity: { external_id: smsUser.id },
+            subscriptions: [
+              {
+                type: "SMS",
+                token: smsUser.phone_number,
+                enabled: true,
+              },
+            ],
+          };
+          
+          console.log('[send-nearby-notification] Upserting SMS subscription for user:', smsUser.id);
+
           const upsertResponse = await fetch(
             `https://onesignal.com/api/v1/apps/${ONESIGNAL_APP_ID}/users`,
             {
@@ -280,40 +344,28 @@ serve(async (req) => {
                 "Content-Type": "application/json",
                 Authorization: `Basic ${ONESIGNAL_API_KEY}`,
               },
-              body: JSON.stringify({
-                identity: { external_id: smsUser.id },
-                subscriptions: [
-                  {
-                    type: "SMS",
-                    token: smsUser.phone_number,
-                    enabled: true,
-                  },
-                ],
-              }),
+              body: JSON.stringify(upsertPayload),
             }
           );
 
           const upsertData = await upsertResponse.json().catch(() => ({}));
-          console.log(
-            `📱 OneSignal SMS subscription upsert (${smsUser.id}) status=${upsertResponse.status}`,
-            upsertData
-          );
+          console.log('[send-nearby-notification] SMS subscription upsert response:', { userId: smsUser.id, status: upsertResponse.status });
 
           if (!upsertResponse.ok) {
-            console.error(
-              `📱 SMS subscription upsert failed for user ${smsUser.id}`,
-              upsertData
-            );
+            console.error('[send-nearby-notification] SMS subscription upsert failed:', upsertData);
             continue;
           }
 
-          // Step 2: Send the SMS directly to the phone number
+          // Step 2: Send the SMS
           const smsPayload = {
             app_id: ONESIGNAL_APP_ID,
             include_phone_numbers: [smsUser.phone_number],
             contents: { en: smsMessage },
+            sms_content: smsMessage, // Explicit SMS content field
             name: "New Request SMS",
           };
+
+          console.log('[send-nearby-notification] Sending SMS to:', smsUser.phone_number);
 
           const smsResponse = await fetch("https://onesignal.com/api/v1/notifications", {
             method: "POST",
@@ -325,57 +377,29 @@ serve(async (req) => {
           });
 
           const smsResult = await smsResponse.json().catch(() => ({}));
-          console.log(
-            `📱 OneSignal SMS send (${smsUser.phone_number}) status=${smsResponse.status}`,
-            smsResult
-          );
+          console.log('[send-nearby-notification] SMS send response:', { phone: smsUser.phone_number, status: smsResponse.status, result: smsResult });
 
-          const recipients =
-            typeof (smsResult as any)?.recipients === "number" ? (smsResult as any).recipients : undefined;
+          const recipients = typeof smsResult?.recipients === "number" ? smsResult.recipients : undefined;
 
-          if (smsResponse.ok && !(smsResult as any)?.errors && (recipients === undefined || recipients > 0)) {
+          if (smsResponse.ok && !smsResult?.errors && (recipients === undefined || recipients > 0)) {
             smsSent++;
-          } else if ((smsResult as any)?.errors) {
-            console.error(
-              `📱 SMS error for ${smsUser.phone_number} (user ${smsUser.id}):`,
-              (smsResult as any).errors
-            );
+          } else if (smsResult?.errors) {
+            console.error('[send-nearby-notification] SMS error:', smsResult.errors);
           }
         } catch (smsError) {
-          console.error(`📱 SMS exception for user ${smsUser.id}:`, smsError);
+          console.error('[send-nearby-notification] SMS exception for user:', smsUser.id, smsError);
         }
       }
 
-      console.log(`📱 Total SMS accepted: ${smsSent}/${smsEligibleUsers.length}`);
+      console.log('[send-nearby-notification] Total SMS accepted:', smsSent, '/', smsEligibleUsers.length);
     }
 
-    // Create in-app notifications for matched recommenders
-    // Only use columns that exist in the recommender_notifications table
-    const inAppNotifications = matchedUsers.map(userId => ({
-      recommender_id: userId,
-      type: 'new_request_nearby',
-      title: notificationPayload.title,
-      message: notificationPayload.body,
-      restaurant_name: `${request.location_city} | ${request.id}`, // Include request_id in restaurant_name for deduplication
-      recommendation_id: null,
-      read: false,
-    }));
-
-    let inAppCreated = 0;
-    if (inAppNotifications.length > 0) {
-      // Insert notifications - restaurant_name field includes request_id for reference
-      const { data: insertedData, error: insertError } = await supabaseAdmin
-        .from('recommender_notifications')
-        .insert(inAppNotifications)
-        .select('id');
-      
-      if (insertError) {
-        console.log('Insert notification error:', insertError.message);
-      } else {
-        inAppCreated = insertedData?.length || 0;
-        console.log(`Created ${inAppCreated} in-app notifications`);
-      }
-    }
+    console.log('[send-nearby-notification] Completed successfully:', {
+      matchedUsers: matchedUsers.length,
+      notificationsSent,
+      smsSent,
+      inAppCreated,
+    });
 
     return new Response(
       JSON.stringify({ 
@@ -389,7 +413,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error sending nearby notifications:', error);
+    console.error('[send-nearby-notification] Error occurred:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

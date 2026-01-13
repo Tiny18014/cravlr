@@ -822,6 +822,7 @@ export type Database = {
           read: boolean
           recommendation_id: string | null
           recommender_id: string
+          request_id: string | null
           restaurant_name: string
           title: string
           type: string
@@ -833,6 +834,7 @@ export type Database = {
           read?: boolean
           recommendation_id?: string | null
           recommender_id: string
+          request_id?: string | null
           restaurant_name: string
           title: string
           type: string
@@ -844,6 +846,7 @@ export type Database = {
           read?: boolean
           recommendation_id?: string | null
           recommender_id?: string
+          request_id?: string | null
           restaurant_name?: string
           title?: string
           type?: string
@@ -862,6 +865,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "view_business_commissions"
             referencedColumns: ["recommendation_id"]
+          },
+          {
+            foreignKeyName: "recommender_notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "food_requests"
+            referencedColumns: ["id"]
           },
         ]
       }
