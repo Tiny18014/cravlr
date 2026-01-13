@@ -1,119 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import React, { useEffect } from 'react';
+import { Bell } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { useNotifications, UnifiedNotification } from '@/hooks/useNotifications';
 
 export function NotificationCenter() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
-  const fetchNotifications = async () => {
-    if (!user) return;
+  console.log('[NotificationCenter] Rendering notifications count:', notifications.length);
 
-    // Fetch all columns to avoid "column does not exist" error
-    // We filter in JS as a robust workaround for schema drift
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('requester_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (error) {
-      console.error('Error fetching notifications:', error);
-      return;
-    }
-
-    if (data) {
-      setNotifications(data);
-      // Determine unread count - use the 'read' boolean field
-      const unread = data.filter(n => n.read !== true);
-      setUnreadCount(unread.length);
-    }
-  };
-
-  // Mark all as read when notification center opens
-  const markAllAsRead = async () => {
-    if (!user || notifications.length === 0) return;
-    
-    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-    if (unreadIds.length === 0) return;
-
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .in('id', unreadIds);
-
-    if (!error) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadCount(0);
-    }
-  };
-
-  // When sheet opens, mark all as read
+  // Mark all as read when sheet opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && unreadCount > 0) {
+      console.log('[NotificationCenter] Sheet opened, marking all as read');
       markAllAsRead();
     }
-  }, [isOpen]);
+  }, [isOpen, unreadCount, markAllAsRead]);
 
-  useEffect(() => {
-    fetchNotifications();
-
-    // Subscribe to new notifications
-    if (!user) return;
-    const channel = supabase
-      .channel('notification-center')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `requester_id=eq.${user.id}` },
-        () => {
-          fetchNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  const markAsRead = async (id: string) => {
-    // Try update 'read' column first (most likely)
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', id);
-
-    if (error) {
-       console.error('Error marking notification as read:', error);
+  const handleNotificationClick = (n: UnifiedNotification) => {
+    console.log('[NotificationCenter] Notification clicked:', { id: n.id, type: n.type, source: n.source });
+    
+    markAsRead(n.id, n.source);
+    
+    // Navigate based on notification type and source
+    if (n.source === 'recommender') {
+      // For recommender notifications (new_request_nearby, accepted, declined, etc.)
+      if (n.type === 'new_request_nearby' && n.request_id) {
+        console.log('[NotificationCenter] Navigating to send-recommendation for request:', n.request_id);
+        navigate(`/send-recommendation?requestId=${n.request_id}`);
+      } else if (n.recommendation_id) {
+        console.log('[NotificationCenter] Navigating to browse-requests');
+        navigate('/browse-requests');
+      } else {
+        navigate('/browse-requests');
+      }
+    } else {
+      // For system notifications (to requester)
+      if (n.request_id) {
+        console.log('[NotificationCenter] Navigating to request results:', n.request_id);
+        navigate(`/request-results/${n.request_id}`);
+      }
     }
-
-    // Optimistic update
-    setNotifications(prev => prev.map(n =>
-        n.id === id ? { ...n, read: true } : n
-    ));
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    
+    setIsOpen(false);
   };
 
-  const handleNotificationClick = (n: any) => {
-    markAsRead(n.id);
-    // Navigate based on type - use request_id directly from notification
-    if (n.type === 'visit_reminder' && n.request_id) {
-        navigate(`/requests/${n.request_id}/results`);
-    } else if (n.type === 'new_recommendation' && n.request_id) {
-        navigate(`/requests/${n.request_id}/results`);
-    } else if (n.request_id) {
-        navigate(`/requests/${n.request_id}/results`);
+  const getNotificationIcon = (type: string): string => {
+    switch (type) {
+      case 'new_request_nearby':
+        return '🍽️';
+      case 'accepted':
+        return '🎉';
+      case 'declined':
+        return '😢';
+      case 'visit_reminder':
+        return '⏰';
+      case 'new_recommendation':
+        return '💡';
+      default:
+        return '🔔';
     }
-    setIsOpen(false);
   };
 
   return (
@@ -136,48 +86,58 @@ export function NotificationCenter() {
           <SheetTitle className="flex items-center justify-between">
             <span>Notifications</span>
             {unreadCount > 0 && (
-                <span className="text-sm font-normal text-muted-foreground">{unreadCount} unread</span>
+              <span className="text-sm font-normal text-muted-foreground">{unreadCount} unread</span>
             )}
           </SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-full pb-10">
           <div className="flex flex-col gap-3">
             {notifications.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                    <Bell className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                    <p>No notifications yet</p>
-                </div>
+              <div className="text-center py-10 text-muted-foreground">
+                <Bell className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p>No notifications yet</p>
+              </div>
             ) : (
-                notifications.map((n) => {
-                    const isUnread = n.read !== true;
+              notifications.map((n) => {
+                const isUnread = !n.read;
 
-                    return (
-                        <div
-                            key={n.id}
-                            className={`p-4 rounded-xl border transition-colors cursor-pointer active:scale-98 ${
-                                isUnread ? 'bg-primary/5 border-primary/20' : 'bg-card border-border'
-                            }`}
-                            onClick={() => handleNotificationClick(n)}
-                        >
-                            <div className="flex justify-between items-start gap-3">
-                                <div className="flex-1">
-                                    <h4 className={`text-sm ${isUnread ? 'font-semibold text-primary' : 'font-medium'}`}>
-                                        {n.title || 'Notification'}
-                                    </h4>
-                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                        {n.message || 'You have a new update.'}
-                                    </p>
-                                    <span className="text-[10px] text-muted-foreground/60 mt-2 block">
-                                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                                    </span>
-                                </div>
-                                {isUnread && (
-                                    <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
-                                )}
-                            </div>
+                return (
+                  <div
+                    key={`${n.source}-${n.id}`}
+                    className={`p-4 rounded-xl border transition-colors cursor-pointer active:scale-98 ${
+                      isUnread ? 'bg-primary/5 border-primary/20' : 'bg-card border-border'
+                    }`}
+                    onClick={() => handleNotificationClick(n)}
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <span className="text-lg">{getNotificationIcon(n.type)}</span>
+                        <div className="flex-1">
+                          <h4 className={`text-sm ${isUnread ? 'font-semibold text-primary' : 'font-medium'}`}>
+                            {n.title}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {n.message}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[10px] text-muted-foreground/60">
+                              {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                            </span>
+                            {n.source === 'recommender' && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                                Recommender
+                              </span>
+                            )}
+                          </div>
                         </div>
-                    );
-                })
+                      </div>
+                      {isUnread && (
+                        <div className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </ScrollArea>
