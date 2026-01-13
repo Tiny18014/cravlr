@@ -263,13 +263,13 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="https://cravlr.com/dashboard" style="background: #A03272; color: white; padding: 12px 24px; text-decoration: none; border-radius: 24px; font-weight: bold;">
+              <a href="https://cravlr.lovable.app/requests/${request.id}" style="background: #A03272; color: white; padding: 12px 24px; text-decoration: none; border-radius: 24px; font-weight: bold;">
                 View Recommendation
               </a>
             </div>
 
             <p style="font-size: 12px; color: #666; text-align: center;">
-              <a href="https://cravlr.com/profile">Manage Notifications</a>
+              <a href="https://cravlr.lovable.app/profile">Manage Notifications</a>
             </p>
           </div>
         `,
@@ -317,7 +317,7 @@ const handler = async (req: Request): Promise<Response> => {
         requesterProfile.sms_recommendations !== false &&
         requesterProfile.phone_number) {
 
-      const smsMessage = `🍽️ Cravlr: ${recommenderName} recommended ${recommendation.restaurant_name} for your ${request.food_type} request! Check it out: cravlr.com/dashboard`;
+      const smsMessage = `🍽️ Cravlr: ${recommenderName} recommended ${recommendation.restaurant_name} for your ${request.food_type} request! Check it out: https://cravlr.lovable.app/requests/${request.id}`;
 
       smsSent = await sendSmsViaOneSignal({
         userId: requesterId,
