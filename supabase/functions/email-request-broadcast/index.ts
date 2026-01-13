@@ -164,14 +164,14 @@ const handler = async (req: Request): Promise<Response> => {
                             ${request.additional_notes ? `<p><strong>Notes:</strong> "${request.additional_notes}"</p>` : ''}
                             
                             <div style="margin: 20px 0;">
-                                <a href="https://cravlr.com/browse-requests" style="background: #A03272; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                <a href="https://cravlr.lovable.app/recommend/${requestId}" style="background: #A03272; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
                                     Recommend a Place
                                 </a>
                             </div>
                             
                             <p style="font-size: 12px; color: #666;">
                                 You received this because you are a recommender in this area.
-                                <a href="https://cravlr.com/profile">Update preferences</a>
+                                <a href="https://cravlr.lovable.app/profile">Update preferences</a>
                             </p>
                         </div>
                     `
@@ -199,7 +199,7 @@ const handler = async (req: Request): Promise<Response> => {
         const ONESIGNAL_API_KEY = Deno.env.get("ONESIGNAL_API_KEY");
 
         if (smsEligibleUsers.length > 0 && ONESIGNAL_APP_ID && ONESIGNAL_API_KEY) {
-            const smsMessage = `🍽️ Cravlr: Someone near ${request.location_city} is craving ${request.food_type}! Share your recommendation: https://cravlr.com/browse-requests`;
+            const smsMessage = `🍽️ Cravlr: Someone near ${request.location_city} is craving ${request.food_type}! Share your recommendation: https://cravlr.lovable.app/recommend/${requestId}`;
 
             for (const user of smsEligibleUsers) {
                 try {
