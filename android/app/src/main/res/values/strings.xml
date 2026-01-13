@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">Cravlr</string>
+    
+    <!-- Package Name -->
+    <string name="package_name">com.lovable.cravlr</string>
+    
+    <!-- Deep Link Configuration -->
+    <string name="deep_link_scheme">https</string>
+    <string name="deep_link_host">cravlr.lovable.app</string>
+    
+    <!-- Custom URL Scheme (fallback) -->
+    <string name="custom_url_scheme">cravlr</string>
+    
+    <!-- Title for deep link handling -->
+    <string name="title_url_handler">Cravlr Link Handler</string>
+</resources>
