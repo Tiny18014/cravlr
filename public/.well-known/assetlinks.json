@@ -1,8 +1,12 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.lovable.cravlr",
-    "sha256_cert_fingerprints": ["REPLACE_WITH_YOUR_SHA256_FINGERPRINT"]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.lovable.cravlr",
+      "sha256_cert_fingerprints": [
+        "24:13:93:03:C4:70:0C:74:94:D7:47:B3:DA:45:DE:77:8E:34:94:80:DB:C2:FF:5C:5F:1A:98:9B:DF:36:74:B2"
+      ]
+    }
   }
-}]
+]
