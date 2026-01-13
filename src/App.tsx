@@ -20,6 +20,8 @@ import { RouteGuard } from "./components/RouteGuard";
 import { DashboardBottomNav } from "./components/DashboardBottomNav";
 import { useVisitReminderPoller } from "./hooks/useVisitReminderPoller";
 import { LoadingFallback } from "./components/LoadingFallback";
+import { CapacitorDeepLinkHandler } from "./components/CapacitorDeepLinkHandler";
+import { Capacitor } from "@capacitor/core";
 import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
@@ -84,6 +86,14 @@ const AppContent = () => {
   // Poll for visit reminders every 30 seconds
   useVisitReminderPoller();
   
+  // Log Capacitor platform info on mount
+  React.useEffect(() => {
+    console.log('[App] Initializing...');
+    console.log('[App] Capacitor platform:', Capacitor.getPlatform());
+    console.log('[App] Is native platform:', Capacitor.isNativePlatform());
+    console.log('[App] Current route:', window.location.pathname);
+  }, []);
+  
   return (
     <LoadingFallback isLoading={loading} timeout={8000}>
     <UnifiedNotificationProvider>
@@ -94,6 +104,7 @@ const AppContent = () => {
         <GlobalNotificationBanner />
         <BrowserRouter>
           <LocationListener setCurrentPath={setCurrentPath} />
+          <CapacitorDeepLinkHandler />
           <UnifiedRequestManager />
           <UnifiedNotificationDisplay />
           {isDevelopment && (

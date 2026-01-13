@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext traffic for development -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- For development with self-signed certs -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Production domains should use HTTPS only -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">cravlr.lovable.app</domain>
+        <domain includeSubdomains="true">cravlr.com</domain>
+        <domain includeSubdomains="true">ioqogdxfmapcijmqjcpb.supabase.co</domain>
+    </domain-config>
+    
+    <!-- Development: Allow Lovable preview domain -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">lovableproject.com</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
