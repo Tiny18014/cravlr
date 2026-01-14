@@ -474,19 +474,19 @@ const SendRecommendation = () => {
                     />
                   </div>
                   
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => navigate('/browse-requests')}
-                      className="flex-1"
+                      className="w-full sm:flex-1 order-2 sm:order-1"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={isSubmitting || !formData.restaurantName}
-                      className="flex-1"
+                      className="w-full sm:flex-1 order-1 sm:order-2"
                     >
                       {isSubmitting ? 'Sending...' : 'Send Recommendation'}
                     </Button>

@@ -96,13 +96,14 @@ const ActionRow = ({
   // 4. Accepted but hasn't recommended yet - show status chip + action
   if (request.user_state === 'accepted' && !request.user_has_recommended) {
     return (
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 justify-center">
           You Accepted
         </Badge>
         <Button 
           size="sm"
           onClick={() => onOpenSuggestion(request)}
+          className="w-full sm:w-auto"
         >
           <Send className="h-4 w-4 mr-2" />
           Suggest Now
@@ -113,19 +114,19 @@ const ActionRow = ({
 
   // 5. Default state - show Accept/Ignore
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full sm:w-auto">
       <Button
         variant="outline"
         size="sm"
         onClick={() => handleRequestAction(request.id, 'ignore')}
-        className="text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground flex-1 sm:flex-none"
       >
         Ignore
       </Button>
       <Button
         size="sm"
         onClick={() => handleRequestAction(request.id, 'accept')}
-        className="bg-primary text-primary-foreground hover:bg-primary/90"
+        className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 sm:flex-none"
       >
         Accept
       </Button>
@@ -469,8 +470,8 @@ const BrowseRequests = () => {
                       </div>
 
                        {/* Recommendation count and actions */}
-                      <div className="flex justify-between items-center pt-2">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className="text-xs">
                             {request.recommendation_count}/10 locals suggested
                           </Badge>
@@ -480,12 +481,14 @@ const BrowseRequests = () => {
                             </Badge>
                           )}
                         </div>
-                        <ActionRow 
-                          request={request} 
-                          user={user} 
-                          onOpenSuggestion={onOpenSuggestion}
-                          handleRequestAction={handleRequestAction}
-                        />
+                        <div className="w-full sm:w-auto">
+                          <ActionRow 
+                            request={request} 
+                            user={user} 
+                            onOpenSuggestion={onOpenSuggestion}
+                            handleRequestAction={handleRequestAction}
+                          />
+                        </div>
                       </div>
                     </div>
                   </CardContent>
