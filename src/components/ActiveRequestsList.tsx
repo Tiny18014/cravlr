@@ -286,8 +286,8 @@ const ActiveRequestsList = ({
                   </div>
 
                   {/* Status and actions */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="text-xs">
                         {request.recommendation_count}/10 suggestions
                       </Badge>
@@ -304,12 +304,12 @@ const ActiveRequestsList = ({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                       {canRecommend && !request.user_state && (
                         <Button
                           size="sm"
                           onClick={() => handleQuickAccept(request.id)}
-                          className="text-xs"
+                          className="text-xs flex-1 sm:flex-none"
                         >
                           <Send className="h-3 w-3 mr-1" />
                           Suggest
@@ -319,7 +319,7 @@ const ActiveRequestsList = ({
                         <Button
                           size="sm"
                           onClick={() => navigate(`/recommend/${request.id}`)}
-                          className="text-xs"
+                          className="text-xs flex-1 sm:flex-none"
                         >
                           <Send className="h-3 w-3 mr-1" />
                           Suggest Now
@@ -330,7 +330,7 @@ const ActiveRequestsList = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => navigate(`/browse-requests`)}
-                          className="text-xs"
+                          className="text-xs flex-1 sm:flex-none"
                         >
                           View Details
                         </Button>

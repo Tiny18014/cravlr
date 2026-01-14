@@ -181,20 +181,20 @@ export default function BusinessDashboard() {
   return (
     <TooltipProvider>
       <div className="max-w-5xl mx-auto py-10 px-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold">
             Welcome to Cravlr, {profile?.business_name || 'Business Owner'}! 🍕
           </h1>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* Test Mode Toggle */}
-            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2 p-2 sm:p-3 border rounded-lg bg-muted/50">
               <Switch 
                 id="test-mode" 
                 checked={testMode} 
                 onCheckedChange={toggleTestMode}
               />
-              <Label htmlFor="test-mode" className="text-sm cursor-pointer">
+              <Label htmlFor="test-mode" className="text-xs sm:text-sm cursor-pointer">
                 Test Mode {testMode && '✅'}
               </Label>
             </div>
@@ -207,7 +207,7 @@ export default function BusinessDashboard() {
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
-              Sign Out
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </div>
@@ -307,23 +307,23 @@ export default function BusinessDashboard() {
 
         {/* Navigation Tabs */}
         <Tabs defaultValue="dashboard" className="mb-6">
-        <TabsList className="grid grid-cols-5 w-full">
-          <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
-          <TabsTrigger value="analytics">📈 Analytics</TabsTrigger>
-          <TabsTrigger value="attribution">🧭 Attribution</TabsTrigger>
-          <TabsTrigger value="commissions">💵 Commissions</TabsTrigger>
-          <TabsTrigger value="settings">⚙️ Settings</TabsTrigger>
+        <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full gap-1">
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm">📊 Dashboard</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-xs sm:text-sm">📈 Analytics</TabsTrigger>
+          <TabsTrigger value="attribution" className="text-xs sm:text-sm">🧭 Attribution</TabsTrigger>
+          <TabsTrigger value="commissions" className="text-xs sm:text-sm">💵 Commissions</TabsTrigger>
+          <TabsTrigger value="settings" className="text-xs sm:text-sm col-span-2 sm:col-span-1">⚙️ Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
           <Card>
             <CardContent className="p-4">
               <h2 className="font-semibold mb-3">🔧 Quick Actions</h2>
-              <div className="flex flex-col md:flex-row gap-3">
-                <Button variant="outline" onClick={() => navigate('/business/claim')}>
+              <div className="flex flex-col gap-3">
+                <Button variant="outline" onClick={() => navigate('/business/claim')} className="w-full sm:w-auto">
                   Claim Another Restaurant
                 </Button>
-                <Button variant="outline" onClick={() => navigate('/business/subscription')}>
+                <Button variant="outline" onClick={() => navigate('/business/subscription')} className="w-full sm:w-auto">
                   Manage Subscription
                 </Button>
               </div>

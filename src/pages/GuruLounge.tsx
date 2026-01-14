@@ -89,11 +89,11 @@ export default function GuruLounge() {
 
           {/* Tabs */}
           <Tabs defaultValue="feed" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="feed">🧭 Feed</TabsTrigger>
-              <TabsTrigger value="maps">🗺️ Top Maps</TabsTrigger>
-              <TabsTrigger value="leaderboard">🏆 Leaderboard</TabsTrigger>
-              <TabsTrigger value="browse">🔍 Browse Gurus</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+              <TabsTrigger value="feed" className="text-xs sm:text-sm">🧭 Feed</TabsTrigger>
+              <TabsTrigger value="maps" className="text-xs sm:text-sm">🗺️ Top Maps</TabsTrigger>
+              <TabsTrigger value="leaderboard" className="text-xs sm:text-sm">🏆 Leaderboard</TabsTrigger>
+              <TabsTrigger value="browse" className="text-xs sm:text-sm">🔍 Browse Gurus</TabsTrigger>
             </TabsList>
 
             <TabsContent value="feed" className="mt-6">
