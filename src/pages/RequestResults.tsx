@@ -567,7 +567,7 @@ const RequestResults = () => {
 
                       {/* Main Content */}
                       <div className="flex-1 p-4">
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-col gap-4">
                           <div className="flex-1 space-y-2">
                             {/* Name and Badge */}
                             <div className="flex items-center gap-3 flex-wrap">
@@ -640,8 +640,8 @@ const RequestResults = () => {
                             )}
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="shrink-0 flex gap-2 flex-wrap">
+                          {/* Action Buttons - Now stacks vertically on mobile */}
+                          <div className="flex flex-wrap gap-2">
                             {/* Going & Not Going Buttons */}
                             {user && request && user.id === request.requester_id && (
                               <>
