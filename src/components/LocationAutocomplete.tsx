@@ -160,11 +160,23 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   };
 
   const handleLocationSelect = (location: NormalizedLocation) => {
+    console.log('[LocationSearch] handleLocationSelect called with:', {
+      displayLabel: location.displayLabel,
+      lat: location.lat,
+      lng: location.lng,
+      city: location.city,
+      region: location.region,
+      countryCode: location.countryCode,
+      type: location.type
+    });
+    
     setHasUserTyped(false); // Reset so dropdown doesn't reopen
     onValueChange(location.displayLabel);
     onLocationSelect(location);
     setIsOpen(false);
     setSuggestions([]);
+
+    console.log('[LocationSearch] Selection applied, dropdown closed');
 
     // Save to user's current location
     saveUserLocation(location, false);
@@ -387,14 +399,22 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         </div>
         
         {isOpen && suggestions.length > 0 && !isLoading && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-80 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-80 overflow-y-auto">
             {suggestions.map((suggestion, index) => (
               <button
                 key={`${suggestion.providerPlaceId || suggestion.displayLabel}-${index}`}
                 type="button"
-                className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-start gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground flex items-start gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl cursor-pointer"
                 onMouseDown={(e) => {
+                  console.log('[LocationSearch] onMouseDown fired for:', suggestion.displayLabel);
                   e.preventDefault();
+                  e.stopPropagation();
+                  handleLocationSelect(suggestion);
+                }}
+                onClick={(e) => {
+                  console.log('[LocationSearch] onClick fired for:', suggestion.displayLabel);
+                  e.preventDefault();
+                  e.stopPropagation();
                   handleLocationSelect(suggestion);
                 }}
               >
