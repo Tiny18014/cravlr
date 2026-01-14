@@ -549,14 +549,16 @@ const RequestResults = () => {
               return (
                 <Card key={group.key} className="overflow-hidden">
                   <CardContent className="p-0">
-                    <div className="flex">
+                    <div className="flex flex-col sm:flex-row">
                       {/* Photo */}
-                      <div className="w-24 h-24 bg-muted shrink-0 flex items-center justify-center">
+                      <div className="w-full h-40 sm:w-24 sm:h-24 bg-muted sm:shrink-0 flex items-center justify-center">
                         {photoUrl ? (
                           <img 
                             src={photoUrl} 
                             alt={`Photo of ${group.name}`}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="text-muted-foreground">
@@ -566,7 +568,7 @@ const RequestResults = () => {
                       </div>
 
                       {/* Main Content */}
-                      <div className="flex-1 p-4">
+                      <div className="flex-1 p-4 min-w-0">
                         <div className="flex flex-col gap-4">
                           <div className="flex-1 space-y-2">
                             {/* Name and Badge */}
