@@ -640,8 +640,8 @@ const RequestResults = () => {
                             )}
                           </div>
 
-                          {/* Action Buttons - Now stacks vertically on mobile */}
-                          <div className="flex flex-wrap gap-2">
+                          {/* Action Buttons - Full width on mobile */}
+                          <div className="flex flex-col sm:flex-row gap-2 w-full">
                             {/* Going & Not Going Buttons */}
                             {user && request && user.id === request.requester_id && (
                               <>
@@ -650,7 +650,7 @@ const RequestResults = () => {
                                   size="sm"
                                   onClick={() => handleGoingClick(group)}
                                   disabled={goingIntents.has(group.key)}
-                                  className="whitespace-nowrap"
+                                  className="w-full sm:w-auto"
                                 >
                                   {goingIntents.has(group.key) ? (
                                     <>
@@ -666,7 +666,7 @@ const RequestResults = () => {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleNotGoingClick(group)}
-                                    className="whitespace-nowrap"
+                                    className="w-full sm:w-auto"
                                   >
                                     I'm Not Going
                                   </Button>
@@ -680,7 +680,7 @@ const RequestResults = () => {
                                 variant="outline" 
                                 size="sm"
                                 asChild
-                                className="whitespace-nowrap"
+                                className="w-full sm:w-auto"
                               >
                                 <a 
                                   href={group.referralUrl || group.mapsUrl} 
