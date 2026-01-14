@@ -383,7 +383,7 @@ const SendRecommendation = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-y-auto">
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/browse-requests')}>
@@ -394,7 +394,7 @@ const SendRecommendation = () => {
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-24">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Request Details */}
           <Card>
