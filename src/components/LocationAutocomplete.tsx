@@ -162,6 +162,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const handleLocationSelect = (location: NormalizedLocation) => {
     console.log('[LocationSearch] handleLocationSelect called with:', {
       displayLabel: location.displayLabel,
+      formattedAddress: location.formattedAddress,
       lat: location.lat,
       lng: location.lng,
       city: location.city,
@@ -170,13 +171,21 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       type: location.type
     });
     
+    // Use formattedAddress for more complete display, fallback to displayLabel
+    const displayText = location.formattedAddress || location.displayLabel;
+    console.log('[LocationSearch] Updating input text to:', displayText);
+    
     setHasUserTyped(false); // Reset so dropdown doesn't reopen
-    onValueChange(location.displayLabel);
-    onLocationSelect(location);
     setIsOpen(false);
     setSuggestions([]);
+    
+    // Update the input value first
+    onValueChange(displayText);
+    
+    // Then notify parent of full location data
+    onLocationSelect(location);
 
-    console.log('[LocationSearch] Selection applied, dropdown closed');
+    console.log('[LocationSearch] Selection applied, dropdown closed, input updated to:', displayText);
 
     // Save to user's current location
     saveUserLocation(location, false);
