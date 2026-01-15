@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "TEAMID.com.lovable.cravlr",
+        "appID": "4R2JG492WR.com.lovable.cravlr",
         "paths": [ "/request-results/*", "/requests/*", "*" ]
       }
     ]
