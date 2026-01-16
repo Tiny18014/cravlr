@@ -55,15 +55,26 @@
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
     
-    <!-- Custom URL Schemes (Deep Linking Fallback) -->
+    <!-- Custom URL Schemes (Deep Linking Fallback & OAuth) -->
     <key>CFBundleURLTypes</key>
     <array>
+        <!-- Primary custom scheme -->
         <dict>
             <key>CFBundleURLName</key>
             <string>com.lovable.cravlr</string>
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>cravlr</string>
+                <string>com.lovable.cravlr</string>
+            </array>
+        </dict>
+        <!-- Capacitor scheme for OAuth callbacks -->
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>capacitor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>capacitor</string>
             </array>
         </dict>
     </array>

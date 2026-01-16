@@ -23,6 +23,7 @@
             </intent-filter>
 
             <!-- Android App Links (https://cravlr.lovable.app/...) -->
+            <!-- This handles Universal Links style deep links -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -32,6 +33,26 @@
                     android:scheme="https"
                     android:host="cravlr.lovable.app"
                     android:pathPrefix="/" />
+            </intent-filter>
+
+            <!-- Custom URL Scheme Fallback (cravlr://...) -->
+            <!-- Backup deep linking method if App Links don't work -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="cravlr" />
+            </intent-filter>
+
+            <!-- Capacitor URL Scheme (com.lovable.cravlr://...) -->
+            <!-- For OAuth callbacks using package name as scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="com.lovable.cravlr" />
             </intent-filter>
 
         </activity>
