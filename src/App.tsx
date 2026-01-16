@@ -107,13 +107,7 @@ const AppContent = () => {
           <CapacitorDeepLinkHandler />
           <UnifiedRequestManager />
           <UnifiedNotificationDisplay />
-          {isDevelopment && (
-            <>
-              <PopupDebugBinder />
-              <DebugDBRealtime user={user} />
-              <MobileDebugConsole />
-            </>
-          )}
+          {isDevelopment && <PopupDebugBinder />}
           <CookieConsent />
             {/* <TestNotificationButton /> */}
             <Routes>
