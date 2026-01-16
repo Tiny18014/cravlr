@@ -503,12 +503,12 @@ const Dashboard = () => {
         {/* Recent Requests Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Recent Requests</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">Recent Requests</h2>
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => navigate('/dashboard?tab=requests')}
-              className="text-primary hover:text-primary-dark"
+              className="text-primary hover:text-primary-dark text-xs sm:text-sm"
             >
               View All
             </Button>
@@ -516,10 +516,10 @@ const Dashboard = () => {
 
           {recentRequests.length === 0 ? (
             <Card className="border-border/50">
-              <CardContent className="text-center py-12">
-                <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground mb-4">No requests yet</p>
-                <Button onClick={() => navigate('/request-food')}>
+              <CardContent className="text-center py-8 sm:py-12">
+                <FileText className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4 text-sm">No requests yet</p>
+                <Button onClick={() => navigate('/request-food')} size="sm">
                   Create Your First Request
                 </Button>
               </CardContent>
@@ -532,42 +532,42 @@ const Dashboard = () => {
                 
                 return (
                   <Card key={request.id} className="border-border/50 hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-foreground mb-1">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm sm:text-lg font-semibold text-foreground mb-1 truncate">
                               {request.food_type}
                             </h3>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <MapPin className="h-3 w-3" />
-                              {request.location_city}, {request.location_state}
+                            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{request.location_city}, {request.location_state}</span>
                             </div>
                           </div>
                           <Badge 
                             variant={isExpired ? "secondary" : "default"}
-                            className={isExpired ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}
+                            className={`text-[10px] sm:text-xs flex-shrink-0 ${isExpired ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`}
                           >
                             {isExpired ? 'Expired' : 'Active'}
                           </Badge>
                         </div>
                         
-                        <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
+                        <div className="flex items-center justify-between pt-2 border-t border-border/30 gap-2">
+                          <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground min-w-0">
+                            <div className="flex items-center gap-1 flex-shrink-0">
                               <Star className="h-3 w-3 text-primary fill-primary" />
                               <span>{request.recommendation_count || 0}</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>Expires {formatDate(request.expire_at)}</span>
+                            <div className="flex items-center gap-1 min-w-0">
+                              <Clock className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">Expires {formatDate(request.expire_at)}</span>
                             </div>
                           </div>
                           <Button 
                             variant="ghost" 
                             size="sm"
                             onClick={() => navigate(`/requests/${request.id}/results`)}
-                            className="text-primary h-7 px-3 hover:bg-primary/10"
+                            className="text-primary h-6 sm:h-7 px-2 sm:px-3 text-xs hover:bg-primary/10 flex-shrink-0"
                           >
                             View
                           </Button>
@@ -584,12 +584,12 @@ const Dashboard = () => {
         {/* My Recommendations Section */}
         <div className="space-y-3 pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">My Recommendations</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">My Recommendations</h2>
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => navigate('/dashboard?tab=recommendations')}
-              className="text-primary hover:text-primary-dark"
+              className="text-primary hover:text-primary-dark text-xs sm:text-sm"
             >
               View All
             </Button>
@@ -597,10 +597,10 @@ const Dashboard = () => {
 
           {recentRecommendations.length === 0 ? (
             <Card className="border-border/50">
-              <CardContent className="text-center py-12">
-                <Star className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground mb-4">No recommendations yet</p>
-                <Button onClick={() => navigate('/browse-requests')}>
+              <CardContent className="text-center py-8 sm:py-12">
+                <Star className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4 text-sm">No recommendations yet</p>
+                <Button onClick={() => navigate('/browse-requests')} size="sm">
                   Start Recommending
                 </Button>
               </CardContent>
@@ -609,31 +609,31 @@ const Dashboard = () => {
             <div className="space-y-3">
               {recentRecommendations.map((rec) => (
                 <Card key={rec.id} className="border-border/50 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <h3 className="text-base font-semibold text-foreground mb-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 truncate">
                             {rec.restaurant_name}
                           </h3>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
                             For: {rec.food_requests?.food_type || 'Unknown request'}
                           </p>
                           {rec.restaurant_address && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                              <MapPin className="h-3 w-3" />
-                              {rec.restaurant_address}
+                            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{rec.restaurant_address}</span>
                             </div>
                           )}
                         </div>
                         <div className="flex items-center gap-1 text-primary flex-shrink-0">
-                          <Star className="h-4 w-4 fill-primary" />
-                          <span className="text-sm font-semibold">{rec.confidence_score}/5</span>
+                          <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-primary" />
+                          <span className="text-xs sm:text-sm font-semibold">{rec.confidence_score}/5</span>
                         </div>
                       </div>
                       
                       {rec.notes && (
-                        <p className="text-xs text-muted-foreground pt-2 border-t border-border/30 line-clamp-2">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground pt-2 border-t border-border/30 line-clamp-2">
                           {rec.notes}
                         </p>
                       )}
