@@ -314,13 +314,15 @@ const Dashboard = () => {
           profileImageUpdatedAt={profileImageUpdatedAt}
         />
 
-        <main className="flex-1 px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
+        <main className="flex-1 px-4 sm:px-6 py-6 space-y-6 max-w-6xl mx-auto w-full">
           <NotificationPermissionBanner className="mb-4" />
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-semibold text-foreground">My Recommendations</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">My Recommendations</h1>
             <Button 
               variant="default"
               onClick={() => navigate('/browse-requests')}
+              className="w-full sm:w-auto"
+              size="sm"
             >
               Browse Requests
             </Button>
@@ -339,11 +341,11 @@ const Dashboard = () => {
                   <CardContent className="p-3">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{notif.type === 'accepted' ? '🎉' : '📝'}</span>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">{notif.title}</p>
-                        <p className="text-xs text-muted-foreground">{notif.restaurant_name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{notif.restaurant_name}</p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground">
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground flex-shrink-0">
                         Dismiss
                       </Button>
                     </div>
@@ -355,10 +357,10 @@ const Dashboard = () => {
 
           {myRecommendations.length === 0 ? (
             <Card className="border-border/50">
-              <CardContent className="text-center py-12">
-                <Star className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground mb-4">No recommendations yet</p>
-                <Button onClick={() => navigate('/browse-requests')}>
+              <CardContent className="text-center py-8 sm:py-12">
+                <Star className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4 text-sm">No recommendations yet</p>
+                <Button onClick={() => navigate('/browse-requests')} size="sm">
                   Start Recommending
                 </Button>
               </CardContent>
@@ -367,44 +369,44 @@ const Dashboard = () => {
             <div className="space-y-3 pb-4">
               {myRecommendations.map((rec) => (
                 <Card key={rec.id} className="border-border/50 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-base font-semibold text-foreground">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h3 className="text-sm sm:text-base font-semibold text-foreground truncate max-w-[180px] sm:max-w-none">
                               {rec.restaurant_name}
                             </h3>
                             {/* Status Badge */}
                             {rec.status === 'accepted' && (
-                              <Badge className="bg-green-500 text-white text-xs">
+                              <Badge className="bg-green-500 text-white text-[10px] sm:text-xs flex-shrink-0">
                                 Accepted
                               </Badge>
                             )}
                             {rec.status === 'declined' && (
-                              <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                              <Badge variant="secondary" className="bg-muted text-muted-foreground text-[10px] sm:text-xs flex-shrink-0">
                                 Declined
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
                             For: {rec.food_requests?.food_type || 'Unknown request'}
                           </p>
                           {rec.restaurant_address && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                              <MapPin className="h-3 w-3" />
-                              {rec.restaurant_address}
+                            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{rec.restaurant_address}</span>
                             </div>
                           )}
                         </div>
                         <div className="flex items-center gap-1 text-primary flex-shrink-0">
-                          <Star className="h-4 w-4 fill-primary" />
-                          <span className="text-sm font-semibold">{rec.confidence_score}/5</span>
+                          <Star className="h-3 w-3 sm:h-4 sm:w-4 fill-primary" />
+                          <span className="text-xs sm:text-sm font-semibold">{rec.confidence_score}/5</span>
                         </div>
                       </div>
                       
                       {rec.notes && (
-                        <p className="text-xs text-muted-foreground pt-2 border-t border-border/30 line-clamp-2">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground pt-2 border-t border-border/30 line-clamp-2">
                           {rec.notes}
                         </p>
                       )}
