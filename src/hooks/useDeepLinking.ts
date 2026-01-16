@@ -29,16 +29,19 @@ export function useDeepLinking() {
 
   /**
    * Parse incoming URL and extract the path for navigation
+   * For OAuth callbacks, also preserve the hash fragment which contains auth tokens
    */
-  const parseDeepLinkUrl = useCallback((url: string): string | null => {
+  const parseDeepLinkUrl = useCallback((url: string): { path: string; hash: string; search: string } | null => {
     console.log('[Deep Linking] Parsing URL:', url);
     
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname;
       const pathname = urlObj.pathname;
+      const hash = urlObj.hash;
+      const search = urlObj.search;
       
-      console.log('[Deep Linking] Parsed components:', { hostname, pathname });
+      console.log('[Deep Linking] Parsed components:', { hostname, pathname, hash: hash ? 'present' : 'none', search: search ? 'present' : 'none' });
       
       // Validate it's our domain
       const validHosts = ['cravlr.lovable.app', 'cravlr.com', 'www.cravlr.com'];
@@ -47,8 +50,13 @@ export function useDeepLinking() {
         // Still allow navigation for development
       }
       
-      // Return the pathname for navigation
-      return pathname || '/';
+      // Return the pathname, hash, and search for navigation
+      // Hash is important for OAuth callbacks as tokens are in the fragment
+      return { 
+        path: pathname || '/', 
+        hash: hash || '',
+        search: search || ''
+      };
     } catch (error) {
       console.error('[Deep Linking] Error parsing URL:', error);
       return null;
@@ -61,19 +69,23 @@ export function useDeepLinking() {
   const handleDeepLink = useCallback((url: string) => {
     console.log('[Deep Linking] Received URL:', url);
     
-    const path = parseDeepLinkUrl(url);
+    const parsed = parseDeepLinkUrl(url);
     
-    if (path) {
-      console.log('[Deep Linking] Navigating to:', path);
+    if (parsed) {
+      // For OAuth callbacks, we need to preserve the hash fragment
+      // which contains the access token and other auth data
+      const fullPath = parsed.path + parsed.search + parsed.hash;
+      console.log('[Deep Linking] Navigating to:', fullPath);
+      console.log('[Deep Linking] Is OAuth callback:', parsed.path.includes('/auth/google/callback'));
       
       // Check if we're already on this path
-      if (location.pathname === path) {
+      if (location.pathname === parsed.path) {
         console.log('[Deep Linking] Already on path, refreshing...');
         // Force refresh by navigating away and back
         navigate('/', { replace: true });
-        setTimeout(() => navigate(path, { replace: true }), 100);
+        setTimeout(() => navigate(fullPath, { replace: true }), 100);
       } else {
-        navigate(path, { replace: true });
+        navigate(fullPath, { replace: true });
       }
       
       console.log('[Deep Linking] Navigation completed');
