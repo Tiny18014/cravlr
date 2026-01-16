@@ -3,10 +3,14 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 interface GoogleSignInButtonProps {
   className?: string;
 }
+
+// Published app URL for deep linking (Universal Links / App Links)
+const PUBLISHED_APP_URL = 'https://cravlr.lovable.app';
 
 export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ className }) => {
   const [loading, setLoading] = useState(false);
@@ -16,7 +20,16 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ classNam
     setLoading(true);
     
     try {
-      const redirectUrl = `${window.location.origin}/auth/google/callback`;
+      // For native mobile apps, use the published app URL so Universal Links / App Links
+      // can intercept the redirect and bring the user back to the app
+      const isNative = Capacitor.isNativePlatform();
+      const redirectUrl = isNative 
+        ? `${PUBLISHED_APP_URL}/auth/google/callback`
+        : `${window.location.origin}/auth/google/callback`;
+      
+      console.log('[GoogleSignIn] Platform:', Capacitor.getPlatform());
+      console.log('[GoogleSignIn] Is Native:', isNative);
+      console.log('[GoogleSignIn] Redirect URL:', redirectUrl);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
