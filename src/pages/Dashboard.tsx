@@ -442,58 +442,66 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-          <Card className="border-border/50">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          <Card className="border-border/50 overflow-hidden">
+            <CardContent className="p-3 sm:p-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+                <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
                   <Award className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate">{userPoints.total}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Total Points</p>
+                <div className="min-w-0 w-full">
+                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate w-full leading-none">
+                    {userPoints.total}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate w-full">Total Points</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+          <Card className="border-border/50 overflow-hidden">
+            <CardContent className="p-3 sm:p-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+                <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
                   <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate">{activeRequests.length}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Active Requests</p>
+                <div className="min-w-0 w-full">
+                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate w-full leading-none">
+                    {activeRequests.length}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate w-full">Active Requests</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+          <Card className="border-border/50 overflow-hidden">
+            <CardContent className="p-3 sm:p-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+                <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
                   <Clock3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate">{expiredRequests.length}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Expired Requests</p>
+                <div className="min-w-0 w-full">
+                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate w-full leading-none">
+                    {expiredRequests.length}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate w-full">Expired Requests</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
+          <Card className="border-border/50 overflow-hidden">
+            <CardContent className="p-3 sm:p-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+                <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-full bg-primary/10 grid place-items-center flex-shrink-0">
                   <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate">{myRecommendations.length}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Recommendations</p>
+                <div className="min-w-0 w-full">
+                  <p className="text-lg sm:text-2xl font-semibold text-foreground truncate w-full leading-none">
+                    {myRecommendations.length}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate w-full">Recommendations</p>
                 </div>
               </div>
             </CardContent>
