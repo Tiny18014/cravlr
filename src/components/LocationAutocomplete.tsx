@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 
 // Full normalized location with administrative hierarchy
 export interface AdminLevel {
@@ -219,27 +221,95 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   };
 
   const handleUseGps = async () => {
-    if (!('geolocation' in navigator)) {
-      toast({
-        title: "Geolocation not supported",
-        description: "Your browser doesn't support GPS location.",
-        variant: "destructive",
-      });
-      return;
-    }
+    console.log('[LocationAutocomplete] GPS button clicked');
+    console.log('[LocationAutocomplete] Platform:', Capacitor.getPlatform());
+    console.log('[LocationAutocomplete] Is native:', Capacitor.isNativePlatform());
 
     setIsGeolocating(true);
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
+      let latitude: number;
+      let longitude: number;
+
+      if (Capacitor.isNativePlatform()) {
+        // Use Capacitor Geolocation for native platforms
+        console.log('[LocationAutocomplete] Using Capacitor Geolocation API');
+        
+        // Check current permissions
+        console.log('[LocationAutocomplete] Checking permissions...');
+        let permissionStatus = await Geolocation.checkPermissions();
+        console.log('[LocationAutocomplete] Current permission:', permissionStatus.location);
+
+        // Request permission if not granted
+        if (permissionStatus.location !== 'granted') {
+          console.log('[LocationAutocomplete] Requesting permission...');
+          toast({
+            title: "Location Permission",
+            description: "Please allow location access to use this feature.",
+          });
+          
+          permissionStatus = await Geolocation.requestPermissions();
+          console.log('[LocationAutocomplete] Permission after request:', permissionStatus.location);
+
+          if (permissionStatus.location !== 'granted') {
+            console.error('[LocationAutocomplete] Permission denied');
+            throw { code: 1, message: 'Location permission denied' };
+          }
+        }
+
+        console.log('[LocationAutocomplete] Permission granted, getting position...');
+        
+        // Get current position
+        const position = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 15000,
-          maximumAge: 300000,
+          maximumAge: 0,
         });
-      });
 
-      const { latitude, longitude } = position.coords;
+        console.log('[LocationAutocomplete] Position obtained:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+
+      } else {
+        // Fall back to browser geolocation API for web
+        console.log('[LocationAutocomplete] Using browser navigator.geolocation API');
+        
+        if (!('geolocation' in navigator)) {
+          console.error('[LocationAutocomplete] Geolocation not supported');
+          toast({
+            title: "Geolocation not supported",
+            description: "Your browser doesn't support GPS location.",
+            variant: "destructive",
+          });
+          setIsGeolocating(false);
+          return;
+        }
+
+        console.log('[LocationAutocomplete] Getting position from browser...');
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 300000,
+          });
+        });
+
+        console.log('[LocationAutocomplete] Browser position obtained:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      }
+
+      console.log('[LocationAutocomplete] Reverse geocoding coordinates:', { latitude, longitude });
 
       // Reverse geocode to get location details
       const { data, error } = await supabase.functions.invoke('location-from-coordinates', {
@@ -250,6 +320,8 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
       const location = data?.data;
       if (location) {
+        console.log('[LocationAutocomplete] Reverse geocode result:', location);
+        
         const normalizedLocation: NormalizedLocation = {
           type: 'area',
           displayLabel: location.displayLabel,
@@ -270,6 +342,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           source: location.source,
         };
 
+        console.log('[LocationAutocomplete] Setting location:', normalizedLocation.displayLabel);
         onValueChange(location.displayLabel);
         onLocationSelect(normalizedLocation);
         onGpsLocation?.(normalizedLocation);
@@ -280,10 +353,20 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         });
       }
     } catch (error: any) {
-      console.error('GPS error:', error);
+      console.error('[LocationAutocomplete] GPS error:', error);
       
       let message = "Please enter your location manually.";
-      if (error.code === 1) {
+      
+      // Handle Capacitor-specific errors
+      if (error.message?.includes('location disabled') || error.message?.includes('Location services')) {
+        message = "Location services are disabled. Please enable GPS in your device settings.";
+      } else if (error.message?.includes('denied') || error.message?.includes('permission')) {
+        message = "Location access was denied. Please enable location permissions in your device settings.";
+      } else if (error.message?.includes('timeout')) {
+        message = "Location request timed out. Please try again or enter manually.";
+      }
+      // Handle browser geolocation errors
+      else if (error.code === 1) {
         message = "Location access was denied. Please enable location permissions or enter manually.";
       } else if (error.code === 2) {
         message = "Unable to determine your location. Please try again or enter manually.";
@@ -291,6 +374,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         message = "Location request timed out. Please try again or enter manually.";
       }
 
+      console.error('[LocationAutocomplete] User-friendly error:', message);
       toast({
         title: "Location unavailable",
         description: message,
@@ -298,6 +382,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       });
     } finally {
       setIsGeolocating(false);
+      console.log('[LocationAutocomplete] GPS request completed');
     }
   };
 

@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { NormalizedLocation } from '@/components/LocationAutocomplete';
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 
 interface LocationSettingProps {
   initialCity: string;
@@ -76,27 +78,95 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
   };
 
   const handleUseGps = async () => {
-    if (!('geolocation' in navigator)) {
-      toast({
-        title: "Geolocation not supported",
-        description: "Your browser doesn't support GPS location.",
-        variant: "destructive",
-      });
-      return;
-    }
+    console.log('[Preferences:Location] GPS button clicked');
+    console.log('[Preferences:Location] Platform:', Capacitor.getPlatform());
+    console.log('[Preferences:Location] Is native:', Capacitor.isNativePlatform());
 
     setIsGeolocating(true);
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
+      let latitude: number;
+      let longitude: number;
+
+      if (Capacitor.isNativePlatform()) {
+        // Use Capacitor Geolocation for native platforms
+        console.log('[Preferences:Location] Using Capacitor Geolocation API');
+        
+        // Check current permissions
+        console.log('[Preferences:Location] Checking permissions...');
+        let permissionStatus = await Geolocation.checkPermissions();
+        console.log('[Preferences:Location] Current permission:', permissionStatus.location);
+
+        // Request permission if not granted
+        if (permissionStatus.location !== 'granted') {
+          console.log('[Preferences:Location] Requesting permission...');
+          toast({
+            title: "Location Permission",
+            description: "Please allow location access to use this feature.",
+          });
+          
+          permissionStatus = await Geolocation.requestPermissions();
+          console.log('[Preferences:Location] Permission after request:', permissionStatus.location);
+
+          if (permissionStatus.location !== 'granted') {
+            console.error('[Preferences:Location] Permission denied');
+            throw { code: 1, message: 'Location permission denied' };
+          }
+        }
+
+        console.log('[Preferences:Location] Permission granted, getting position...');
+        
+        // Get current position
+        const position = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 15000,
-          maximumAge: 300000,
+          maximumAge: 0,
         });
-      });
 
-      const { latitude, longitude } = position.coords;
+        console.log('[Preferences:Location] Position obtained:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+
+      } else {
+        // Fall back to browser geolocation API for web
+        console.log('[Preferences:Location] Using browser navigator.geolocation API');
+        
+        if (!('geolocation' in navigator)) {
+          console.error('[Preferences:Location] Geolocation not supported');
+          toast({
+            title: "Geolocation not supported",
+            description: "Your browser doesn't support GPS location.",
+            variant: "destructive",
+          });
+          setIsGeolocating(false);
+          return;
+        }
+
+        console.log('[Preferences:Location] Getting position from browser...');
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 300000,
+          });
+        });
+
+        console.log('[Preferences:Location] Browser position obtained:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      }
+
+      console.log('[Preferences:Location] Reverse geocoding coordinates:', { latitude, longitude });
 
       const { data, error } = await supabase.functions.invoke('location-from-coordinates', {
         body: { lat: latitude, lng: longitude, source: 'gps' }
@@ -106,6 +176,8 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
 
       const locationData = data?.data;
       if (locationData) {
+        console.log('[Preferences:Location] Reverse geocode result:', locationData);
+        
         const normalizedLocation: NormalizedLocation = {
           type: 'area',
           displayLabel: locationData.displayLabel,
@@ -126,6 +198,7 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
           source: locationData.source,
         };
 
+        console.log('[Preferences:Location] Updating location preference:', normalizedLocation.displayLabel);
         handleLocationSelected(normalizedLocation);
 
         toast({
@@ -134,10 +207,20 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
         });
       }
     } catch (error: any) {
-      console.error('GPS error:', error);
+      console.error('[Preferences:Location] GPS error:', error);
       
       let message = "Please use Pick on map instead.";
-      if (error.code === 1) {
+      
+      // Handle Capacitor-specific errors
+      if (error.message?.includes('location disabled') || error.message?.includes('Location services')) {
+        message = "Location services are disabled. Please enable GPS in your device settings.";
+      } else if (error.message?.includes('denied') || error.message?.includes('permission')) {
+        message = "Location access was denied. Please enable location permissions in your device settings.";
+      } else if (error.message?.includes('timeout')) {
+        message = "Location request timed out. Please try again or use Pick on map.";
+      }
+      // Handle browser geolocation errors
+      else if (error.code === 1) {
         message = "Location access was denied. Please enable location permissions or use Pick on map.";
       } else if (error.code === 2) {
         message = "Unable to determine your location. Please try again or use Pick on map.";
@@ -145,6 +228,7 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
         message = "Location request timed out. Please try again or use Pick on map.";
       }
 
+      console.error('[Preferences:Location] User-friendly error:', message);
       toast({
         title: "Location unavailable",
         description: message,
@@ -152,6 +236,7 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
       });
     } finally {
       setIsGeolocating(false);
+      console.log('[Preferences:Location] GPS request completed');
     }
   };
 
