@@ -317,7 +317,7 @@ const RequestFood = () => {
                 onSelect={setSelectedCuisine} 
               />
               
-              {/* Location Section */}
+              {/* Location Section - Single location only */}
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Location</h3>
@@ -327,6 +327,7 @@ const RequestFood = () => {
                   value={locationInput}
                   onValueChange={setLocationInput}
                   onLocationSelect={(location: NormalizedLocation) => {
+                    console.log('[Request:Location] Location selected:', location);
                     handleChange('locationCity', location.city || location.displayLabel);
                     handleChange('locationState', location.region || '');
                     handleChange('countryCode', location.countryCode || '');
@@ -337,6 +338,15 @@ const RequestFood = () => {
                         lng: location.lng
                       }));
                     }
+                    console.log('[Request:Location] Saving request with location:', {
+                      city: location.city || location.displayLabel,
+                      state: location.region || '',
+                      lat: location.lat,
+                      lng: location.lng
+                    });
+                  }}
+                  onGpsLocation={(location: NormalizedLocation) => {
+                    console.log('[Request:Location] GPS location obtained:', location);
                   }}
                   placeholder="Search city, neighborhood, or address..."
                   showGpsButton={true}

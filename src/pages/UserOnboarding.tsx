@@ -7,10 +7,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CityAutocomplete } from '@/components/CityAutocomplete';
 import { CuisineMultiSelect } from '@/components/CuisineMultiSelect';
-import { MapPin, Utensils, Target, Check } from 'lucide-react';
+import { MapPin, Utensils, Target, Check, Navigation, Loader2 } from 'lucide-react';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
+import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 
 // Goal 3: Distance unit options
 type DistanceUnit = 'miles' | 'km';
@@ -20,13 +20,13 @@ const UserOnboarding = () => {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   
-  // Location state
+  // Location state - single location only
   const [locationCity, setLocationCity] = useState('');
   const [locationState, setLocationState] = useState('');
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
-  const [gpsAttempted, setGpsAttempted] = useState(false);
-  const [cityInput, setCityInput] = useState('');
+  const [locationCountry, setLocationCountry] = useState('');
+  const [locationInput, setLocationInput] = useState('');
   
   // Cuisine expertise state (replaces profile picture)
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
@@ -40,72 +40,32 @@ const UserOnboarding = () => {
   const { isGpsEnabled, isDetecting: isDetectingCountry } = useGpsCountryDetection();
   const navigate = useNavigate();
 
-  const requestLocationPermission = async () => {
-    setLocationLoading(true);
-    setGpsAttempted(true);
-    
-    if (!navigator.geolocation) {
-      toast({
-        title: "GPS Not Available",
-        description: "Your browser doesn't support location services. Please enter your city manually.",
-        variant: "destructive",
-      });
-      setLocationLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        
-        setLocationLat(lat);
-        setLocationLng(lng);
-        
-        // Reverse geocode to get city and state
-        try {
-          const { data, error } = await supabase.functions.invoke('geocode', {
-            body: { lat, lng }
-          });
-          
-          if (error) throw error;
-          
-          if (data?.city && data?.state) {
-            setLocationCity(data.city);
-            setLocationState(data.state);
-            setCityInput(`${data.city}, ${data.state}`);
-            
-            toast({
-              title: "Location Found!",
-              description: `Using your location: ${data.city}, ${data.state}`,
-            });
-          }
-        } catch (error) {
-          console.error('Geocoding error:', error);
-          toast({
-            title: "Location Found",
-            description: "We found your GPS coordinates. Please enter your city manually.",
-          });
-        }
-        
-        setLocationLoading(false);
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        toast({
-          title: "Location Access Denied",
-          description: "Please enter your city manually below.",
-          variant: "destructive",
-        });
-        setLocationLoading(false);
-      }
-    );
+  // Handle location selection from autocomplete (single location only)
+  const handleLocationSelect = (location: NormalizedLocation) => {
+    console.log('[Signup:Location] Location selected:', location);
+    setLocationCity(location.city || location.displayLabel);
+    setLocationState(location.region || '');
+    setLocationLat(location.lat);
+    setLocationLng(location.lng);
+    setLocationCountry(location.countryCode || '');
+    console.log('[Signup:Location] Saving to form state:', {
+      city: location.city || location.displayLabel,
+      state: location.region || '',
+      lat: location.lat,
+      lng: location.lng,
+      country: location.countryCode || '',
+    });
   };
 
-  const handleCitySelect = (city: string, state: string) => {
-    setLocationCity(city);
-    setLocationState(state);
+  // Handle GPS location callback
+  const handleGpsLocation = (location: NormalizedLocation) => {
+    console.log('[Signup:Location] GPS location obtained:', location);
+    setLocationInput(location.displayLabel);
+    handleLocationSelect(location);
+    console.log('[Signup:Location] GPS location set successfully');
   };
+
+  // No longer needed - replaced by handleLocationSelect
 
 
   const handleNextStep = () => {
@@ -164,11 +124,14 @@ const UserOnboarding = () => {
           location_state: locationState,
           profile_lat: locationLat,
           profile_lng: locationLng,
+          profile_country: locationCountry,
           search_range: searchRange,
           notification_radius_km: notificationRadiusKm,
           cuisine_expertise: selectedCuisines,
         })
         .eq('id', user.id);
+      
+      console.log('[Signup:Location] Profile saved with location:', { locationCity, locationState, locationLat, locationLng, locationCountry });
       
       if (error) throw error;
       
@@ -252,39 +215,34 @@ const UserOnboarding = () => {
         </CardHeader>
         
         <CardContent className="space-y-6">
-          {/* Step 1: Location */}
+          {/* Step 1: Location - Single location only */}
           {step === 1 && (
             <div className="space-y-4">
-              {!gpsAttempted && isGpsEnabled && (
-                <Button
-                  onClick={requestLocationPermission}
-                  disabled={locationLoading || isDetectingCountry}
-                  className="w-full bg-gradient-to-r from-[#FF6A3D] to-[#FF3B30] text-white font-poppins font-semibold"
-                  size="lg"
-                >
-                  {locationLoading ? 'Getting Location...' : 'Use My Current Location'}
-                </Button>
-              )}
-              
-              {(gpsAttempted || locationCity) && (
-                <div className="relative">
-                  <div className="flex items-center justify-center mb-2">
-                    <div className="flex-1 border-t border-[#9DBF70]/30" />
-                    <span className="px-3 text-sm text-[#6B5B52] font-nunito">or enter manually</span>
-                    <div className="flex-1 border-t border-[#9DBF70]/30" />
-                  </div>
-                </div>
-              )}
-              
               <div className="space-y-2">
-                <Label htmlFor="city" className="font-poppins text-[#3E2F25]">City</Label>
-                <CityAutocomplete
-                  value={cityInput}
-                  onValueChange={setCityInput}
-                  onCitySelect={handleCitySelect}
-                  placeholder="Enter your city..."
+                <Label htmlFor="city" className="font-poppins text-[#3E2F25]">Your Location</Label>
+                <p className="text-xs text-[#6B5B52] mb-2">We use this to match you with nearby food requests</p>
+                <LocationAutocomplete
+                  value={locationInput}
+                  onValueChange={setLocationInput}
+                  onLocationSelect={handleLocationSelect}
+                  onGpsLocation={handleGpsLocation}
+                  placeholder="Search your city or use GPS..."
+                  showGpsButton={true}
+                  showMapPicker={true}
+                  includeRestaurants={false}
                 />
               </div>
+              
+              {/* Show selected location confirmation */}
+              {locationCity && (
+                <div className="flex items-center gap-2 p-3 bg-[#9DBF70]/10 border border-[#9DBF70]/30 rounded-lg">
+                  <MapPin className="h-5 w-5 text-[#9DBF70]" />
+                  <span className="text-sm font-medium text-[#3E2F25]">
+                    {locationCity}{locationState ? `, ${locationState}` : ''}
+                  </span>
+                  <Check className="h-4 w-4 text-[#9DBF70] ml-auto" />
+                </div>
+              )}
             </div>
           )}
           
