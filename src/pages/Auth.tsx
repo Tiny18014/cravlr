@@ -24,6 +24,9 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  const MIN_PASSWORD_LENGTH = 6;
   
   const { signUp, signIn, user } = useAuth();
   const { toast } = useToast();
@@ -43,6 +46,20 @@ const Auth = () => {
     return true;
   };
 
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (passwordError) setPasswordError(null);
+  };
+
+  const validatePassword = (password: string): boolean => {
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return false;
+    }
+    setPasswordError(null);
+    return true;
+  };
+
   useEffect(() => {
     if (user) {
       navigate('/');
@@ -54,6 +71,11 @@ const Auth = () => {
     
     // Validate email before proceeding
     if (!validateEmail(email)) {
+      return;
+    }
+    
+    // Validate password on signup
+    if (!isLogin && !validatePassword(password)) {
       return;
     }
     
@@ -300,10 +322,19 @@ const Auth = () => {
                 type="password"
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 required
                 minLength={6}
+                className={passwordError ? 'border-destructive' : ''}
               />
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+              {!isLogin && !passwordError && (
+                <p className="text-xs text-muted-foreground">
+                  Minimum 6 characters
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
