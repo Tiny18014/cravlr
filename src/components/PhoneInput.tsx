@@ -54,6 +54,11 @@ const countryCodes = [
   { code: "+51", country: "PE", flag: "🇵🇪", name: "Peru" },
 ];
 
+// Phone number validation: E.164 standard allows max 15 digits total (including country code)
+// Most national numbers are 6-14 digits (excluding country code)
+const MAX_PHONE_DIGITS = 15;
+const MIN_PHONE_DIGITS = 6;
+
 interface PhoneInputProps {
   value: string;
   onChange: (fullNumber: string) => void;
@@ -61,6 +66,7 @@ interface PhoneInputProps {
   label?: string;
   placeholder?: string;
   description?: string;
+  onValidationChange?: (isValid: boolean, error: string | null) => void;
 }
 
 export const PhoneInput: React.FC<PhoneInputProps> = ({
@@ -70,7 +76,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   label = "Phone Number",
   placeholder = "555 123 4567",
   description,
+  onValidationChange,
 }) => {
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   // Parse the value to extract country code and number
   const parsePhoneNumber = (phone: string) => {
     if (!phone) return { countryCode: "+1", number: "" };
@@ -93,17 +101,57 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   const [countryCode, setCountryCode] = useState(parsed.countryCode);
   const [phoneNumber, setPhoneNumber] = useState(parsed.number);
 
+  const validatePhoneNumber = (digitsOnly: string, code: string): { isValid: boolean; error: string | null } => {
+    if (!digitsOnly) {
+      return { isValid: true, error: null }; // Empty is valid (handled by required prop)
+    }
+    
+    // Count digits in country code (excluding the +)
+    const countryCodeDigits = code.replace(/\D/g, '').length;
+    const totalDigits = countryCodeDigits + digitsOnly.length;
+    
+    if (totalDigits > MAX_PHONE_DIGITS) {
+      return { 
+        isValid: false, 
+        error: `Phone number is too long. Maximum ${MAX_PHONE_DIGITS - countryCodeDigits} digits allowed.` 
+      };
+    }
+    
+    if (digitsOnly.length > 0 && digitsOnly.length < MIN_PHONE_DIGITS) {
+      return { 
+        isValid: false, 
+        error: `Phone number is too short. Minimum ${MIN_PHONE_DIGITS} digits required.` 
+      };
+    }
+    
+    return { isValid: true, error: null };
+  };
+
   const handleCountryChange = (newCode: string) => {
     setCountryCode(newCode);
-    const fullNumber = phoneNumber ? `${newCode}${phoneNumber}` : "";
+    const digitsOnly = phoneNumber.replace(/[\s-]/g, "");
+    const fullNumber = digitsOnly ? `${newCode}${digitsOnly}` : "";
+    
+    // Re-validate with new country code
+    const validation = validatePhoneNumber(digitsOnly, newCode);
+    setPhoneError(validation.error);
+    onValidationChange?.(validation.isValid, validation.error);
+    
     onChange(fullNumber);
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numbers, spaces, and dashes
     const cleanValue = e.target.value.replace(/[^\d\s-]/g, "");
+    const digitsOnly = cleanValue.replace(/[\s-]/g, "");
+    
+    // Validate the phone number
+    const validation = validatePhoneNumber(digitsOnly, countryCode);
+    setPhoneError(validation.error);
+    onValidationChange?.(validation.isValid, validation.error);
+    
     setPhoneNumber(cleanValue);
-    const fullNumber = cleanValue ? `${countryCode}${cleanValue.replace(/[\s-]/g, "")}` : "";
+    const fullNumber = digitsOnly ? `${countryCode}${digitsOnly}` : "";
     onChange(fullNumber);
   };
 
@@ -152,10 +200,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           value={phoneNumber}
           onChange={handleNumberChange}
           required={required}
-          className="flex-1"
+          className={`flex-1 ${phoneError ? 'border-destructive' : ''}`}
         />
       </div>
-      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+      {phoneError && (
+        <p className="text-xs text-destructive">{phoneError}</p>
+      )}
+      {!phoneError && description && <p className="text-xs text-muted-foreground">{description}</p>}
     </div>
   );
 };
