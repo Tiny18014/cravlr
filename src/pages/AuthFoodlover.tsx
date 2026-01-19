@@ -25,6 +25,9 @@ const AuthFoodlover = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  const MIN_PASSWORD_LENGTH = 6;
   
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
@@ -55,6 +58,16 @@ const AuthFoodlover = () => {
   const handlePasswordChange = (value: string) => {
     setPassword(value);
     if (loginError) setLoginError(null);
+    if (passwordError) setPasswordError(null);
+  };
+
+  const validatePassword = (password: string): boolean => {
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      return false;
+    }
+    setPasswordError(null);
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +75,11 @@ const AuthFoodlover = () => {
     
     // Validate email before proceeding
     if (!validateEmail(email)) {
+      return;
+    }
+    
+    // Validate password on signup
+    if (!isLogin && !validatePassword(password)) {
       return;
     }
     
@@ -266,8 +284,12 @@ const AuthFoodlover = () => {
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 required
                 minLength={6}
+                className={passwordError ? 'border-destructive' : ''}
               />
-              {!isLogin && (
+              {passwordError && (
+                <p className="text-xs text-destructive">{passwordError}</p>
+              )}
+              {!isLogin && !passwordError && (
                 <p className="text-xs text-muted-foreground">
                   Minimum 6 characters
                 </p>
