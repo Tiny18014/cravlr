@@ -11,6 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Mail, ShieldCheck, Building2, Users, Star } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
 
+// Email validation regex pattern
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -19,10 +22,25 @@ const Auth = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [userType, setUserType] = useState<'regular' | 'business'>('regular');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   
   const { signUp, signIn, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError) setEmailError(null);
+  };
+
+  const validateEmail = (email: string): boolean => {
+    if (!EMAIL_REGEX.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return false;
+    }
+    setEmailError(null);
+    return true;
+  };
 
   useEffect(() => {
     if (user) {
@@ -32,6 +50,12 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email before proceeding
+    if (!validateEmail(email)) {
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -248,10 +272,14 @@ const Auth = () => {
                 type="email"
                 placeholder={userType === 'business' ? 'contact@yourrestaurant.com' : 'your@email.com'}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 required
+                className={emailError ? 'border-destructive' : ''}
               />
-              {!isLogin && userType === 'business' && (
+              {emailError && (
+                <p className="text-xs text-destructive">{emailError}</p>
+              )}
+              {!isLogin && userType === 'business' && !emailError && (
                 <p className="text-xs text-muted-foreground">
                   Use your business domain for faster verification
                 </p>
