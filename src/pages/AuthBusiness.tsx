@@ -25,6 +25,7 @@ const AuthBusiness = () => {
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
@@ -63,6 +64,11 @@ const AuthBusiness = () => {
     
     // Validate email before proceeding
     if (!validateEmail(email)) {
+      return;
+    }
+    
+    // Check for phone validation errors (only for signup)
+    if (!isLogin && phoneError) {
       return;
     }
     
@@ -240,6 +246,7 @@ const AuthBusiness = () => {
                 <PhoneInput
                   value={phoneNumber}
                   onChange={setPhoneNumber}
+                  onValidationChange={(isValid, error) => setPhoneError(error)}
                   required={true}
                   label="Business Phone Number"
                   description="Required for business verification"

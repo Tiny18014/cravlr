@@ -24,6 +24,7 @@ const AuthFoodlover = () => {
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
@@ -61,6 +62,11 @@ const AuthFoodlover = () => {
     
     // Validate email before proceeding
     if (!validateEmail(email)) {
+      return;
+    }
+    
+    // Check for phone validation errors (only for signup)
+    if (!isLogin && phoneError) {
       return;
     }
     
@@ -252,6 +258,7 @@ const AuthFoodlover = () => {
                 <PhoneInput
                   value={phoneNumber}
                   onChange={setPhoneNumber}
+                  onValidationChange={(isValid, error) => setPhoneError(error)}
                   required={false}
                   description="For SMS notifications about your food requests"
                 />
