@@ -13,6 +13,9 @@ import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
 
+// Email validation regex pattern
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -21,6 +24,7 @@ const AuthBusiness = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
@@ -37,6 +41,16 @@ const AuthBusiness = () => {
   const handleEmailChange = (value: string) => {
     setEmail(value);
     if (loginError) setLoginError(null);
+    if (emailError) setEmailError(null);
+  };
+
+  const validateEmail = (email: string): boolean => {
+    if (!EMAIL_REGEX.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return false;
+    }
+    setEmailError(null);
+    return true;
   };
 
   const handlePasswordChange = (value: string) => {
@@ -46,6 +60,12 @@ const AuthBusiness = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email before proceeding
+    if (!validateEmail(email)) {
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -239,8 +259,12 @@ const AuthBusiness = () => {
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
                 required
+                className={emailError ? 'border-destructive' : ''}
               />
-              {!isLogin && (
+              {emailError && (
+                <p className="text-xs text-destructive">{emailError}</p>
+              )}
+              {!isLogin && !emailError && (
                 <p className="text-xs text-muted-foreground">
                   Use your business domain for faster verification
                 </p>
