@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 // Common email domain typos and their corrections
 const DOMAIN_TYPOS: Record<string, string> = {
   // Gmail typos
@@ -61,24 +63,6 @@ const DOMAIN_TYPOS: Record<string, string> = {
   '.ocm': '.com',
 };
 
-// Valid common email domains
-const VALID_DOMAINS = [
-  'gmail.com',
-  'yahoo.com',
-  'hotmail.com',
-  'outlook.com',
-  'icloud.com',
-  'aol.com',
-  'protonmail.com',
-  'mail.com',
-  'zoho.com',
-  'yandex.com',
-  'live.com',
-  'msn.com',
-  'me.com',
-  'mac.com',
-];
-
 // Basic email format regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -88,6 +72,9 @@ export interface EmailValidationResult {
   suggestion?: string;
 }
 
+/**
+ * Synchronous email validation - checks format and common typos
+ */
 export function validateEmail(email: string): EmailValidationResult {
   const trimmedEmail = email.trim().toLowerCase();
   
@@ -155,4 +142,47 @@ export function validateEmail(email: string): EmailValidationResult {
     isValid: true,
     error: null,
   };
+}
+
+/**
+ * Async email domain verification - checks if domain has MX records
+ */
+export async function verifyEmailDomain(email: string): Promise<EmailValidationResult> {
+  // First do sync validation
+  const syncResult = validateEmail(email);
+  if (!syncResult.isValid) {
+    return syncResult;
+  }
+
+  try {
+    console.log('[EmailValidation] Verifying domain for:', email);
+    
+    const { data, error } = await supabase.functions.invoke('verify-email-domain', {
+      body: { email },
+    });
+
+    if (error) {
+      console.error('[EmailValidation] Edge function error:', error);
+      // Don't block user on API errors
+      return { isValid: true, error: null };
+    }
+
+    console.log('[EmailValidation] Verification result:', data);
+
+    if (!data.valid && data.error) {
+      return {
+        isValid: false,
+        error: data.error,
+      };
+    }
+
+    return {
+      isValid: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error('[EmailValidation] Verification failed:', err);
+    // Don't block user on network errors
+    return { isValid: true, error: null };
+  }
 }
