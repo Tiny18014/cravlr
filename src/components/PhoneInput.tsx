@@ -54,10 +54,9 @@ const countryCodes = [
   { code: "+51", country: "PE", flag: "🇵🇪", name: "Peru" },
 ];
 
-// Phone number validation: E.164 standard allows max 15 digits total (including country code)
-// Most national numbers are 6-14 digits (excluding country code)
-const MAX_PHONE_DIGITS = 15;
-const MIN_PHONE_DIGITS = 6;
+// Phone number validation: Enforce exactly 10 digits for national number
+const MAX_PHONE_DIGITS = 10;
+const MIN_PHONE_DIGITS = 10;
 
 interface PhoneInputProps {
   value: string;
@@ -101,26 +100,22 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   const [countryCode, setCountryCode] = useState(parsed.countryCode);
   const [phoneNumber, setPhoneNumber] = useState(parsed.number);
 
-  const validatePhoneNumber = (digitsOnly: string, code: string): { isValid: boolean; error: string | null } => {
+  const validatePhoneNumber = (digitsOnly: string): { isValid: boolean; error: string | null } => {
     if (!digitsOnly) {
       return { isValid: true, error: null }; // Empty is valid (handled by required prop)
     }
     
-    // Count digits in country code (excluding the +)
-    const countryCodeDigits = code.replace(/\D/g, '').length;
-    const totalDigits = countryCodeDigits + digitsOnly.length;
-    
-    if (totalDigits > MAX_PHONE_DIGITS) {
+    if (digitsOnly.length > MAX_PHONE_DIGITS) {
       return { 
         isValid: false, 
-        error: `Phone number is too long. Maximum ${MAX_PHONE_DIGITS - countryCodeDigits} digits allowed.` 
+        error: `Phone number must be exactly ${MAX_PHONE_DIGITS} digits.` 
       };
     }
     
     if (digitsOnly.length > 0 && digitsOnly.length < MIN_PHONE_DIGITS) {
       return { 
         isValid: false, 
-        error: `Phone number is too short. Minimum ${MIN_PHONE_DIGITS} digits required.` 
+        error: `Phone number must be exactly ${MIN_PHONE_DIGITS} digits.` 
       };
     }
     
@@ -132,8 +127,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     const digitsOnly = phoneNumber.replace(/[\s-]/g, "");
     const fullNumber = digitsOnly ? `${newCode}${digitsOnly}` : "";
     
-    // Re-validate with new country code
-    const validation = validatePhoneNumber(digitsOnly, newCode);
+    // Re-validate
+    const validation = validatePhoneNumber(digitsOnly);
     setPhoneError(validation.error);
     onValidationChange?.(validation.isValid, validation.error);
     
@@ -145,8 +140,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     const cleanValue = e.target.value.replace(/[^\d\s-]/g, "");
     const digitsOnly = cleanValue.replace(/[\s-]/g, "");
     
+    // Prevent typing more than 10 digits
+    if (digitsOnly.length > MAX_PHONE_DIGITS) {
+      return;
+    }
+    
     // Validate the phone number
-    const validation = validatePhoneNumber(digitsOnly, countryCode);
+    const validation = validatePhoneNumber(digitsOnly);
     setPhoneError(validation.error);
     onValidationChange?.(validation.isValid, validation.error);
     
