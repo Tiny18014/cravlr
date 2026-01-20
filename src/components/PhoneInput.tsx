@@ -54,9 +54,9 @@ const countryCodes = [
   { code: "+51", country: "PE", flag: "🇵🇪", name: "Peru" },
 ];
 
-// Phone number validation: Enforce exactly 10 digits for national number
-const MAX_PHONE_DIGITS = 10;
-const MIN_PHONE_DIGITS = 10;
+// Phone number validation: Allow 6-15 digits for international compatibility
+const MAX_PHONE_DIGITS = 15;
+const MIN_PHONE_DIGITS = 6;
 
 interface PhoneInputProps {
   value: string;
@@ -108,14 +108,14 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     if (digitsOnly.length > MAX_PHONE_DIGITS) {
       return { 
         isValid: false, 
-        error: `Phone number must be exactly ${MAX_PHONE_DIGITS} digits.` 
+        error: `Phone number must be ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS} digits.` 
       };
     }
     
     if (digitsOnly.length > 0 && digitsOnly.length < MIN_PHONE_DIGITS) {
       return { 
         isValid: false, 
-        error: `Phone number must be exactly ${MIN_PHONE_DIGITS} digits.` 
+        error: `Phone number must be ${MIN_PHONE_DIGITS}-${MAX_PHONE_DIGITS} digits.` 
       };
     }
     
