@@ -77,8 +77,8 @@ export function CuisineAutocomplete({ value, onSelect }: CuisineAutocompleteProp
       </div>
 
       <div className="relative" ref={dropdownRef}>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1 min-w-0">
             <div className="flex items-center border-2 border-border rounded-full px-4 py-3 bg-background shadow-sm focus-within:border-primary transition-colors">
               <Globe className="h-5 w-5 text-muted-foreground shrink-0" />
               <input
@@ -97,13 +97,13 @@ export function CuisineAutocomplete({ value, onSelect }: CuisineAutocompleteProp
                   }
                 }}
                 placeholder="Search cuisines..."
-                className="flex-1 outline-none ml-3 bg-transparent text-foreground placeholder:text-muted-foreground"
+                className="flex-1 outline-none ml-3 bg-transparent text-foreground placeholder:text-muted-foreground min-w-0"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="ml-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -131,7 +131,7 @@ export function CuisineAutocomplete({ value, onSelect }: CuisineAutocompleteProp
             onPointerDown={(e) => e.preventDefault()}
             onClick={handleAnything}
             className={cn(
-              "px-4 py-3 rounded-full text-sm font-medium transition-all border-2 whitespace-nowrap",
+              "px-4 py-3 rounded-full text-sm font-medium transition-all border-2 whitespace-nowrap shrink-0 w-full sm:w-auto",
               value?.name === 'Anything'
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-accent text-accent-foreground border-border hover:border-primary"
