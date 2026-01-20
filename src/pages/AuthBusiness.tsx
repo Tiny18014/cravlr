@@ -12,9 +12,7 @@ import { ArrowLeft, Building2, Shield, Mail, ShieldCheck } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
-
-// Email validation regex pattern
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { validateEmail } from '@/utils/emailValidation';
 
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -48,9 +46,10 @@ const AuthBusiness = () => {
     if (emailError) setEmailError(null);
   };
 
-  const validateEmail = (email: string): boolean => {
-    if (!EMAIL_REGEX.test(email)) {
-      setEmailError('Please enter a valid email address');
+  const handleValidateEmail = (email: string): boolean => {
+    const result = validateEmail(email);
+    if (!result.isValid) {
+      setEmailError(result.error);
       return false;
     }
     setEmailError(null);
@@ -76,7 +75,7 @@ const AuthBusiness = () => {
     e.preventDefault();
     
     // Validate email before proceeding
-    if (!validateEmail(email)) {
+    if (!handleValidateEmail(email)) {
       return;
     }
     
