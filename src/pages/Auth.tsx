@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, ShieldCheck, Building2, Users, Star } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
-import { validateEmail } from '@/utils/emailValidation';
+import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -68,7 +68,7 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate email before proceeding
+    // Validate email format before proceeding
     if (!handleValidateEmail(email)) {
       return;
     }
@@ -84,6 +84,16 @@ const Auth = () => {
     }
     
     setLoading(true);
+
+    // For signup, verify email domain has MX records
+    if (!isLogin) {
+      const domainResult = await verifyEmailDomain(email);
+      if (!domainResult.isValid) {
+        setEmailError(domainResult.error);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (isLogin) {

@@ -12,7 +12,7 @@ import { ArrowLeft, Building2, Shield, Mail, ShieldCheck } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
-import { validateEmail } from '@/utils/emailValidation';
+import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
 
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -74,7 +74,7 @@ const AuthBusiness = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate email before proceeding
+    // Validate email format before proceeding
     if (!handleValidateEmail(email)) {
       return;
     }
@@ -90,6 +90,16 @@ const AuthBusiness = () => {
     }
     
     setLoading(true);
+
+    // For signup, verify email domain has MX records
+    if (!isLogin) {
+      const domainResult = await verifyEmailDomain(email);
+      if (!domainResult.isValid) {
+        setEmailError(domainResult.error);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (isLogin) {
