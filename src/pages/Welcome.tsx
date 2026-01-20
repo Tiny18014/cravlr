@@ -11,7 +11,7 @@ const Welcome = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
 
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8 sm:p-8">
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 pt-12 pb-8 sm:p-8">
         <div className="max-w-5xl w-full space-y-8 sm:space-y-10">
           {/* Header */}
           <div className="text-center space-y-6">
