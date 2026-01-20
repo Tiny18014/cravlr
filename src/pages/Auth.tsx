@@ -10,9 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, ShieldCheck, Building2, Users, Star } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
-
-// Email validation regex pattern
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { validateEmail } from '@/utils/emailValidation';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,9 +35,10 @@ const Auth = () => {
     if (emailError) setEmailError(null);
   };
 
-  const validateEmail = (email: string): boolean => {
-    if (!EMAIL_REGEX.test(email)) {
-      setEmailError('Please enter a valid email address');
+  const handleValidateEmail = (email: string): boolean => {
+    const result = validateEmail(email);
+    if (!result.isValid) {
+      setEmailError(result.error);
       return false;
     }
     setEmailError(null);
@@ -70,7 +69,7 @@ const Auth = () => {
     e.preventDefault();
     
     // Validate email before proceeding
-    if (!validateEmail(email)) {
+    if (!handleValidateEmail(email)) {
       return;
     }
     
