@@ -54,9 +54,9 @@ const countryCodes = [
   { code: "+51", country: "PE", flag: "🇵🇪", name: "Peru" },
 ];
 
-// Phone number validation: Allow 6-15 digits for international compatibility
+// Phone number validation: Allow 10-15 digits for international compatibility
 const MAX_PHONE_DIGITS = 15;
-const MIN_PHONE_DIGITS = 6;
+const MIN_PHONE_DIGITS = 10;
 
 interface PhoneInputProps {
   value: string;
