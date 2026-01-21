@@ -258,7 +258,7 @@ const AuthFoodlover = () => {
                   value={phoneNumber}
                   onChange={setPhoneNumber}
                   onValidationChange={(isValid, error) => setPhoneError(error)}
-                  required={false}
+                  required={true}
                   description="For SMS notifications about your food requests"
                 />
               </div>
