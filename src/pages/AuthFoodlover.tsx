@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,11 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Users, Mail, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Users, Mail } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
-import { validateEmail } from '@/utils/emailValidation';
+import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -24,8 +24,6 @@ const AuthFoodlover = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
   
   const MIN_PASSWORD_LENGTH = 6;
   
@@ -39,78 +37,11 @@ const AuthFoodlover = () => {
     }
   }, [user, navigate]);
 
-  // Debounce helper
-  const debounce = <T extends (...args: unknown[]) => void>(func: T, wait: number): T => {
-    let timeout: NodeJS.Timeout | null = null;
-    return ((...args: Parameters<T>) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    }) as T;
-  };
-
-  // Real-time email verification using Abstract API
-  const verifyEmailRealtime = useCallback(async (emailToVerify: string) => {
-    // First do basic format validation
-    const basicResult = validateEmail(emailToVerify);
-    if (!basicResult.isValid) {
-      setEmailError(basicResult.error);
-      setIsEmailVerified(false);
-      return;
-    }
-
-    setIsVerifyingEmail(true);
-    setIsEmailVerified(false);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-email-exists', {
-        body: { email: emailToVerify }
-      });
-
-      if (error) {
-        console.error('Email verification error:', error);
-        setIsEmailVerified(false);
-        return;
-      }
-
-      if (data.isValid) {
-        setEmailError(null);
-        setIsEmailVerified(true);
-        
-        // Show suggestion if available
-        if (data.suggestion) {
-          setEmailError(`Did you mean ${data.suggestion}?`);
-        }
-      } else {
-        setEmailError(data.error || 'Invalid email address');
-        setIsEmailVerified(false);
-      }
-    } catch (error) {
-      console.error('Email verification error:', error);
-      setIsEmailVerified(false);
-    } finally {
-      setIsVerifyingEmail(false);
-    }
-  }, []);
-
-  // Debounced email verification (wait 800ms after user stops typing)
-  const debouncedEmailVerify = useCallback(
-    debounce((emailToVerify: string) => {
-      verifyEmailRealtime(emailToVerify);
-    }, 800),
-    [verifyEmailRealtime]
-  );
-
   // Clear error when user starts typing
   const handleEmailChange = (value: string) => {
     setEmail(value);
-    setIsEmailVerified(false);
     if (loginError) setLoginError(null);
     if (emailError) setEmailError(null);
-    
-    // For signup, trigger real-time verification
-    if (!isLogin && value.includes('@')) {
-      debouncedEmailVerify(value);
-    }
   };
 
   const handleValidateEmail = (email: string): boolean => {
@@ -158,21 +89,13 @@ const AuthFoodlover = () => {
     
     setLoading(true);
 
-    // For signup, verify email exists (skip if already verified via real-time check)
-    if (!isLogin && !isEmailVerified) {
-      try {
-        const { data, error } = await supabase.functions.invoke('verify-email-exists', {
-          body: { email }
-        });
-        
-        if (error || !data?.isValid) {
-          setEmailError(data?.error || 'Please enter a valid email address');
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Email verification failed:', err);
-        // Continue with signup attempt
+    // For signup, verify email domain has MX records
+    if (!isLogin) {
+      const domainResult = await verifyEmailDomain(email);
+      if (!domainResult.isValid) {
+        setEmailError(domainResult.error);
+        setLoading(false);
+        return;
       }
     }
 
@@ -346,28 +269,17 @@ const AuthFoodlover = () => {
                 <Mail className="h-4 w-4" />
                 Email Address
               </Label>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => handleEmailChange(e.target.value)}
-                  required
-                  className={`pr-10 ${emailError ? 'border-destructive' : isEmailVerified ? 'border-emerald-500' : ''}`}
-                />
-                {isVerifyingEmail && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-                {isEmailVerified && !isVerifyingEmail && !emailError && (
-                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
-                )}
-              </div>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                required
+                className={emailError ? 'border-destructive' : ''}
+              />
               {emailError && (
                 <p className="text-xs text-destructive">{emailError}</p>
-              )}
-              {isEmailVerified && !emailError && !isLogin && (
-                <p className="text-xs text-emerald-600">Email verified ✓</p>
               )}
             </div>
 
