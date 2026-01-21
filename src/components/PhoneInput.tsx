@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone } from "lucide-react";
+import { Phone, Loader2, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Common country codes with flags
 const countryCodes = [
@@ -66,6 +67,16 @@ interface PhoneInputProps {
   placeholder?: string;
   description?: string;
   onValidationChange?: (isValid: boolean, error: string | null) => void;
+  enableRealVerification?: boolean;
+}
+
+// Debounce helper
+function debounce<T extends (...args: unknown[]) => void>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout | null = null;
+  return ((...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T;
 }
 
 export const PhoneInput: React.FC<PhoneInputProps> = ({
@@ -76,8 +87,12 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   placeholder = "555 123 4567",
   description,
   onValidationChange,
+  enableRealVerification = true,
 }) => {
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  
   // Parse the value to extract country code and number
   const parsePhoneNumber = (phone: string) => {
     if (!phone) return { countryCode: "+1", number: "" };
@@ -122,8 +137,62 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     return { isValid: true, error: null };
   };
 
+  // Real phone verification using Twilio Lookup
+  const verifyPhoneNumber = useCallback(async (phoneNum: string, countryCodeVal: string) => {
+    if (!enableRealVerification) return;
+    
+    const digitsOnly = phoneNum.replace(/[\s-]/g, "");
+    
+    // Only verify if we have a complete number
+    if (digitsOnly.length < MIN_PHONE_DIGITS) {
+      setIsVerified(false);
+      return;
+    }
+
+    setIsVerifying(true);
+    setIsVerified(false);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-phone-number', {
+        body: { phoneNumber: digitsOnly, countryCode: countryCodeVal }
+      });
+
+      if (error) {
+        console.error('Phone verification error:', error);
+        // On error, allow the form to proceed but don't show verified
+        setIsVerified(false);
+        return;
+      }
+
+      if (data.isValid) {
+        setIsVerified(true);
+        setPhoneError(null);
+        onValidationChange?.(true, null);
+      } else {
+        setIsVerified(false);
+        setPhoneError(data.error || 'Invalid phone number');
+        onValidationChange?.(false, data.error || 'Invalid phone number');
+      }
+    } catch (err) {
+      console.error('Phone verification failed:', err);
+      // On network error, allow form to proceed
+      setIsVerified(false);
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [enableRealVerification, onValidationChange]);
+
+  // Debounced verification (wait 800ms after user stops typing)
+  const debouncedVerify = useCallback(
+    debounce((phoneNum: string, countryCodeVal: string) => {
+      verifyPhoneNumber(phoneNum, countryCodeVal);
+    }, 800),
+    [verifyPhoneNumber]
+  );
+
   const handleCountryChange = (newCode: string) => {
     setCountryCode(newCode);
+    setIsVerified(false);
     const digitsOnly = phoneNumber.replace(/[\s-]/g, "");
     const fullNumber = digitsOnly ? `${newCode}${digitsOnly}` : "";
     
@@ -133,6 +202,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     onValidationChange?.(validation.isValid, validation.error);
     
     onChange(fullNumber);
+    
+    // Trigger verification with new country code
+    if (digitsOnly.length >= MIN_PHONE_DIGITS) {
+      debouncedVerify(digitsOnly, newCode);
+    }
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,12 +214,14 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     const cleanValue = e.target.value.replace(/[^\d\s-]/g, "");
     const digitsOnly = cleanValue.replace(/[\s-]/g, "");
     
-    // Prevent typing more than 10 digits
+    // Prevent typing more than max digits
     if (digitsOnly.length > MAX_PHONE_DIGITS) {
       return;
     }
     
-    // Validate the phone number
+    setIsVerified(false);
+    
+    // Validate the phone number (basic validation)
     const validation = validatePhoneNumber(digitsOnly);
     setPhoneError(validation.error);
     onValidationChange?.(validation.isValid, validation.error);
@@ -153,6 +229,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     setPhoneNumber(cleanValue);
     const fullNumber = digitsOnly ? `${countryCode}${digitsOnly}` : "";
     onChange(fullNumber);
+    
+    // Trigger real verification after typing stops
+    if (validation.isValid && digitsOnly.length >= MIN_PHONE_DIGITS) {
+      debouncedVerify(digitsOnly, countryCode);
+    }
   };
 
   // Get unique country codes for display (some countries share codes)
@@ -193,20 +274,31 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
             ))}
           </SelectContent>
         </Select>
-        <Input
-          id="phoneNumber"
-          type="tel"
-          placeholder={placeholder}
-          value={phoneNumber}
-          onChange={handleNumberChange}
-          required={required}
-          className={`flex-1 ${phoneError ? 'border-destructive' : ''}`}
-        />
+        <div className="relative flex-1">
+          <Input
+            id="phoneNumber"
+            type="tel"
+            placeholder={placeholder}
+            value={phoneNumber}
+            onChange={handleNumberChange}
+            required={required}
+            className={`pr-10 ${phoneError ? 'border-destructive' : isVerified ? 'border-emerald-500' : ''}`}
+          />
+          {isVerifying && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          {isVerified && !isVerifying && (
+            <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
+          )}
+        </div>
       </div>
       {phoneError && (
         <p className="text-xs text-destructive">{phoneError}</p>
       )}
-      {!phoneError && description && <p className="text-xs text-muted-foreground">{description}</p>}
+      {isVerified && !phoneError && (
+        <p className="text-xs text-emerald-600">Phone number verified ✓</p>
+      )}
+      {!phoneError && !isVerified && description && <p className="text-xs text-muted-foreground">{description}</p>}
     </div>
   );
 };
