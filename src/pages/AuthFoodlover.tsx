@@ -11,7 +11,7 @@ import { ArrowLeft, Users, Mail, Loader2, CheckCircle2 } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
-import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
+import { validateEmail } from '@/utils/emailValidation';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -48,9 +48,9 @@ const AuthFoodlover = () => {
     }) as T;
   };
 
-  // Real-time email verification
+  // Real-time email verification using Abstract API
   const verifyEmailRealtime = useCallback(async (emailToVerify: string) => {
-    // First do basic validation
+    // First do basic format validation
     const basicResult = validateEmail(emailToVerify);
     if (!basicResult.isValid) {
       setEmailError(basicResult.error);
@@ -62,17 +62,30 @@ const AuthFoodlover = () => {
     setIsEmailVerified(false);
 
     try {
-      const domainResult = await verifyEmailDomain(emailToVerify);
-      if (domainResult.isValid) {
+      const { data, error } = await supabase.functions.invoke('verify-email-exists', {
+        body: { email: emailToVerify }
+      });
+
+      if (error) {
+        console.error('Email verification error:', error);
+        setIsEmailVerified(false);
+        return;
+      }
+
+      if (data.isValid) {
         setEmailError(null);
         setIsEmailVerified(true);
+        
+        // Show suggestion if available
+        if (data.suggestion) {
+          setEmailError(`Did you mean ${data.suggestion}?`);
+        }
       } else {
-        setEmailError(domainResult.error);
+        setEmailError(data.error || 'Invalid email address');
         setIsEmailVerified(false);
       }
     } catch (error) {
       console.error('Email verification error:', error);
-      // On error, allow the form to proceed
       setIsEmailVerified(false);
     } finally {
       setIsVerifyingEmail(false);
@@ -145,13 +158,21 @@ const AuthFoodlover = () => {
     
     setLoading(true);
 
-    // For signup, verify email domain has MX records (skip if already verified)
+    // For signup, verify email exists (skip if already verified via real-time check)
     if (!isLogin && !isEmailVerified) {
-      const domainResult = await verifyEmailDomain(email);
-      if (!domainResult.isValid) {
-        setEmailError(domainResult.error);
-        setLoading(false);
-        return;
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-email-exists', {
+          body: { email }
+        });
+        
+        if (error || !data?.isValid) {
+          setEmailError(data?.error || 'Please enter a valid email address');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Email verification failed:', err);
+        // Continue with signup attempt
       }
     }
 
