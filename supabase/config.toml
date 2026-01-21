@@ -3,6 +3,9 @@ project_id = "ioqogdxfmapcijmqjcpb"
 [functions.verify-email-domain]
 verify_jwt = false
 
+[functions.verify-phone-number]
+verify_jwt = false
+
 [functions.get-onesignal-config]
 verify_jwt = true
 
