@@ -317,7 +317,11 @@ const ResetPassword = () => {
           <div className="mt-6 text-center">
             <Button
               variant="link"
-              onClick={() => navigate('/auth/foodlover')}
+              onClick={async () => {
+                console.log('[ResetPassword] Back to Sign In clicked - signing out...');
+                await supabase.auth.signOut();
+                navigate('/auth/foodlover');
+              }}
               className="text-sm"
             >
               Back to Sign In
