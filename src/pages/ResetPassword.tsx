@@ -16,8 +16,10 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkInvalid, setLinkInvalid] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,8 +30,39 @@ const ResetPassword = () => {
     match: false,
   });
 
+  // Check for valid session on mount
   useEffect(() => {
-    console.log('[ResetPassword] Page loaded');
+    const checkSession = async () => {
+      console.log('[ResetPassword] Checking for valid recovery session...');
+      
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[ResetPassword] Session error:', sessionError);
+          setLinkInvalid(true);
+          setInitializing(false);
+          return;
+        }
+        
+        if (!session) {
+          console.log('[ResetPassword] No valid session - link may have been used or expired');
+          setLinkInvalid(true);
+          setInitializing(false);
+          return;
+        }
+        
+        console.log('[ResetPassword] Valid session found, user can reset password');
+        setInitializing(false);
+        
+      } catch (err) {
+        console.error('[ResetPassword] Error checking session:', err);
+        setLinkInvalid(true);
+        setInitializing(false);
+      }
+    };
+    
+    checkSession();
   }, []);
 
   useEffect(() => {
@@ -114,10 +147,48 @@ const ResetPassword = () => {
     </div>
   );
 
+  // Show loading while checking session
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/20 px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Verifying reset link...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error if link is invalid or already used
+  if (linkInvalid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/20 px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto h-12 w-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <XCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl">Link Expired or Already Used</CardTitle>
+            <CardDescription>
+              This password reset link has already been used or has expired. Please request a new one.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => navigate('/auth/foodlover')} className="mt-4">
+              Back to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/20 px-4">
-      <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-6 w-6 text-primary" />
