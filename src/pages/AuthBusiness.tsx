@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
 import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
 import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
+import { useSignupValidation } from '@/hooks/useSignupValidation';
 
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -33,6 +34,7 @@ const AuthBusiness = () => {
   const { signUp, signIn, user, clearValidating } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { checkDuplicates, isUserExistsError, checking } = useSignupValidation();
 
   useEffect(() => {
     if (user) {
@@ -93,11 +95,19 @@ const AuthBusiness = () => {
     
     setLoading(true);
 
-    // For signup, verify email domain has MX records
+    // For signup, verify email domain has MX records and check for duplicates
     if (!isLogin) {
       const domainResult = await verifyEmailDomain(email);
       if (!domainResult.isValid) {
         setEmailError(domainResult.error);
+        setLoading(false);
+        return;
+      }
+
+      // Check if phone number already exists
+      const duplicates = await checkDuplicates(email, phoneNumber);
+      if (duplicates.phoneExists) {
+        setPhoneError('A user with this phone number already exists. Please use a different number or sign in.');
         setLoading(false);
         return;
       }
@@ -171,11 +181,18 @@ const AuthBusiness = () => {
 
         const { error } = await signUp(email, password, displayName, 'business');
         if (error) {
-          toast({
-            title: "Signup Failed",
-            description: error.message,
-            variant: "destructive",
-          });
+          // Check if this is a "user already exists" error
+          if (isUserExistsError(error)) {
+            setEmailError('An account with this email already exists. Please sign in instead.');
+          } else {
+            toast({
+              title: "Signup Failed",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+          setLoading(false);
+          return;
         } else {
           toast({
             title: "Business Account Created!",
@@ -344,8 +361,8 @@ const AuthBusiness = () => {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading} size="lg">
-              {loading ? 'Loading...' : (isLogin ? 'Sign In to Dashboard' : 'Create & Verify Business Account')}
+            <Button type="submit" className="w-full" disabled={loading || checking} size="lg">
+              {loading || checking ? 'Loading...' : (isLogin ? 'Sign In to Dashboard' : 'Create & Verify Business Account')}
             </Button>
 
             <div className="relative my-6">
