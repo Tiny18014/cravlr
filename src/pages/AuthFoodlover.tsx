@@ -12,6 +12,7 @@ import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
 import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
+import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 
 const AuthFoodlover = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -24,6 +25,7 @@ const AuthFoodlover = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   
   const MIN_PASSWORD_LENGTH = 6;
   
@@ -284,7 +286,22 @@ const AuthFoodlover = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {isLogin && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs text-primary hover:text-primary/80"
+                    onClick={() => {
+                      console.log('[Auth] Forgot Password link clicked');
+                      setForgotPasswordOpen(true);
+                    }}
+                  >
+                    Forgot Password?
+                  </Button>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -344,6 +361,11 @@ const AuthFoodlover = () => {
           </div>
         </CardContent>
       </Card>
+
+      <ForgotPasswordModal 
+        open={forgotPasswordOpen} 
+        onOpenChange={setForgotPasswordOpen} 
+      />
     </div>
   );
 };
