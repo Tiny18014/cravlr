@@ -12,8 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
  * Supports both Universal Links (iOS) and App Links (Android).
  * 
  * CRITICAL: Handles OAuth callback URLs with token extraction
+ * CRITICAL: Handles Password Reset URLs separately to avoid auto-sign-in
  * 
  * Supported URL patterns:
+ * - https://cravlr.lovable.app/reset-password#access_token=... (PASSWORD RESET)
  * - https://cravlr.lovable.app/auth/google/callback#access_token=...
  * - https://cravlr.lovable.app/requests/{requestId}/results
  * - https://cravlr.lovable.app/recommend/{requestId}
@@ -35,8 +37,91 @@ export function useDeepLinking() {
   /**
    * Handle OAuth callback - extract tokens from URL and set session
    */
+  /**
+   * Handle Password Reset callback - navigate to reset password page
+   */
+  const handlePasswordResetCallback = useCallback(async (url: string): Promise<boolean> => {
+    console.log('[Auth Deep Link] Checking if URL is password reset:', url);
+    
+    // Check if this is a password reset URL
+    const isPasswordReset = url.includes('/reset-password');
+    
+    if (!isPasswordReset) {
+      return false;
+    }
+
+    console.log('[Auth Deep Link] ═══════════════════════════════════════');
+    console.log('[Auth Deep Link] Password reset link detected!');
+    console.log('[Auth Deep Link] ═══════════════════════════════════════');
+
+    try {
+      // Close the browser if it was opened
+      try {
+        await Browser.close();
+        console.log('[Auth Deep Link] Browser closed');
+      } catch (e) {
+        console.log('[Auth Deep Link] Browser close skipped');
+      }
+
+      // Parse the URL to extract hash parameters (contains the recovery token)
+      const urlObj = new URL(url);
+      const hashParams = new URLSearchParams(urlObj.hash.substring(1));
+      const queryParams = new URLSearchParams(urlObj.search);
+      
+      const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+      const type = hashParams.get('type') || queryParams.get('type');
+      
+      console.log('[Auth Deep Link] Password reset token extraction:');
+      console.log('[Auth Deep Link]   - Type:', type || 'NOT FOUND');
+      console.log('[Auth Deep Link]   - Access token:', accessToken ? 'FOUND' : 'NOT FOUND');
+      
+      // If this is a recovery type, we need to set the session but NOT navigate to dashboard
+      if (accessToken && (type === 'recovery' || type === 'magiclink' || !type)) {
+        console.log('[Auth Deep Link] Setting recovery session...');
+        
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+        });
+
+        if (error) {
+          console.error('[Auth Deep Link] Failed to set recovery session:', error);
+          navigate('/reset-password', { replace: true, state: { error: 'Invalid or expired reset link' } });
+          return true;
+        }
+
+        console.log('[Auth Deep Link] Recovery session established');
+        console.log('[Auth Deep Link] Navigating to reset password page...');
+        
+        // Navigate to reset password page - user can now update their password
+        navigate('/reset-password', { replace: true });
+        return true;
+      }
+
+      // No token found, navigate anyway and let the page handle the error
+      console.log('[Auth Deep Link] No token in URL, navigating to reset password page');
+      navigate('/reset-password', { replace: true });
+      return true;
+
+    } catch (error) {
+      console.error('[Auth Deep Link] Error handling password reset:', error);
+      navigate('/reset-password', { replace: true, state: { error: 'Something went wrong' } });
+      return true;
+    }
+  }, [navigate]);
+
+  /**
+   * Handle OAuth callback - extract tokens from URL and set session
+   */
   const handleOAuthCallback = useCallback(async (url: string): Promise<boolean> => {
     console.log('[Auth Deep Link] Checking if URL is OAuth callback:', url);
+    
+    // IMPORTANT: Skip if this is a password reset URL (handled separately)
+    if (url.includes('/reset-password')) {
+      console.log('[Auth Deep Link] Skipping OAuth - this is a password reset URL');
+      return false;
+    }
     
     // Check if this is an OAuth callback URL
     const isOAuthCallback = url.includes('/auth/google/callback') || 
@@ -177,7 +262,14 @@ export function useDeepLinking() {
     console.log('[Deep Linking] Timestamp:', new Date().toISOString());
     console.log('[Deep Linking] ═══════════════════════════════════════');
     
-    // First, check if this is an OAuth callback
+    // FIRST: Check if this is a password reset link (before OAuth check)
+    const wasPasswordReset = await handlePasswordResetCallback(url);
+    if (wasPasswordReset) {
+      console.log('[Deep Linking] Handled as password reset');
+      return;
+    }
+    
+    // Second, check if this is an OAuth callback
     const wasOAuthCallback = await handleOAuthCallback(url);
     if (wasOAuthCallback) {
       console.log('[Deep Linking] Handled as OAuth callback');
@@ -208,7 +300,7 @@ export function useDeepLinking() {
       console.error('[Deep Linking] Could not parse URL, navigating to home');
       navigate('/', { replace: true });
     }
-  }, [navigate, location.pathname, parseDeepLinkUrl, handleOAuthCallback]);
+  }, [navigate, location.pathname, parseDeepLinkUrl, handleOAuthCallback, handlePasswordResetCallback]);
 
   /**
    * Initialize deep linking listeners
@@ -280,6 +372,7 @@ export function useDeepLinking() {
     handleDeepLink,
     parseDeepLinkUrl,
     handleOAuthCallback,
+    handlePasswordResetCallback,
     isNative: Capacitor.isNativePlatform(),
     platform: Capacitor.getPlatform()
   };
