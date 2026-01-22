@@ -76,11 +76,17 @@ const ResetPassword = () => {
       }
 
       console.log('[ResetPassword] Password updated successfully');
+      
+      // Sign out the user so they can sign in with their new password
+      console.log('[ResetPassword] Signing out user after password reset...');
+      await supabase.auth.signOut();
+      console.log('[ResetPassword] User signed out');
+      
       setSuccess(true);
       
       toast({
         title: "Password Updated!",
-        description: "Your password has been changed successfully.",
+        description: "Your password has been changed successfully. Please sign in with your new password.",
       });
 
       // Redirect to sign-in after 3 seconds
