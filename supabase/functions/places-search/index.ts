@@ -203,7 +203,7 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
   const params = new URLSearchParams({
     input: input.trim(),
     key: GOOGLE_API_KEY!,
-    types: 'establishment',
+    types: 'restaurant|food|cafe|bakery|bar', // Only food-related places
     language: 'en',
   });
   
