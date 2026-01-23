@@ -181,7 +181,7 @@ serve(async (req) => {
 
       // Clean up on connection close
       controller.enqueue = new Proxy(controller.enqueue, {
-        apply(target, thisArg, args) {
+        apply(target, thisArg, args: [chunk?: unknown]) {
           try {
             return target.apply(thisArg, args);
           } catch (error) {

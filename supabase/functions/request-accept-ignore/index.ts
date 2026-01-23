@@ -9,7 +9,9 @@ const corsHeaders = {
 
 const requestSchema = z.object({
   requestId: z.string().uuid({ message: 'Invalid request ID format' }),
-  action: z.enum(['accept', 'ignore'], { message: 'Action must be either "accept" or "ignore"' })
+  action: z.enum(['accept', 'ignore'], { 
+    errorMap: () => ({ message: 'Action must be either "accept" or "ignore"' })
+  })
 });
 
 serve(async (req) => {
