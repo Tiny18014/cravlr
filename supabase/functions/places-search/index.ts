@@ -111,13 +111,73 @@ async function geocodeLocation(location: string) {
   throw new Error(`Could not geocode location "${location}": ${json.status || 'Unknown error'}`);
 }
 
-// Global autocomplete - no country restriction
+// Extract location components from address string
+function parseLocationFromAddress(address: string): { city: string | null; state: string | null } {
+  if (!address) return { city: null, state: null };
+  
+  // Parse addresses like "123 Main St, Concord, NC 28025" or "Concord, NC"
+  const parts = address.split(',').map(p => p.trim());
+  
+  let city: string | null = null;
+  let state: string | null = null;
+  
+  // Look for state code (2 uppercase letters, possibly followed by ZIP)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    // Match state code like "NC" or "NC 28025" or "North Carolina"
+    const stateMatch = part.match(/^([A-Z]{2})(?:\s+\d{5})?$/);
+    if (stateMatch) {
+      state = stateMatch[1];
+      // City is typically the part before the state
+      if (i > 0) {
+        city = parts[i - 1];
+      }
+      break;
+    }
+    // Try full state names
+    const fullStateMatch = part.match(/^(Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming)/i);
+    if (fullStateMatch) {
+      state = fullStateMatch[1];
+      if (i > 0) {
+        city = parts[i - 1];
+      }
+      break;
+    }
+  }
+  
+  return { city, state };
+}
+
+// Calculate distance between two coordinates in kilometers
+function calculateDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in km
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lng2-lng1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+}
+
+// Global autocomplete - with strict location filtering
 async function autocompletePlaces(req: AutocompleteRequest): Promise<AutocompleteResult[]> {
   const { input, lat, lng, location, radiusKm = DEFAULT_RADIUS_KM, sessionToken } = req;
   if (!GOOGLE_API_KEY) throw new Error('Google API key not configured');
   if (!input?.trim()) return [];
 
   const coords = await geocodeIfNeeded(location, lat, lng);
+  
+  // Parse the target location to get city/state for filtering
+  const targetLocation = location ? parseLocationFromAddress(location) : null;
+  console.log('[Autocomplete] Target location:', location, '-> Parsed:', targetLocation);
+  console.log('[Autocomplete] Coordinates:', coords);
+  console.log('[Autocomplete] Radius km:', radiusKm);
+  
   const params = new URLSearchParams({
     input: input.trim(),
     key: GOOGLE_API_KEY!,
@@ -128,13 +188,29 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
   if (coords) {
     params.set('location', `${coords.lat},${coords.lng}`);
     params.set('radius', String(Math.round(radiusKm * 1000)));
+    // Use strictbounds to limit results to the specified radius
+    params.set('strictbounds', 'true');
   }
   if (sessionToken) params.set('sessiontoken', sessionToken);
 
   const { json } = await fetchJSON(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
   
   if (json.status === 'ZERO_RESULTS') {
-    console.log('Autocomplete returned zero results for:', input);
+    console.log('[Autocomplete] Zero results for:', input);
+    
+    // If strictbounds returned no results, try without it but filter manually
+    if (coords) {
+      console.log('[Autocomplete] Retrying without strictbounds...');
+      params.delete('strictbounds');
+      const { json: retryJson } = await fetchJSON(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
+      
+      if (retryJson.status === 'OK' && retryJson.predictions?.length) {
+        // Filter and sort results by location relevance
+        const results = filterAndSortByLocation(retryJson.predictions, targetLocation, coords, radiusKm);
+        console.log(`[Autocomplete] After filtering: ${results.length} results`);
+        return results;
+      }
+    }
     return [];
   }
   
@@ -142,16 +218,83 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
     throw new Error(`Autocomplete failed: ${json.status} ${json.error_message || ''}`);
   }
 
-  return (json.predictions || []).slice(0, MAX_RESULTS).map((p: any) => {
+  // Filter and sort results by location relevance
+  const results = filterAndSortByLocation(json.predictions || [], targetLocation, coords, radiusKm);
+  console.log(`[Autocomplete] Returning ${results.length} filtered/sorted results`);
+  
+  return results;
+}
+
+// Filter and sort autocomplete results by location relevance
+function filterAndSortByLocation(
+  predictions: any[], 
+  targetLocation: { city: string | null; state: string | null } | null,
+  coords: { lat: number; lng: number } | undefined,
+  radiusKm: number
+): AutocompleteResult[] {
+  
+  const scoredResults = predictions.map((p: any) => {
     const main = p.structured_formatting?.main_text ?? p.description;
     const secondary = p.structured_formatting?.secondary_text ?? '';
+    const fullAddress = p.description || '';
+    
+    // Parse the result's location
+    const resultLocation = parseLocationFromAddress(fullAddress);
+    
+    let priorityScore = 1000; // Default: low priority
+    let matchType = 'other';
+    
+    if (targetLocation?.city && targetLocation?.state) {
+      const targetCity = targetLocation.city.toLowerCase().trim();
+      const targetState = targetLocation.state.toLowerCase().trim();
+      const resultCity = resultLocation.city?.toLowerCase().trim() || '';
+      const resultState = resultLocation.state?.toLowerCase().trim() || '';
+      
+      // Check for same city and state (highest priority)
+      if (resultCity === targetCity && resultState === targetState) {
+        priorityScore = 0;
+        matchType = 'same_city';
+      }
+      // Same state, different city
+      else if (resultState === targetState) {
+        priorityScore = 100;
+        matchType = 'same_state';
+      }
+      // Different state (lowest priority)
+      else if (resultState && resultState !== targetState) {
+        priorityScore = 1000;
+        matchType = 'different_state';
+      }
+    }
+    
+    console.log(`[Sort] ${main}: ${fullAddress} -> ${matchType} (score: ${priorityScore})`);
+    
     return {
       placeId: p.place_id,
       name: main,
       address: secondary,
-      description: p.description,
-    } as AutocompleteResult;
+      description: fullAddress,
+      priorityScore,
+      matchType,
+    };
   });
+  
+  // Sort by priority score (lower is better)
+  scoredResults.sort((a, b) => a.priorityScore - b.priorityScore);
+  
+  // Log the sorting results
+  const sameCityCount = scoredResults.filter(r => r.matchType === 'same_city').length;
+  const sameStateCount = scoredResults.filter(r => r.matchType === 'same_state').length;
+  const otherCount = scoredResults.filter(r => r.matchType === 'different_state' || r.matchType === 'other').length;
+  console.log(`[Sort] Results: ${sameCityCount} same city, ${sameStateCount} same state, ${otherCount} other`);
+  
+  // Return results, limiting to MAX_RESULTS
+  return scoredResults.slice(0, MAX_RESULTS).map(r => ({
+    placeId: r.placeId,
+    name: r.name,
+    address: r.address,
+    description: r.description,
+  } as AutocompleteResult));
 }
 
 async function searchPlaces(lat: number, lng: number, query: string, radiusKm: number): Promise<PlaceResult[]> {
