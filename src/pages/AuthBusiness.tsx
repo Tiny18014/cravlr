@@ -325,22 +325,7 @@ const AuthBusiness = () => {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                {isLogin && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="h-auto p-0 text-xs text-primary hover:text-primary/80"
-                    onClick={() => {
-                      console.log('[Auth] Forgot Password link clicked');
-                      setForgotPasswordOpen(true);
-                    }}
-                  >
-                    Forgot Password?
-                  </Button>
-                )}
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -358,6 +343,21 @@ const AuthBusiness = () => {
                 <p className="text-xs text-muted-foreground">
                   Minimum 6 characters
                 </p>
+              )}
+              {isLogin && (
+                <div className="text-right">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs text-primary hover:text-primary/80"
+                    onClick={() => {
+                      console.log('[Auth] Forgot Password link clicked');
+                      setForgotPasswordOpen(true);
+                    }}
+                  >
+                    Forgot Password?
+                  </Button>
+                </div>
               )}
             </div>
 
