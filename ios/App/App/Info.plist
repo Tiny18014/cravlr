@@ -47,5 +47,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cravlr uses your location to find nearby restaurants and show you relevant food recommendations in your area.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cravlr uses your location to find nearby restaurants and notify you about food recommendations in your area, even when the app is in the background.</string>
 </dict>
 </plist>
