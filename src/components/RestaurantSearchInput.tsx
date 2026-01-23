@@ -14,27 +14,8 @@ interface RestaurantSuggestion {
   isPremium?: boolean;
 }
 
-// Test restaurants for business dashboard testing
-const TEST_RESTAURANTS: RestaurantSuggestion[] = [
-  {
-    placeId: 'test_joes_pizza_palace',
-    name: "Joe's Pizza Palace Test",
-    address: '123 Main St, Charlotte, NC 28202',
-    description: 'Test restaurant for business dashboard'
-  },
-  {
-    placeId: 'test_marias_cafe',
-    name: "Maria's Cafe Test",
-    address: '456 Oak Ave, Charlotte, NC 28203',
-    description: 'Test restaurant for business dashboard'
-  },
-  {
-    placeId: 'test_burger_spot',
-    name: "The Burger Spot Test",
-    address: '789 Pine St, Charlotte, NC 28204',
-    description: 'Test restaurant for business dashboard'
-  }
-];
+// Test restaurants removed - they were showing Charlotte, NC results on focus
+// and confusing the location-based filtering
 
 interface RestaurantSearchInputProps {
   value: string;
@@ -91,12 +72,6 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
     
     setLoading(true);
     try {
-      // Filter test restaurants that match the query
-      const filteredTestRestaurants = TEST_RESTAURANTS.filter(restaurant =>
-        restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
-        restaurant.address.toLowerCase().includes(query.toLowerCase())
-      );
-      
       console.log('[RestaurantSearch] ===== SEARCH START =====');
       console.log('[RestaurantSearch] Query:', query);
       console.log('[RestaurantSearch] User location (coords):', userLocation);
@@ -117,17 +92,15 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
 
       if (error) {
         console.error('[RestaurantSearch] ❌ Places search error:', error);
-        // Still show test restaurants even if API fails
-        setSuggestions(filteredTestRestaurants);
-        setIsOpen(true);
+        setSuggestions([]);
+        setIsOpen(false);
         return;
       }
 
       console.log('[RestaurantSearch] ✅ Got suggestions:', data?.length, 'results');
       console.log('[RestaurantSearch] Top 5 results:', data?.slice(0, 5)?.map((r: any) => ({ name: r.name, address: r.address })));
       
-      // Combine test restaurants with API results
-      let combinedSuggestions = [...filteredTestRestaurants, ...(data || [])];
+      let combinedSuggestions = [...(data || [])];
       
       // Fetch premium status for all suggestions
       const placeIds = combinedSuggestions.map(s => s.placeId).filter(Boolean);
@@ -166,16 +139,9 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
       setSuggestions(combinedSuggestions);
       setIsOpen(true);
     } catch (error) {
-      console.error('❌ Restaurant search error:', error);
-      // Show test restaurants as fallback
-      const filteredTestRestaurants = TEST_RESTAURANTS.filter(restaurant =>
-        restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
-        restaurant.address.toLowerCase().includes(query.toLowerCase())
-      );
-      setSuggestions(filteredTestRestaurants);
-      if (filteredTestRestaurants.length > 0) {
-        setIsOpen(true);
-      }
+      console.error('[RestaurantSearch] ❌ Restaurant search error:', error);
+      setSuggestions([]);
+      setIsOpen(false);
     } finally {
       setLoading(false);
     }
@@ -195,13 +161,11 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
   };
 
   const handleInputFocus = () => {
+    // Only show dropdown if there are already suggestions from a previous search
     if (suggestions.length > 0) {
       setIsOpen(true);
-    } else if (!searchTerm || searchTerm.length === 0) {
-      // Show test restaurants when focusing on empty input
-      setSuggestions(TEST_RESTAURANTS);
-      setIsOpen(true);
     }
+    // Don't show anything on empty focus - user needs to type to search
   };
 
   return (
