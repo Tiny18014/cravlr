@@ -97,30 +97,34 @@ export const RestaurantSearchInput: React.FC<RestaurantSearchInputProps> = ({
         restaurant.address.toLowerCase().includes(query.toLowerCase())
       );
       
-      console.log('🔍 Searching restaurants for:', query);
+      console.log('[RestaurantSearch] ===== SEARCH START =====');
+      console.log('[RestaurantSearch] Query:', query);
+      console.log('[RestaurantSearch] User location (coords):', userLocation);
+      console.log('[RestaurantSearch] Location string:', location);
       
       const requestBody = {
         input: query,
         ...(userLocation && { lat: userLocation.lat, lng: userLocation.lng }),
         ...(location && !userLocation && { location }), // Use location string if no coordinates
-        radiusKm: 25 // 25km radius (~15 miles) for location-based search
+        radiusKm: 40 // 40km radius (~25 miles) for location-based search
       };
 
-      console.log('🔍 Request body:', requestBody);
+      console.log('[RestaurantSearch] Request body:', requestBody);
 
       const { data, error } = await supabase.functions.invoke('places-search/autocomplete', {
         body: requestBody
       });
 
       if (error) {
-        console.error('❌ Places search error:', error);
+        console.error('[RestaurantSearch] ❌ Places search error:', error);
         // Still show test restaurants even if API fails
         setSuggestions(filteredTestRestaurants);
         setIsOpen(true);
         return;
       }
 
-      console.log('✅ Got suggestions:', data);
+      console.log('[RestaurantSearch] ✅ Got suggestions:', data?.length, 'results');
+      console.log('[RestaurantSearch] Top 5 results:', data?.slice(0, 5)?.map((r: any) => ({ name: r.name, address: r.address })));
       
       // Combine test restaurants with API results
       let combinedSuggestions = [...filteredTestRestaurants, ...(data || [])];
