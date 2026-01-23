@@ -111,41 +111,63 @@ async function geocodeLocation(location: string) {
   throw new Error(`Could not geocode location "${location}": ${json.status || 'Unknown error'}`);
 }
 
-// Extract location components from address string
-function parseLocationFromAddress(address: string): { city: string | null; state: string | null } {
-  if (!address) return { city: null, state: null };
+// Extract location components from address string (global support)
+function parseLocationFromAddress(address: string): { city: string | null; state: string | null; country: string | null } {
+  if (!address) return { city: null, state: null, country: null };
   
-  // Parse addresses like "123 Main St, Concord, NC 28025" or "Concord, NC"
-  const parts = address.split(',').map(p => p.trim());
+  // Parse addresses like:
+  // "123 Main St, Concord, NC 28025" (US)
+  // "Concord, NC" (US short)
+  // "PizzaExpress, 1st Cross Road, Koramangala, Bengaluru, Karnataka, India" (India)
+  // "Bengaluru, Karnataka" (India short)
+  const parts = address.split(',').map(p => p.trim()).filter(p => p.length > 0);
   
   let city: string | null = null;
   let state: string | null = null;
+  let country: string | null = null;
   
-  // Look for state code (2 uppercase letters, possibly followed by ZIP)
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const part = parts[i];
-    // Match state code like "NC" or "NC 28025" or "North Carolina"
-    const stateMatch = part.match(/^([A-Z]{2})(?:\s+\d{5})?$/);
-    if (stateMatch) {
-      state = stateMatch[1];
-      // City is typically the part before the state
-      if (i > 0) {
-        city = parts[i - 1];
+  if (parts.length === 0) return { city: null, state: null, country: null };
+  
+  // For addresses with 2+ parts, try to extract meaningful location info
+  if (parts.length >= 2) {
+    // Check last part for country
+    const lastPart = parts[parts.length - 1];
+    
+    // Common country indicators
+    const countryPatterns = ['USA', 'United States', 'India', 'UK', 'United Kingdom', 'Canada', 'Australia'];
+    const isCountry = countryPatterns.some(c => lastPart.toLowerCase().includes(c.toLowerCase()));
+    
+    if (isCountry) {
+      country = lastPart;
+      // State/region is second to last, city is third to last
+      if (parts.length >= 3) {
+        state = parts[parts.length - 2];
+        city = parts[parts.length - 3];
+      } else if (parts.length === 2) {
+        state = parts[0];
       }
-      break;
-    }
-    // Try full state names
-    const fullStateMatch = part.match(/^(Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming)/i);
-    if (fullStateMatch) {
-      state = fullStateMatch[1];
-      if (i > 0) {
-        city = parts[i - 1];
+    } else {
+      // No country detected - check for US state codes
+      // Match state code like "NC" or "NC 28025"
+      const stateCodeMatch = lastPart.match(/^([A-Z]{2})(?:\s+\d{5})?$/);
+      if (stateCodeMatch) {
+        state = stateCodeMatch[1];
+        city = parts.length >= 2 ? parts[parts.length - 2] : null;
+      } else {
+        // Assume format is "City, State/Region" for international
+        // Last part is state/region, second to last is city
+        state = lastPart;
+        city = parts.length >= 2 ? parts[parts.length - 2] : null;
       }
-      break;
     }
+  } else if (parts.length === 1) {
+    // Single part - treat as city
+    city = parts[0];
   }
   
-  return { city, state };
+  console.log(`[ParseLocation] "${address}" -> city: "${city}", state: "${state}", country: "${country}"`);
+  
+  return { city, state, country };
 }
 
 // Calculate distance between two coordinates in kilometers
@@ -228,7 +250,7 @@ async function autocompletePlaces(req: AutocompleteRequest): Promise<Autocomplet
 // Filter and sort autocomplete results by location relevance
 function filterAndSortByLocation(
   predictions: any[], 
-  targetLocation: { city: string | null; state: string | null } | null,
+  targetLocation: { city: string | null; state: string | null; country?: string | null } | null,
   coords: { lat: number; lng: number } | undefined,
   radiusKm: number
 ): AutocompleteResult[] {
@@ -244,24 +266,34 @@ function filterAndSortByLocation(
     let priorityScore = 1000; // Default: low priority
     let matchType = 'other';
     
-    if (targetLocation?.city && targetLocation?.state) {
-      const targetCity = targetLocation.city.toLowerCase().trim();
-      const targetState = targetLocation.state.toLowerCase().trim();
-      const resultCity = resultLocation.city?.toLowerCase().trim() || '';
-      const resultState = resultLocation.state?.toLowerCase().trim() || '';
-      
+    // Normalize for comparison
+    const targetCity = targetLocation?.city?.toLowerCase().trim() || '';
+    const targetState = targetLocation?.state?.toLowerCase().trim() || '';
+    const resultCity = resultLocation.city?.toLowerCase().trim() || '';
+    const resultState = resultLocation.state?.toLowerCase().trim() || '';
+    
+    console.log(`[Sort] Comparing: target(${targetCity}, ${targetState}) vs result(${resultCity}, ${resultState})`);
+    
+    if (targetCity || targetState) {
       // Check for same city and state (highest priority)
-      if (resultCity === targetCity && resultState === targetState) {
+      if (resultCity && targetCity && resultCity.includes(targetCity) && 
+          resultState && targetState && resultState.includes(targetState)) {
         priorityScore = 0;
         matchType = 'same_city';
       }
-      // Same state, different city
-      else if (resultState === targetState) {
+      // Also check if target city is contained in result city (for variations like "Bengaluru" vs "Bengaluru Urban")
+      else if (resultCity && targetCity && (resultCity.includes(targetCity) || targetCity.includes(resultCity)) &&
+               resultState && targetState && (resultState.includes(targetState) || targetState.includes(resultState))) {
+        priorityScore = 10;
+        matchType = 'same_city';
+      }
+      // Same state/region, different city
+      else if (resultState && targetState && (resultState.includes(targetState) || targetState.includes(resultState))) {
         priorityScore = 100;
         matchType = 'same_state';
       }
       // Different state (lowest priority)
-      else if (resultState && resultState !== targetState) {
+      else if (resultState && targetState && !resultState.includes(targetState) && !targetState.includes(resultState)) {
         priorityScore = 1000;
         matchType = 'different_state';
       }
