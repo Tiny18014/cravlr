@@ -248,7 +248,6 @@ async function fetchGoogleAreaSuggestions(query: string, biasLat?: number, biasL
           } : undefined,
           providerPlaceId: prediction.place_id,
           source: 'google_geocoding',
-          adminHierarchy: components.adminHierarchy,
           ...components,
         });
       }
@@ -328,7 +327,6 @@ async function fetchGooglePlaceSuggestions(query: string, biasLat?: number, bias
             priceLevel: place.price_level,
             userRatingsTotal: place.user_ratings_total,
             source: 'google_places',
-            adminHierarchy: components.adminHierarchy,
             ...components,
           });
         }
@@ -391,7 +389,6 @@ async function fetchNominatimSuggestions(query: string, biasLat?: number, biasLn
         name: item.name,
         categories: item.type ? [item.type] : [],
         source: 'osm_nominatim',
-        adminHierarchy: components.adminHierarchy,
         viewport: item.boundingbox ? {
           northeast: { lat: parseFloat(item.boundingbox[1]), lng: parseFloat(item.boundingbox[3]) },
           southwest: { lat: parseFloat(item.boundingbox[0]), lng: parseFloat(item.boundingbox[2]) },
@@ -559,7 +556,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Location resolve error:', error);
     return new Response(
-      JSON.stringify({ data: [], error: error.message, meta: { total: 0 } }),
+      JSON.stringify({ data: [], error: error instanceof Error ? error.message : 'Unknown error', meta: { total: 0 } }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
