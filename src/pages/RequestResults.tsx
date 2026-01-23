@@ -22,6 +22,7 @@ interface RecommendationGroup {
   key: string;
   name: string;
   placeId?: string;
+  address?: string; // Full restaurant address
   rating?: number;
   reviews?: number;
   priceLevel?: number;
@@ -140,6 +141,7 @@ const RequestResults = () => {
             key,
             name: rec.restaurant_name,
             placeId: rec.place_id,
+            address: rec.restaurant_address, // Store full address
             mapsUrl: rec.maps_url,
             count: 0,
             firstSubmittedAt: rec.created_at,
@@ -584,6 +586,14 @@ const RequestResults = () => {
                               </Badge>
                             </div>
 
+                            {/* Address */}
+                            {group.address && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{group.address}</span>
+                              </div>
+                            )}
+
                             {/* Meta Info */}
                             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                               {group.rating && (
@@ -599,7 +609,6 @@ const RequestResults = () => {
                               {group.distanceMeters && (
                                 <span>{formatDistance(group.distanceMeters)}</span>
                               )}
-                              <span>{request.location_city}</span>
                             </div>
 
                             {/* Notes */}
