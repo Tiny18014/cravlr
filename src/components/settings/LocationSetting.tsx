@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Navigation, Map, Loader2, Check, Search } from 'lucide-react';
+import { MapPin, Navigation, Map, Loader2, Check, X, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -40,9 +40,14 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   
-  // Manual location search state
-  const [manualInput, setManualInput] = useState('');
+  // Autocomplete state
+  const [searchInput, setSearchInput] = useState('');
+  const [suggestions, setSuggestions] = useState<NormalizedLocation[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // Current displayed location (what user sees)
   const [displayLocation, setDisplayLocation] = useState<string>('');
@@ -67,10 +72,91 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
     return '';
   };
 
+  // Debounced search for autocomplete suggestions
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (!hasUserTyped || searchInput.length < 2) {
+      setSuggestions([]);
+      setIsDropdownOpen(false);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        console.log('[Preferences:Location] Searching for:', searchInput);
+        
+        const { data, error } = await supabase.functions.invoke('location-resolve', {
+          body: {
+            query: searchInput,
+            includeRestaurants: false,
+          }
+        });
+
+        if (error) {
+          console.error('[Preferences:Location] Search error:', error);
+          setSuggestions([]);
+          setIsDropdownOpen(false);
+          return;
+        }
+
+        const results = data?.data || [];
+        console.log('[Preferences:Location] Found', results.length, 'results');
+        setSuggestions(results.slice(0, 8));
+        setIsDropdownOpen(results.length > 0);
+      } catch (error) {
+        console.error('[Preferences:Location] Search error:', error);
+        setSuggestions([]);
+        setIsDropdownOpen(false);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [searchInput, hasUserTyped]);
+
+  const handleInputChange = (value: string) => {
+    setHasUserTyped(true);
+    setSearchInput(value);
+  };
+
+  const handleInputFocus = () => {
+    if (suggestions.length > 0) {
+      setIsDropdownOpen(true);
+    }
+  };
+
+  const handleInputBlur = () => {
+    setTimeout(() => setIsDropdownOpen(false), 200);
+  };
+
+  const clearInput = () => {
+    setSearchInput('');
+    setIsDropdownOpen(false);
+    setSuggestions([]);
+    inputRef.current?.focus();
+  };
+
   const handleLocationSelected = (location: NormalizedLocation) => {
     const newLabel = location.displayLabel;
+    console.log('[Preferences:Location] Location selected:', newLabel);
+    
     setDisplayLocation(newLabel);
     setHasChanged(newLabel !== savedLocation);
+    setSearchInput('');
+    setHasUserTyped(false);
+    setIsDropdownOpen(false);
+    setSuggestions([]);
     
     onLocationChange({
       city: location.city || '',
@@ -80,77 +166,11 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
       country: location.countryName || '',
       displayLabel: newLabel,
     });
-  };
-
-  // Handle manual location search
-  const handleManualSearch = async () => {
-    if (!manualInput.trim()) {
-      toast({
-        title: "Enter a location",
-        description: "Please enter a city, address, or ZIP code to search.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log('[Preferences:Location] Manual search:', manualInput);
-    setIsSearching(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('location-resolve', {
-        body: { query: manualInput.trim(), source: 'manual_input' }
-      });
-
-      if (error) throw error;
-
-      const locationData = data?.data;
-      if (locationData) {
-        console.log('[Preferences:Location] Manual search result:', locationData);
-        
-        const normalizedLocation: NormalizedLocation = {
-          type: 'area',
-          displayLabel: locationData.displayLabel,
-          formattedAddress: locationData.formattedAddress,
-          lat: locationData.lat,
-          lng: locationData.lng,
-          countryName: locationData.countryName,
-          countryCode: locationData.countryCode,
-          region: locationData.region,
-          county: locationData.county,
-          city: locationData.city,
-          suburb: locationData.suburb,
-          neighborhood: locationData.neighborhood,
-          street: locationData.street,
-          houseNumber: locationData.houseNumber,
-          postalCode: locationData.postalCode,
-          adminHierarchy: locationData.adminHierarchy,
-          source: 'osm_nominatim',
-        };
-
-        handleLocationSelected(normalizedLocation);
-        setManualInput('');
-
-        toast({
-          title: "Location found",
-          description: `Set to ${locationData.displayLabel}`,
-        });
-      } else {
-        toast({
-          title: "Location not found",
-          description: "Please try a different search term.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('[Preferences:Location] Manual search error:', error);
-      toast({
-        title: "Search failed",
-        description: "Could not find that location. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSearching(false);
-    }
+    
+    toast({
+      title: "Location updated",
+      description: `Set to ${newLabel}`,
+    });
   };
 
   const handleUseGps = async () => {
@@ -342,39 +362,67 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
     <div className="py-4">
       <p className="text-sm font-medium text-foreground mb-3">Default Location</p>
       
-      {/* Manual Location Input */}
-      <div className="flex gap-2 mb-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Location Search with Autocomplete Dropdown */}
+      <div className="relative mb-3">
+        <div className="relative">
+          <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
           <Input
+            ref={inputRef}
             type="text"
-            placeholder="Enter city, address, or ZIP code"
-            value={manualInput}
-            onChange={(e) => setManualInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleManualSearch();
-              }
-            }}
-            disabled={disabled || isSearching}
-            className="pl-9"
+            placeholder="Search city, neighborhood, or address..."
+            value={searchInput}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            disabled={disabled}
+            className="pl-10 pr-10 h-12 text-base rounded-xl border-2 border-primary"
           />
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+            {isSearching && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+            {searchInput && !isSearching && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 p-0 hover:bg-transparent"
+                onClick={clearInput}
+              >
+                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              </Button>
+            )}
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleManualSearch}
-          disabled={isSearching || disabled || !manualInput.trim()}
-          className="rounded-xl"
-        >
-          {isSearching ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            'Search'
-          )}
-        </Button>
+        
+        {/* Autocomplete Dropdown */}
+        {isDropdownOpen && suggestions.length > 0 && !isSearching && (
+          <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-80 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion.displayLabel}-${index}`}
+                type="button"
+                className="w-full px-4 py-3 text-left hover:bg-accent transition-colors flex items-start gap-3 border-b border-border last:border-0"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleLocationSelected(suggestion);
+                }}
+              >
+                <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">
+                    {suggestion.displayLabel}
+                  </p>
+                  {suggestion.formattedAddress && suggestion.formattedAddress !== suggestion.displayLabel && (
+                    <p className="text-sm text-muted-foreground truncate">
+                      {suggestion.formattedAddress}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       
       {/* Action buttons */}
