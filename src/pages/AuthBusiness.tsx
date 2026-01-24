@@ -192,7 +192,7 @@ const AuthBusiness = () => {
           return;
         }
 
-        const { error } = await signUp(email, password, displayName, 'business');
+        const { error } = await signUp(email, password, displayName, 'business', phoneNumber || undefined);
         if (error) {
           // Check if this is a "user already exists" error
           if (isUserExistsError(error)) {
