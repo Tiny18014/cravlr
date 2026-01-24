@@ -307,6 +307,28 @@ const Profile = () => {
   const handleUpdateProfile = async (newName: string, newPhone: string) => {
     if (!user) return;
     
+    // Check if phone number changed and if it's a duplicate
+    if (newPhone && newPhone !== userPhone) {
+      const normalizedPhone = newPhone.replace(/\s+/g, '').trim();
+      
+      // Check if phone number already exists for another user
+      const { data: existingProfiles, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone_number', normalizedPhone)
+        .neq('id', user.id)
+        .limit(1);
+      
+      if (checkError) {
+        console.error('[Profile] Error checking phone duplicate:', checkError);
+      }
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        console.log('[Profile] Duplicate phone number detected');
+        throw new Error('An account with this phone number already exists. Please use a different number.');
+      }
+    }
+    
     const updates: any = {
       display_name: newName,
       phone_number: newPhone,
