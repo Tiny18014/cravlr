@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, ChevronRight, HelpCircle } from 'lucide-react';
+import { Camera, ChevronRight, HelpCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { RecommenderLevelBadge } from '@/components/RecommenderLevelBadge';
@@ -14,6 +14,7 @@ import {
 
 interface SettingsAccountCardProps {
   userName: string;
+  userEmail?: string;
   userLevel: string;
   userPoints: number;
   profileImageUrl: string | null;
@@ -31,6 +32,7 @@ const getLevelThresholds = () => [
 
 export const SettingsAccountCard = ({
   userName,
+  userEmail,
   userLevel,
   userPoints,
   profileImageUrl,
@@ -66,6 +68,12 @@ export const SettingsAccountCard = ({
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div>
               <h2 className="text-xl font-semibold text-foreground truncate">{userName}</h2>
+              {userEmail && (
+                <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
+                  <Mail className="h-3.5 w-3.5" />
+                  <span className="truncate">{userEmail}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2 mt-1">
                 <RecommenderLevelBadge level={userLevel} size="sm" />
               </div>
