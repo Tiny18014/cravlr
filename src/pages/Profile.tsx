@@ -81,6 +81,7 @@ const Profile = () => {
   // User profile state
   const [userName, setUserName] = useState('');
   const [userPhone, setUserPhone] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [userLevel, setUserLevel] = useState('Newbie');
   const [userPoints, setUserPoints] = useState(0);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -137,6 +138,7 @@ const Profile = () => {
         setLocationChanged(false);
         setUserName(profile.display_name || user?.email?.split('@')[0] || 'User');
         setUserPhone((profile as any).phone_number || '');
+        setUserEmail(user?.email || '');
         setUserLevel(profile.level || 'Newbie');
         setUserPoints(profile.points_total || 0);
         setProfileImageUrl((profile as any).profile_image_url || null);
@@ -336,6 +338,7 @@ const Profile = () => {
           <div className="space-y-6">
             <SettingsAccountCard
               userName={userName}
+              userEmail={userEmail}
               userLevel={userLevel}
               userPoints={userPoints}
               profileImageUrl={profileImageUrl}
