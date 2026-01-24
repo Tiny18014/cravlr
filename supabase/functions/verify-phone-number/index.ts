@@ -49,8 +49,8 @@ serve(async (req) => {
       );
     }
 
-    // Call Twilio Lookup API v2
-    const twilioUrl = `https://lookups.twilio.com/v2/PhoneNumbers/${encodeURIComponent(fullNumber)}`;
+    // Call Twilio Lookup API v2 with line_type_intelligence for real validation
+    const twilioUrl = `https://lookups.twilio.com/v2/PhoneNumbers/${encodeURIComponent(fullNumber)}?Fields=line_type_intelligence`;
     
     const twilioResponse = await fetch(twilioUrl, {
       headers: {
@@ -74,11 +74,23 @@ serve(async (req) => {
         );
       }
 
-      // For other errors, fall back to allowing the number
+      // For other errors, fall back to basic format validation
+      // But require proper digit count
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        return new Response(
+          JSON.stringify({ 
+            isValid: false, 
+            error: 'Phone number must have at least 10 digits' 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           isValid: true, 
-          warning: 'Could not verify phone number, proceeding with basic validation' 
+          warning: 'Could not fully verify phone number' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -88,16 +100,46 @@ serve(async (req) => {
     console.log('Twilio lookup result:', JSON.stringify(lookupData, null, 2));
 
     // Check if the number is valid
-    const isValid = lookupData.valid === true;
+    const isFormatValid = lookupData.valid === true;
     
-    if (!isValid) {
+    if (!isFormatValid) {
       return new Response(
         JSON.stringify({ 
           isValid: false, 
-          error: 'This phone number is not valid. Please enter a real phone number.' 
+          error: 'This phone number format is not valid.' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check line type intelligence if available
+    const lineTypeInfo = lookupData.line_type_intelligence;
+    if (lineTypeInfo) {
+      console.log('Line type info:', JSON.stringify(lineTypeInfo, null, 2));
+      
+      // Check for invalid/non-existent carrier
+      if (lineTypeInfo.error_code) {
+        console.log('Line type error:', lineTypeInfo.error_code);
+        return new Response(
+          JSON.stringify({ 
+            isValid: false, 
+            error: 'This phone number could not be verified. Please use a real phone number.' 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Check carrier - if no carrier, it's likely not a real number
+      if (!lineTypeInfo.carrier_name && lineTypeInfo.type !== 'mobile' && lineTypeInfo.type !== 'landline') {
+        console.log('No carrier found for number');
+        return new Response(
+          JSON.stringify({ 
+            isValid: false, 
+            error: 'This phone number does not appear to be connected to a carrier. Please use a real phone number.' 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Return success with formatted number
@@ -107,6 +149,8 @@ serve(async (req) => {
         nationalFormat: lookupData.national_format,
         countryCode: lookupData.country_code,
         callingCountryCode: lookupData.calling_country_code,
+        lineType: lineTypeInfo?.type || 'unknown',
+        carrier: lineTypeInfo?.carrier_name || 'unknown',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
