@@ -8,13 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Building2, Shield, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Building2, Shield, Mail, ShieldCheck, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Separator } from '@/components/ui/separator';
 import { PhoneInput } from '@/components/PhoneInput';
 import { validateEmail, verifyEmailDomain } from '@/utils/emailValidation';
 import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
 import { useSignupValidation } from '@/hooks/useSignupValidation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const AuthBusiness = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -29,6 +39,7 @@ const AuthBusiness = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [duplicatePhoneDialogOpen, setDuplicatePhoneDialogOpen] = useState(false);
   
   const MIN_PASSWORD_LENGTH = 6;
   
@@ -108,7 +119,8 @@ const AuthBusiness = () => {
       // Check if phone number already exists
       const duplicates = await checkDuplicates(email, phoneNumber);
       if (duplicates.phoneExists) {
-        setPhoneError('A user with this phone number already exists. Please use a different number or sign in.');
+        console.log('[Signup:Phone] Duplicate phone number detected, showing dialog');
+        setDuplicatePhoneDialogOpen(true);
         setLoading(false);
         return;
       }
@@ -430,6 +442,33 @@ const AuthBusiness = () => {
         open={forgotPasswordOpen} 
         onOpenChange={setForgotPasswordOpen} 
       />
+
+      <AlertDialog open={duplicatePhoneDialogOpen} onOpenChange={setDuplicatePhoneDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <AlertDialogTitle>Phone Number Already Registered</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-base">
+              An account with this phone number already exists. Please use a different phone number to create a new account, or sign in with your existing account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setPhoneNumber('')}>
+              Use Different Number
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setDuplicatePhoneDialogOpen(false);
+              setIsLogin(true);
+            }}>
+              Sign In Instead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
