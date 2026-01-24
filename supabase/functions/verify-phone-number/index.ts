@@ -10,6 +10,12 @@ interface VerifyPhoneRequest {
   countryCode: string;
 }
 
+const maskPhone = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length <= 4) return "***";
+  return `${phone.slice(0, Math.min(4, phone.length))}***${digits.slice(-2)}`;
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -32,7 +38,7 @@ serve(async (req) => {
     // Format the full phone number
     const fullNumber = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
     
-    console.log(`Verifying phone number: ${fullNumber}`);
+    console.log(`Verifying phone number: ${maskPhone(fullNumber)}`);
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
@@ -43,6 +49,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           isValid: true, 
+          verified: false,
           warning: 'Phone verification service not configured, basic validation passed' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -90,6 +97,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           isValid: true, 
+          verified: false,
           warning: 'Could not fully verify phone number' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -97,7 +105,15 @@ serve(async (req) => {
     }
 
     const lookupData = await twilioResponse.json();
-    console.log('Twilio lookup result:', JSON.stringify(lookupData, null, 2));
+    const lineTypeInfo = lookupData.line_type_intelligence;
+    console.log('Twilio lookup result:', {
+      valid: lookupData.valid,
+      country_code: lookupData.country_code,
+      calling_country_code: lookupData.calling_country_code,
+      line_type: lineTypeInfo?.type ?? null,
+      carrier: lineTypeInfo?.carrier_name ?? null,
+      error_code: lineTypeInfo?.error_code ?? null,
+    });
 
     // Check if the number is valid
     const isFormatValid = lookupData.valid === true;
@@ -106,51 +122,65 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           isValid: false, 
+          verified: false,
           error: 'This phone number format is not valid.' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check line type intelligence if available
-    const lineTypeInfo = lookupData.line_type_intelligence;
-    if (lineTypeInfo) {
-      console.log('Line type info:', JSON.stringify(lineTypeInfo, null, 2));
-      
-      // Check for invalid/non-existent carrier
-      if (lineTypeInfo.error_code) {
-        console.log('Line type error:', lineTypeInfo.error_code);
-        return new Response(
-          JSON.stringify({ 
-            isValid: false, 
-            error: 'This phone number could not be verified. Please use a real phone number.' 
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Check carrier - if no carrier, it's likely not a real number
-      if (!lineTypeInfo.carrier_name && lineTypeInfo.type !== 'mobile' && lineTypeInfo.type !== 'landline') {
-        console.log('No carrier found for number');
-        return new Response(
-          JSON.stringify({ 
-            isValid: false, 
-            error: 'This phone number does not appear to be connected to a carrier. Please use a real phone number.' 
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // Require SMS-capable line types
+    if (!lineTypeInfo) {
+      return new Response(
+        JSON.stringify({
+          isValid: true,
+          verified: false,
+          warning: 'Could not determine phone line type. SMS delivery may not work.',
+          lineType: 'unknown',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (lineTypeInfo.error_code) {
+      return new Response(
+        JSON.stringify({
+          isValid: false,
+          verified: false,
+          error: 'This phone number could not be verified. Please try a different number.',
+          lineType: lineTypeInfo.type ?? 'unknown',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const smsCapableTypes = new Set(['mobile', 'fixedVoip', 'nonFixedVoip']);
+    const lineType = lineTypeInfo.type ?? 'unknown';
+    const carrier = lineTypeInfo.carrier_name ?? null;
+
+    if (!smsCapableTypes.has(lineType)) {
+      return new Response(
+        JSON.stringify({
+          isValid: false,
+          verified: false,
+          error: 'Please enter a mobile number that can receive SMS (landlines and unsupported types are not allowed).',
+          lineType,
+          carrier,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Return success with formatted number
     return new Response(
       JSON.stringify({ 
         isValid: true,
+        verified: true,
         nationalFormat: lookupData.national_format,
         countryCode: lookupData.country_code,
         callingCountryCode: lookupData.calling_country_code,
-        lineType: lineTypeInfo?.type || 'unknown',
-        carrier: lineTypeInfo?.carrier_name || 'unknown',
+        lineType,
+        carrier,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -162,6 +192,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         isValid: true, 
+        verified: false,
         warning: 'Phone verification temporarily unavailable' 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

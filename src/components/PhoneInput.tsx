@@ -164,15 +164,30 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         return;
       }
 
-      if (data.isValid) {
+      const isValid = data?.isValid === true;
+      const isVerifiedResponse = data?.verified === true;
+
+      // Only show the green "verified" UI when the backend explicitly confirms verification.
+      if (isValid && isVerifiedResponse) {
         setIsVerified(true);
         setPhoneError(null);
         onValidationChange?.(true, null);
-      } else {
-        setIsVerified(false);
-        setPhoneError(data.error || 'Invalid phone number');
-        onValidationChange?.(false, data.error || 'Invalid phone number');
+        return;
       }
+
+      // If the input is valid but we couldn't fully verify (e.g., line type unknown / service degraded),
+      // allow the form to proceed but DO NOT show as verified.
+      if (isValid && !isVerifiedResponse) {
+        setIsVerified(false);
+        setPhoneError(null);
+        onValidationChange?.(true, null);
+        return;
+      }
+
+      // Invalid
+      setIsVerified(false);
+      setPhoneError(data?.error || 'Invalid phone number');
+      onValidationChange?.(false, data?.error || 'Invalid phone number');
     } catch (err) {
       console.error('Phone verification failed:', err);
       // On network error, allow form to proceed
