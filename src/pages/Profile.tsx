@@ -20,7 +20,7 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 import { LocationSetting } from '@/components/settings/LocationSetting';
 
 // Settings Components
-import { ProfileCard } from '@/components/settings/ProfileCard';
+import { SettingsAccountCard } from '@/components/settings/SettingsAccountCard';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { SettingsRow } from '@/components/settings/SettingsRow';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
@@ -351,8 +351,11 @@ const Profile = () => {
       case 'profile':
         return (
           <div className="space-y-6">
-            <ProfileCard
+            <SettingsAccountCard
               userName={userName}
+              userEmail={userEmail}
+              userLevel={userLevel}
+              userPoints={userPoints}
               profileImageUrl={profileImageUrl}
               onImageChange={(url) => {
                 setProfileImageUrl(url);
