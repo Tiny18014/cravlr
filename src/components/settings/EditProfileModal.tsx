@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, AlertTriangle } from 'lucide-react';
+import { User, AlertTriangle, Mail, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PhoneInput } from '@/components/PhoneInput';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EditProfileModalProps {
   open: boolean;
@@ -35,11 +36,15 @@ export const EditProfileModal = ({
   currentPhone,
   onSave 
 }: EditProfileModalProps) => {
+  const { user } = useAuth();
   const [displayName, setDisplayName] = useState(currentName);
   const [phoneNumber, setPhoneNumber] = useState(currentPhone || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+
+  // Get user email from auth context
+  const userEmail = user?.email || '';
 
   // Reset form when modal opens with new values
   useEffect(() => {
@@ -99,8 +104,12 @@ export const EditProfileModal = ({
               </div>
             )}
 
+            {/* Name Field - Editable */}
             <div className="space-y-2">
-              <Label htmlFor="display-name">Display Name</Label>
+              <Label htmlFor="display-name" className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                Name
+              </Label>
               <Input
                 id="display-name"
                 value={displayName}
@@ -112,12 +121,36 @@ export const EditProfileModal = ({
               </p>
             </div>
 
-            <PhoneInput
-              value={phoneNumber}
-              onChange={setPhoneNumber}
-              required={false}
-              description="Used for SMS notifications and account recovery"
-            />
+            {/* Email Field - Read-only */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                Email
+              </Label>
+              <Input
+                id="email"
+                value={userEmail}
+                disabled
+                readOnly
+                className="bg-muted/50 cursor-not-allowed text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground">
+                Email cannot be changed
+              </p>
+            </div>
+
+            {/* Phone Field - Editable (no "(optional)" label) */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                Phone Number
+              </Label>
+              <PhoneInput
+                value={phoneNumber}
+                onChange={setPhoneNumber}
+                placeholder="555 123 4567"
+              />
+            </div>
 
             <div className="flex gap-3 pt-2">
               <Button
