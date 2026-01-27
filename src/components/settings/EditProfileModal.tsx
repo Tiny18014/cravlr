@@ -139,18 +139,12 @@ export const EditProfileModal = ({
               </p>
             </div>
 
-            {/* Phone Field - Editable (no "(optional)" label) */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                Phone Number
-              </Label>
-              <PhoneInput
-                value={phoneNumber}
-                onChange={setPhoneNumber}
-                placeholder="555 123 4567"
-              />
-            </div>
+            {/* Phone Field - Editable */}
+            <PhoneInput
+              value={phoneNumber}
+              onChange={setPhoneNumber}
+              placeholder="555 123 4567"
+            />
 
             <div className="flex gap-3 pt-2">
               <Button
