@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   MapPin, Bell, Utensils, Shield, MessageSquareHeart, 
-  Lock, Trash2, Save, Mail, User, Smartphone
+  Lock, Trash2, Save, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -20,14 +20,13 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 import { LocationSetting } from '@/components/settings/LocationSetting';
 
 // Settings Components
-import { SettingsAccountCard } from '@/components/settings/SettingsAccountCard';
+import { ProfileCard } from '@/components/settings/ProfileCard';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { SettingsRow } from '@/components/settings/SettingsRow';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal';
 import { DeleteAccountFlow } from '@/components/settings/DeleteAccountFlow';
-import { EmailPreferencesSettings } from '@/components/settings/EmailPreferencesSettings';
-import { SmsPreferencesSettings } from '@/components/settings/SmsPreferencesSettings';
+import { UnifiedNotificationsSettings } from '@/components/settings/UnifiedNotificationsSettings';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
 import { SettingsLayout, SettingsNavItem } from '@/components/settings/SettingsLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -46,16 +45,14 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-// Navigation items for the settings sections
+// Navigation items for the settings sections - REORGANIZED
 const settingsNavItems: SettingsNavItem[] = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'preferences', label: 'Preferences', icon: MapPin },
-  { id: 'push-notifications', label: 'Push Notifications', icon: Bell },
-  { id: 'email-notifications', label: 'Email Notifications', icon: Mail },
-  { id: 'sms-notifications', label: 'SMS Notifications', icon: Smartphone },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'privacy-security', label: 'Privacy & Security', icon: Shield },
   { id: 'help-feedback', label: 'Help & Feedback', icon: MessageSquareHeart },
-  { id: 'account', label: 'Account', icon: Shield },
+  { id: 'account', label: 'Account', icon: Trash2 },
 ];
 
 const Profile = () => {
@@ -87,10 +84,6 @@ const Profile = () => {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
   
-  // Notification toggles state (for UI - these would need backend support)
-  const [notifyComments, setNotifyComments] = useState(true);
-  const [notifyThumbs, setNotifyThumbs] = useState(true);
-  const [notifySystem, setNotifySystem] = useState(true);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -358,11 +351,8 @@ const Profile = () => {
       case 'profile':
         return (
           <div className="space-y-6">
-            <SettingsAccountCard
+            <ProfileCard
               userName={userName}
-              userEmail={userEmail}
-              userLevel={userLevel}
-              userPoints={userPoints}
               profileImageUrl={profileImageUrl}
               onImageChange={(url) => {
                 setProfileImageUrl(url);
@@ -376,7 +366,7 @@ const Profile = () => {
       case 'preferences':
         return (
           <SettingsSection title="Preferences" icon={MapPin}>
-            {/* Default Location - New stable component */}
+            {/* Default Location - Single editable field */}
             <LocationSetting
               initialCity={form.getValues('location_city') || ''}
               initialState={form.getValues('location_state') || ''}
@@ -451,69 +441,8 @@ const Profile = () => {
           </SettingsSection>
         );
 
-      case 'push-notifications':
-        return (
-          <SettingsSection title="Push Notifications" icon={Bell}>
-            <FormField
-              control={form.control}
-              name="notify_recommender"
-              render={({ field }) => (
-                <SettingsRow
-                  label="New Requests Nearby"
-                  description="Get push notifications when food requests are posted in your area"
-                  toggle={{
-                    checked: field.value,
-                    onChange: field.onChange,
-                  }}
-                />
-              )}
-            />
-            <div className="border-t border-border">
-              <SettingsRow
-                label="Comments on Recommendations"
-                description="Receive push alerts when someone comments on your recommendation"
-                toggle={{
-                  checked: notifyComments,
-                  onChange: setNotifyComments,
-                }}
-              />
-            </div>
-            <div className="border-t border-border">
-              <SettingsRow
-                label="Thumbs Up Notifications"
-                description="Get notified when someone likes your recommendation"
-                toggle={{
-                  checked: notifyThumbs,
-                  onChange: setNotifyThumbs,
-                }}
-              />
-            </div>
-            <div className="border-t border-border">
-              <SettingsRow
-                label="System Alerts"
-                description="Important updates and announcements from Cravlr"
-                toggle={{
-                  checked: notifySystem,
-                  onChange: setNotifySystem,
-                }}
-              />
-            </div>
-          </SettingsSection>
-        );
-
-      case 'email-notifications':
-        return (
-          <SettingsSection title="Email Notifications" icon={Mail}>
-            <EmailPreferencesSettings />
-          </SettingsSection>
-        );
-
-      case 'sms-notifications':
-        return (
-          <SettingsSection title="SMS Notifications" icon={Smartphone}>
-            <SmsPreferencesSettings />
-          </SettingsSection>
-        );
+      case 'notifications':
+        return <UnifiedNotificationsSettings form={form} />;
 
       case 'privacy-security':
         return (
@@ -542,7 +471,7 @@ const Profile = () => {
 
       case 'account':
         return (
-          <SettingsSection title="Account" icon={Shield}>
+          <SettingsSection title="Account" icon={Trash2}>
             <SettingsRow
               label="Delete Account"
               description="Permanently delete your Cravlr account"
