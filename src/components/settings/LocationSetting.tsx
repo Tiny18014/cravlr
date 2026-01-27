@@ -362,20 +362,23 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
     <div className="py-4">
       <p className="text-sm font-medium text-foreground mb-3">Default Location</p>
       
-      {/* Location Search with Autocomplete Dropdown */}
+      {/* Single Location Input with Autocomplete */}
       <div className="relative mb-3">
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
           <Input
             ref={inputRef}
             type="text"
-            placeholder="Search city, neighborhood, or address..."
+            placeholder={displayLocation || "Search city, neighborhood, or address..."}
             value={searchInput}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
             disabled={disabled}
-            className="pl-10 pr-10 h-12 text-base rounded-xl border-2 border-primary"
+            className={cn(
+              "pl-10 pr-10 h-12 text-base rounded-xl border-2",
+              displayLocation && !searchInput ? "border-primary bg-primary/5" : "border-border"
+            )}
           />
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
             {isSearching && (
@@ -391,6 +394,9 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
               >
                 <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </Button>
+            )}
+            {!searchInput && displayLocation && (
+              <Check className="h-4 w-4 text-primary" />
             )}
           </div>
         </div>
@@ -426,7 +432,7 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
       </div>
       
       {/* Action buttons */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex flex-wrap gap-2 mb-2">
         <Button
           type="button"
           variant="outline"
@@ -461,31 +467,8 @@ export const LocationSetting: React.FC<LocationSettingProps> = ({
         </Button>
       </div>
 
-      {/* Display selected location as fixed value */}
-      {displayLocation ? (
-        <div className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-xl border-2",
-          hasChanged ? "border-primary bg-primary/5" : "border-border bg-muted/30"
-        )}>
-          <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
-          <span className="text-base font-medium text-foreground flex-1">
-            {displayLocation}
-          </span>
-          {!hasChanged && (
-            <Check className="h-4 w-4 text-muted-foreground" />
-          )}
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/10">
-          <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-          <span className="text-base text-muted-foreground">
-            No location set
-          </span>
-        </div>
-      )}
-
-      <p className="text-xs text-muted-foreground mt-2">
-        Used for matching food requests and sending nearby notifications
+      <p className="text-xs text-muted-foreground">
+        {displayLocation ? `Current: ${displayLocation}` : "Used for matching food requests and sending nearby notifications"}
       </p>
 
       {/* Map Picker Modal */}
