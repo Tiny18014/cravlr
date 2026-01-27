@@ -268,7 +268,6 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       <Label htmlFor="phoneNumber" className="flex items-center gap-2">
         <Phone className="h-4 w-4" />
         {label}
-        {!required && <span className="text-muted-foreground text-xs">(Optional)</span>}
       </Label>
       <div className="flex gap-2">
         <Select
