@@ -353,7 +353,6 @@ const Profile = () => {
           <div className="space-y-6">
             <SettingsAccountCard
               userName={userName}
-              userEmail={userEmail}
               userLevel={userLevel}
               userPoints={userPoints}
               profileImageUrl={profileImageUrl}
