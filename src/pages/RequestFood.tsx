@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Clock, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
@@ -64,11 +65,11 @@ const requestSchema = z.object({
 
 const RequestFood = () => {
   const { user } = useAuth();
+  const { profile, isLoading: isProfileLoading } = useUserProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationInput, setLocationInput] = useState('');
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   const [selectedDishTypes, setSelectedDishTypes] = useState<string[]>([]);
   const [selectedFlavorMood, setSelectedFlavorMood] = useState<{ id: number; name: string } | null>(null);
@@ -85,51 +86,30 @@ const RequestFood = () => {
     lng: null as number | null
   });
 
-  // Goal 5: Prefill location from user profile
+  // OPTIMIZED: Use UserProfileContext instead of separate fetch
   useEffect(() => {
-    const loadUserLocation = async () => {
-      if (!user?.id) {
-        setIsLoadingProfile(false);
-        return;
-      }
+    if (isProfileLoading || !profile) return;
 
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('location_city, location_state, profile_lat, profile_lng, profile_country')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-
-        if (profile?.location_city) {
-          const cityDisplay = profile.location_state 
-            ? `${profile.location_city}, ${profile.location_state}`
-            : profile.location_city;
-          
-          setLocationInput(cityDisplay);
-          setFormData(prev => ({
-            ...prev,
-            locationCity: profile.location_city,
-            locationState: profile.location_state || '',
-            countryCode: profile.profile_country || '',
-            lat: profile.profile_lat,
-            lng: profile.profile_lng
-          }));
-        }
-      } catch (error) {
-        console.error('Error loading user location:', error);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
-    loadUserLocation();
-  }, [user?.id]);
+    if (profile.location_city) {
+      const cityDisplay = profile.location_state 
+        ? `${profile.location_city}, ${profile.location_state}`
+        : profile.location_city;
+      
+      setLocationInput(cityDisplay);
+      setFormData(prev => ({
+        ...prev,
+        locationCity: profile.location_city || '',
+        locationState: profile.location_state || '',
+        countryCode: profile.profile_country || '',
+        lat: profile.profile_lat,
+        lng: profile.profile_lng
+      }));
+    }
+  }, [profile, isProfileLoading]);
 
 
-  // Geocode the address to get coordinates
-  const geocodeAddress = async (city: string, state: string, address?: string) => {
+  // OPTIMIZED: Memoized geocode function
+  const geocodeAddress = useCallback(async (city: string, state: string, address?: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('geocode', {
         body: { city, state, address }
@@ -141,7 +121,7 @@ const RequestFood = () => {
       console.error('Geocoding failed:', error);
       return null;
     }
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,9 +244,10 @@ const RequestFood = () => {
     }
   };
 
-  const handleChange = (field: string, value: string | number) => {
+  // OPTIMIZED: Memoized change handler
+  const handleChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   if (!user) {
     return (
