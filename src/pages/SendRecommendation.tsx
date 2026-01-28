@@ -331,12 +331,15 @@ const SendRecommendation = () => {
 
   const handleRestaurantChange = (name: string, address: string, placeId?: string) => {
     // Generate Google Maps URL for the selected place
+    // Using the Maps URLs API format: https://developers.google.com/maps/documentation/urls/get-started
     let mapsUrl = null;
+    const searchQuery = encodeURIComponent(`${name}${address ? ' ' + address : ''}`);
+    
     if (placeId) {
-      mapsUrl = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
-    } else if (name && address) {
-      const query = encodeURIComponent(`${name} ${address}`);
-      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      // Use query_place_id for precise location + query for fallback display
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}&query_place_id=${placeId}`;
+    } else if (name) {
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
     }
 
     setFormData(prev => ({
@@ -449,10 +452,10 @@ const SendRecommendation = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
-                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-                            // Use location.assign instead of window.open to avoid popup blockers
-                            window.location.assign(mapsUrl);
+                            // Use pre-generated mapsUrl if available (includes query_place_id)
+                            const url = formData.mapsUrl || 
+                              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
                           }}
                           className="text-xs h-6"
                         >
