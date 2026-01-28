@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
@@ -29,6 +30,7 @@ import { DeleteAccountFlow } from '@/components/settings/DeleteAccountFlow';
 import { UnifiedNotificationsSettings } from '@/components/settings/UnifiedNotificationsSettings';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
 import { SettingsLayout, SettingsNavItem } from '@/components/settings/SettingsLayout';
+import { SettingsPageSkeleton } from '@/components/settings/SettingsSkeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const profileFormSchema = z.object({
@@ -246,30 +248,22 @@ const Profile = () => {
     }
   };
 
-  const handleDataExport = async () => {
+  // OPTIMIZED: Parallel data export with Promise.all
+  const handleDataExport = useCallback(async () => {
     if (!user) return;
     
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      const { data: requests } = await supabase
-        .from('food_requests')
-        .select('*')
-        .eq('requester_id', user.id);
-
-      const { data: recommendations } = await supabase
-        .from('recommendations')
-        .select('*')
-        .eq('recommender_id', user.id);
+      // Fetch all data in parallel instead of sequentially
+      const [profileResult, requestsResult, recommendationsResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('food_requests').select('*').eq('requester_id', user.id),
+        supabase.from('recommendations').select('*').eq('recommender_id', user.id),
+      ]);
 
       const exportData = {
-        profile,
-        requests,
-        recommendations,
+        profile: profileResult.data,
+        requests: requestsResult.data,
+        recommendations: recommendationsResult.data,
         exportDate: new Date().toISOString(),
       };
 
@@ -295,7 +289,7 @@ const Profile = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [user, toast]);
 
   const handleUpdateProfile = async (newName: string, newPhone: string) => {
     if (!user) return;
@@ -494,8 +488,20 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center text-muted-foreground">Loading settings...</div>
+      <div className="min-h-screen bg-background pb-24">
+        <DashboardHeader 
+          onSignOut={signOut} 
+          userName=""
+          profileImageUrl={null}
+          profileImageUpdatedAt={null}
+        />
+        <div className="container mx-auto px-4 py-6 max-w-5xl">
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+            <p className="text-muted-foreground text-sm mt-1">Manage your account and preferences</p>
+          </div>
+          <SettingsPageSkeleton />
+        </div>
       </div>
     );
   }
