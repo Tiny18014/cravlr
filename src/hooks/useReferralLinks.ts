@@ -50,7 +50,9 @@ export const useReferralLinks = () => {
   }, []);
 
   const getReferralUrl = useCallback((referralCode: string): string => {
-    return `https://edazolwepxbdeniluamf.supabase.co/functions/v1/track-referral-click/${referralCode}`;
+    // Use the correct Supabase URL from environment
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ioqogdxfmapcijmqjcpb.supabase.co';
+    return `${supabaseUrl}/functions/v1/track-referral-click/${referralCode}`;
   }, []);
 
   return {
