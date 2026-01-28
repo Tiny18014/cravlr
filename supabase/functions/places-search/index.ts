@@ -366,7 +366,7 @@ async function searchPlaces(lat: number, lng: number, query: string, radiusKm: n
     rating: place.rating,
     reviews: place.user_ratings_total,
     priceLevel: place.price_level,
-    mapsUrl: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
+    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}`,
     photoToken: place.photos?.[0]?.photo_reference,
     distanceMeters: calculateDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng),
   }));

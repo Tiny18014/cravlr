@@ -230,14 +230,26 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Redirect to the original destination
-    if (referralLink.maps_url) {
-      console.log('🔗 Redirecting to:', referralLink.maps_url);
+    let redirectUrl = referralLink.maps_url;
+    
+    // Fix old URL format if necessary
+    if (redirectUrl && redirectUrl.includes('maps/place/?q=place_id:')) {
+      // Convert old format to new working format
+      const placeIdMatch = redirectUrl.match(/place_id:([^&]+)/);
+      if (placeIdMatch && referralLink.restaurant_name) {
+        redirectUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(referralLink.restaurant_name)}&query_place_id=${placeIdMatch[1]}`;
+        console.log('🔧 Fixed old URL format to:', redirectUrl);
+      }
+    }
+    
+    if (redirectUrl) {
+      console.log('🔗 Redirecting to:', redirectUrl);
       
       // Return a proper redirect response
       return new Response(null, {
         status: 302,
         headers: {
-          'Location': referralLink.maps_url,
+          'Location': redirectUrl,
           ...corsHeaders
         }
       });
