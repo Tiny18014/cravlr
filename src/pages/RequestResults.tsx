@@ -11,6 +11,8 @@ import { useReferralLinks } from "@/hooks/useReferralLinks";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { feedbackSessionManager } from "@/utils/feedbackSessionManager";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 interface Note {
   by: string;
@@ -74,6 +76,17 @@ const ResultsSkeleton = () => (
   </div>
 );
 
+// Helper function to open external URLs (works on both web and native)
+const openExternalUrl = async (url: string) => {
+  if (Capacitor.isNativePlatform()) {
+    // Use Capacitor Browser plugin for native apps
+    await Browser.open({ url });
+  } else {
+    // For web, use a direct link navigation
+    window.location.href = url;
+  }
+};
+
 // Memoized recommendation card component
 const RecommendationCard = React.memo(({ 
   group,
@@ -84,7 +97,8 @@ const RecommendationCard = React.memo(({
   isGoing,
   formatDistance,
   formatPrice,
-  getPhotoUrl
+  getPhotoUrl,
+  onOpenMaps
 }: {
   group: RecommendationGroup;
   isExpanded: boolean;
@@ -95,6 +109,7 @@ const RecommendationCard = React.memo(({
   formatDistance: (d?: number) => string;
   formatPrice: (p?: number) => string;
   getPhotoUrl: (t?: string) => string | null;
+  onOpenMaps: (url: string) => void;
 }) => {
   const photoUrl = getPhotoUrl(group.photoToken);
   
@@ -184,10 +199,22 @@ const RecommendationCard = React.memo(({
             <Button
               size="sm"
               className="flex-1"
-              onClick={() => window.open(group.referralUrl, '_blank', 'noopener,noreferrer')}
+              asChild
             >
-              <MapPin className="h-4 w-4 mr-1" />
-              Open in Maps
+              <a 
+                href={group.referralUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (Capacitor.isNativePlatform()) {
+                    e.preventDefault();
+                    onOpenMaps(group.referralUrl!);
+                  }
+                }}
+              >
+                <MapPin className="h-4 w-4 mr-1" />
+                Open in Maps
+              </a>
             </Button>
           )}
           
@@ -661,6 +688,7 @@ const RequestResults = () => {
                 formatDistance={formatDistance}
                 formatPrice={formatPrice}
                 getPhotoUrl={getPhotoUrl}
+                onOpenMaps={openExternalUrl}
               />
             ))}
           </div>
