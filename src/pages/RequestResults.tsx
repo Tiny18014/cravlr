@@ -123,9 +123,10 @@ const RecommendationCard = React.memo(({
       )}
       
       <CardContent className="p-4">
-        <div className="flex gap-4">
+        {/* Stack vertically on mobile, horizontal on sm+ */}
+        <div className="flex flex-col sm:flex-row gap-4">
           {/* Photo */}
-          <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-muted overflow-hidden">
+          <div className="flex-shrink-0 w-full sm:w-20 h-32 sm:h-20 rounded-lg bg-muted overflow-hidden">
             {photoUrl ? (
               <img 
                 src={photoUrl} 
@@ -155,7 +156,7 @@ const RecommendationCard = React.memo(({
               </p>
             )}
             
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {group.rating && (
                 <span className="flex items-center gap-1">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -193,12 +194,12 @@ const RecommendationCard = React.memo(({
           </Collapsible>
         )}
         
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-4">
+        {/* Action Buttons - Stack on mobile */}
+        <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {group.referralUrl && (
             <Button
               size="sm"
-              className="flex-1"
+              className="w-full sm:flex-1"
               asChild
             >
               <a 
@@ -224,7 +225,7 @@ const RecommendationCard = React.memo(({
                 size="sm"
                 variant="outline"
                 onClick={onGoingClick}
-                className="text-green-600 border-green-200 hover:bg-green-50"
+                className="w-full sm:w-auto text-green-600 border-green-200 hover:bg-green-50"
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
                 Going
@@ -233,7 +234,7 @@ const RecommendationCard = React.memo(({
                 size="sm"
                 variant="ghost"
                 onClick={onNotGoingClick}
-                className="text-muted-foreground"
+                className="w-full sm:w-auto text-muted-foreground"
               >
                 Not Going
               </Button>
@@ -241,7 +242,7 @@ const RecommendationCard = React.memo(({
           )}
           
           {isGoing && (
-            <Badge className="bg-green-100 text-green-700 border-green-200">
+            <Badge className="bg-green-100 text-green-700 border-green-200 w-fit">
               ✓ You're going here
             </Badge>
           )}
