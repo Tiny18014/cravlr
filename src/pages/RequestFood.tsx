@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,18 +8,18 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Zap, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
-import { DishTypeAutocomplete } from '@/components/DishTypeAutocomplete';
+import { DishTypeMultiSelect } from '@/components/DishTypeMultiSelect';
 import { FlavorMoodAutocomplete } from '@/components/FlavorMoodAutocomplete';
 import { CuisineAutocomplete } from '@/components/CuisineAutocomplete';
 
 
 const requestSchema = z.object({
-  dishType: z.string().optional(),
+  dishTypes: z.array(z.string()).optional(),
   flavorMood: z.string().optional(),
   cuisineStyle: z.string().optional(),
   locationCity: z.string()
@@ -70,7 +70,7 @@ const RequestFood = () => {
   const [locationInput, setLocationInput] = useState('');
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
-  const [selectedDishType, setSelectedDishType] = useState<{ id: number; name: string } | null>(null);
+  const [selectedDishTypes, setSelectedDishTypes] = useState<string[]>([]);
   const [selectedFlavorMood, setSelectedFlavorMood] = useState<{ id: number; name: string } | null>(null);
   const [selectedCuisine, setSelectedCuisine] = useState<{ id: number; name: string } | null>(null);
   
@@ -151,7 +151,7 @@ const RequestFood = () => {
     
     try {
       const validationResult = requestSchema.safeParse({
-        dishType: selectedDishType?.name,
+        dishTypes: selectedDishTypes.length > 0 ? selectedDishTypes : undefined,
         flavorMood: selectedFlavorMood?.name,
         cuisineStyle: selectedCuisine?.name,
         locationCity: formData.locationCity,
@@ -192,7 +192,10 @@ const RequestFood = () => {
         }
       }
 
-      const dishPart = validated.dishType && validated.dishType !== 'Anything' ? `${validated.dishType} | ` : '';
+      // Build food type string from selections
+      const dishPart = validated.dishTypes && validated.dishTypes.length > 0 && !validated.dishTypes.includes('Anything') 
+        ? validated.dishTypes.join(', ') + ' | ' 
+        : '';
       const flavorPart = validated.flavorMood && validated.flavorMood !== 'Anything' ? validated.flavorMood : 'Any Flavor';
       const cuisinePart = validated.cuisineStyle && validated.cuisineStyle !== 'Anything' ? validated.cuisineStyle : 'Any Cuisine';
       const foodTypeString = `${dishPart}${flavorPart} | ${cuisinePart}`;
@@ -299,10 +302,10 @@ const RequestFood = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Dish Type Section */}
-              <DishTypeAutocomplete 
-                value={selectedDishType} 
-                onSelect={setSelectedDishType} 
+              {/* Dish Type Section - Multi-select */}
+              <DishTypeMultiSelect 
+                value={selectedDishTypes} 
+                onChange={setSelectedDishTypes} 
               />
 
               {/* Flavor Mood Section */}
@@ -453,6 +456,7 @@ const RequestFood = () => {
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/')}
+                  disabled={isSubmitting}
                   className="flex-1 h-12 rounded-xl"
                 >
                   Cancel
@@ -460,9 +464,16 @@ const RequestFood = () => {
                 <Button
                   type="submit"
                   disabled={isSubmitting || !formData.locationCity}
-                  className="flex-1 h-12 rounded-xl"
+                  className="flex-1 h-12 rounded-xl relative"
                 >
-                  {isSubmitting ? 'Creating...' : 'Post Request'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Creating Request...
+                    </>
+                  ) : (
+                    'Post Request'
+                  )}
                 </Button>
               </div>
             </form>
