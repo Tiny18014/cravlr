@@ -30,8 +30,8 @@ export function NotificationCenter() {
     if (n.source === 'recommender') {
       // For recommender notifications (new_request_nearby, accepted, declined, etc.)
       if (n.type === 'new_request_nearby' && n.request_id) {
-        console.log('[NotificationCenter] Navigating to send-recommendation for request:', n.request_id);
-        navigate(`/send-recommendation?requestId=${n.request_id}`);
+        console.log('[NotificationCenter] Navigating to recommend for request:', n.request_id);
+        navigate(`/recommend/${n.request_id}`);
       } else if (n.recommendation_id) {
         console.log('[NotificationCenter] Navigating to browse-requests');
         navigate('/browse-requests');
