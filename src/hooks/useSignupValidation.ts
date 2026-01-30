@@ -34,21 +34,34 @@ export const useSignupValidation = () => {
       // However, Supabase doesn't expose this directly for security reasons.
       // The best approach is to attempt signup and handle the "User already registered" error
       
-      // For phone number, we CAN check the profiles table
+      // For phone number, check via backend function (bypasses row-level access restrictions)
       if (phoneNumber) {
-        // Normalize phone number (remove spaces, etc.)
-        const normalizedPhone = phoneNumber.replace(/\s+/g, '').trim();
-        
-        const { data: phoneData, error: phoneError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('phone_number', normalizedPhone)
-          .limit(1);
+        const normalizedPhone = phoneNumber.trim().replace(/[^\d+]/g, '');
+        console.log('[Signup:Phone] Checking phone availability...', { masked: '***' });
 
-        if (phoneError) {
-          console.error('[SignupValidation] Error checking phone:', phoneError);
-        } else if (phoneData && phoneData.length > 0) {
-          console.log('[SignupValidation] Phone number already exists');
+        const { data, error } = await supabase.functions.invoke('check-phone-availability', {
+          body: { phoneNumber: normalizedPhone },
+        });
+
+        if (error) {
+          console.error('[Signup:Phone] Availability check failed:', error);
+
+          // Fallback (may be restricted by database policies, but better than nothing)
+          const { data: phoneData, error: phoneError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('phone_number', normalizedPhone)
+            .limit(1);
+
+          if (phoneError) {
+            console.error('[Signup:Phone] Fallback query failed:', phoneError);
+            // Fail-safe: block signup rather than allowing duplicates through.
+            result.phoneExists = true;
+          } else if (phoneData && phoneData.length > 0) {
+            result.phoneExists = true;
+          }
+        } else if (data?.exists) {
+          console.log('[Signup:Phone] Phone number already exists');
           result.phoneExists = true;
         }
       }
@@ -80,3 +93,4 @@ export const useSignupValidation = () => {
     checking,
   };
 };
+

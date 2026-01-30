@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
@@ -8,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   MapPin, Bell, Utensils, Shield, MessageSquareHeart, 
-  Lock, Trash2, Save, Mail, User, Smartphone
+  Lock, Trash2, Save, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -26,10 +27,10 @@ import { SettingsRow } from '@/components/settings/SettingsRow';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal';
 import { DeleteAccountFlow } from '@/components/settings/DeleteAccountFlow';
-import { EmailPreferencesSettings } from '@/components/settings/EmailPreferencesSettings';
-import { SmsPreferencesSettings } from '@/components/settings/SmsPreferencesSettings';
+import { UnifiedNotificationsSettings } from '@/components/settings/UnifiedNotificationsSettings';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
 import { SettingsLayout, SettingsNavItem } from '@/components/settings/SettingsLayout';
+import { SettingsPageSkeleton } from '@/components/settings/SettingsSkeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const profileFormSchema = z.object({
@@ -46,16 +47,14 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-// Navigation items for the settings sections
+// Navigation items for the settings sections - REORGANIZED
 const settingsNavItems: SettingsNavItem[] = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'preferences', label: 'Preferences', icon: MapPin },
-  { id: 'push-notifications', label: 'Push Notifications', icon: Bell },
-  { id: 'email-notifications', label: 'Email Notifications', icon: Mail },
-  { id: 'sms-notifications', label: 'SMS Notifications', icon: Smartphone },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'privacy-security', label: 'Privacy & Security', icon: Shield },
   { id: 'help-feedback', label: 'Help & Feedback', icon: MessageSquareHeart },
-  { id: 'account', label: 'Account', icon: Shield },
+  { id: 'account', label: 'Account', icon: Trash2 },
 ];
 
 const Profile = () => {
@@ -87,10 +86,6 @@ const Profile = () => {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
   
-  // Notification toggles state (for UI - these would need backend support)
-  const [notifyComments, setNotifyComments] = useState(true);
-  const [notifyThumbs, setNotifyThumbs] = useState(true);
-  const [notifySystem, setNotifySystem] = useState(true);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -253,30 +248,22 @@ const Profile = () => {
     }
   };
 
-  const handleDataExport = async () => {
+  // OPTIMIZED: Parallel data export with Promise.all
+  const handleDataExport = useCallback(async () => {
     if (!user) return;
     
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      const { data: requests } = await supabase
-        .from('food_requests')
-        .select('*')
-        .eq('requester_id', user.id);
-
-      const { data: recommendations } = await supabase
-        .from('recommendations')
-        .select('*')
-        .eq('recommender_id', user.id);
+      // Fetch all data in parallel instead of sequentially
+      const [profileResult, requestsResult, recommendationsResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('food_requests').select('*').eq('requester_id', user.id),
+        supabase.from('recommendations').select('*').eq('recommender_id', user.id),
+      ]);
 
       const exportData = {
-        profile,
-        requests,
-        recommendations,
+        profile: profileResult.data,
+        requests: requestsResult.data,
+        recommendations: recommendationsResult.data,
         exportDate: new Date().toISOString(),
       };
 
@@ -302,10 +289,32 @@ const Profile = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [user, toast]);
 
   const handleUpdateProfile = async (newName: string, newPhone: string) => {
     if (!user) return;
+    
+    // Check if phone number changed and if it's a duplicate
+    if (newPhone && newPhone !== userPhone) {
+      const normalizedPhone = newPhone.replace(/\s+/g, '').trim();
+      
+      // Check if phone number already exists for another user
+      const { data: existingProfiles, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone_number', normalizedPhone)
+        .neq('id', user.id)
+        .limit(1);
+      
+      if (checkError) {
+        console.error('[Profile] Error checking phone duplicate:', checkError);
+      }
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        console.log('[Profile] Duplicate phone number detected');
+        throw new Error('An account with this phone number already exists. Please use a different number.');
+      }
+    }
     
     const updates: any = {
       display_name: newName,
@@ -338,7 +347,6 @@ const Profile = () => {
           <div className="space-y-6">
             <SettingsAccountCard
               userName={userName}
-              userEmail={userEmail}
               userLevel={userLevel}
               userPoints={userPoints}
               profileImageUrl={profileImageUrl}
@@ -354,7 +362,7 @@ const Profile = () => {
       case 'preferences':
         return (
           <SettingsSection title="Preferences" icon={MapPin}>
-            {/* Default Location - New stable component */}
+            {/* Default Location - Single editable field */}
             <LocationSetting
               initialCity={form.getValues('location_city') || ''}
               initialState={form.getValues('location_state') || ''}
@@ -429,69 +437,8 @@ const Profile = () => {
           </SettingsSection>
         );
 
-      case 'push-notifications':
-        return (
-          <SettingsSection title="Push Notifications" icon={Bell}>
-            <FormField
-              control={form.control}
-              name="notify_recommender"
-              render={({ field }) => (
-                <SettingsRow
-                  label="New Requests Nearby"
-                  description="Get push notifications when food requests are posted in your area"
-                  toggle={{
-                    checked: field.value,
-                    onChange: field.onChange,
-                  }}
-                />
-              )}
-            />
-            <div className="border-t border-border">
-              <SettingsRow
-                label="Comments on Recommendations"
-                description="Receive push alerts when someone comments on your recommendation"
-                toggle={{
-                  checked: notifyComments,
-                  onChange: setNotifyComments,
-                }}
-              />
-            </div>
-            <div className="border-t border-border">
-              <SettingsRow
-                label="Thumbs Up Notifications"
-                description="Get notified when someone likes your recommendation"
-                toggle={{
-                  checked: notifyThumbs,
-                  onChange: setNotifyThumbs,
-                }}
-              />
-            </div>
-            <div className="border-t border-border">
-              <SettingsRow
-                label="System Alerts"
-                description="Important updates and announcements from Cravlr"
-                toggle={{
-                  checked: notifySystem,
-                  onChange: setNotifySystem,
-                }}
-              />
-            </div>
-          </SettingsSection>
-        );
-
-      case 'email-notifications':
-        return (
-          <SettingsSection title="Email Notifications" icon={Mail}>
-            <EmailPreferencesSettings />
-          </SettingsSection>
-        );
-
-      case 'sms-notifications':
-        return (
-          <SettingsSection title="SMS Notifications" icon={Smartphone}>
-            <SmsPreferencesSettings />
-          </SettingsSection>
-        );
+      case 'notifications':
+        return <UnifiedNotificationsSettings form={form} />;
 
       case 'privacy-security':
         return (
@@ -520,7 +467,7 @@ const Profile = () => {
 
       case 'account':
         return (
-          <SettingsSection title="Account" icon={Shield}>
+          <SettingsSection title="Account" icon={Trash2}>
             <SettingsRow
               label="Delete Account"
               description="Permanently delete your Cravlr account"
@@ -541,8 +488,20 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center text-muted-foreground">Loading settings...</div>
+      <div className="min-h-screen bg-background pb-24">
+        <DashboardHeader 
+          onSignOut={signOut} 
+          userName=""
+          profileImageUrl={null}
+          profileImageUpdatedAt={null}
+        />
+        <div className="container mx-auto px-4 py-6 max-w-5xl">
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+            <p className="text-muted-foreground text-sm mt-1">Manage your account and preferences</p>
+          </div>
+          <SettingsPageSkeleton />
+        </div>
       </div>
     );
   }

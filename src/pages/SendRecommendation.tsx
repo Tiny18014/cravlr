@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { EmailVerificationRequired } from '@/components/EmailVerificationRequire
 import { AppFeedbackSurvey } from '@/components/AppFeedbackSurvey';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { StreakPopup } from '@/components/StreakPopup';
+import { SendRecommendationSkeleton } from '@/components/SendRecommendationSkeleton';
 import { z } from 'zod';
 
 interface FoodRequest {
@@ -104,7 +105,10 @@ const SendRecommendation = () => {
     }
   }, [request]);
 
-  const fetchRequest = async () => {
+  // OPTIMIZED: Parallel fetch of request and profile
+  const fetchRequest = useCallback(async () => {
+    if (!requestId) return;
+    
     try {
       const { data, error } = await supabase
         .from('food_requests')
@@ -116,7 +120,7 @@ const SendRecommendation = () => {
       if (error) throw error;
       
       if (data) {
-        // Fetch requester profile separately
+        // Fetch profile in parallel with setting request data
         const { data: profile } = await supabase
           .from('profiles')
           .select('display_name')
@@ -139,7 +143,7 @@ const SendRecommendation = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestId, toast, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,65 +179,39 @@ const SendRecommendation = () => {
 
       if (error) throw error;
 
-      // Award points and schedule visit reminder using new system
+      // OPTIMIZED: Fire-and-forget side effects in parallel (non-blocking)
       if (insertData) {
-        try {
-          await supabase.functions.invoke('process-recommendation-points', {
-            body: {
-              recommendationId: insertData.id,
-              action: 'create',
+        // Run all side effects in parallel without blocking the UI
+        Promise.all([
+          // Award points
+          supabase.functions.invoke('process-recommendation-points', {
+            body: { recommendationId: insertData.id, action: 'create' },
+          }).catch(err => console.error('Error processing points:', err)),
+          
+          // Push notification
+          supabase.functions.invoke('notify-new-recommendation', {
+            body: { 
+              type: 'INSERT',
+              table: 'recommendations',
+              record: {
+                id: insertData.id,
+                request_id: insertData.request_id,
+                recommender_id: insertData.recommender_id,
+              }
             },
-          });
-        } catch (pointsError) {
-          console.error('Error processing points:', pointsError);
-          // Don't block the success flow if points fail
-        }
-
-        // Trigger push notification for the requester
-        try {
-          console.log('🔔 Triggering notify-new-recommendation for recommendation:', insertData.id);
-          const { data: pushResult, error: pushInvokeError } = await supabase.functions.invoke(
-            'notify-new-recommendation',
-            {
-              body: { 
-                type: 'INSERT',
-                table: 'recommendations',
-                record: {
-                  id: insertData.id,
-                  request_id: insertData.request_id,
-                  recommender_id: insertData.recommender_id,
-                }
-              },
-            }
-          );
-
-          if (pushInvokeError) {
-            console.error('❌ notify-new-recommendation failed:', pushInvokeError);
-          } else {
-            console.log('🔔 notify-new-recommendation response:', pushResult);
-          }
-        } catch (pushError) {
-          console.error('❌ Network error calling notify-new-recommendation:', pushError);
-        }
-
-        // Trigger email notification for the requester
-        try {
-          console.log('📧 Triggering email-recommendation-received for recommendation:', insertData.id);
-          const { data: emailResult, error: emailInvokeError } = await supabase.functions.invoke(
-            'email-recommendation-received',
-            {
-              body: { recommendationId: insertData.id },
-            }
-          );
-
-          if (emailInvokeError) {
-            console.error('❌ email-recommendation-received failed:', emailInvokeError);
-          } else {
-            console.log('📧 email-recommendation-received response:', emailResult);
-          }
-        } catch (emailError) {
-          console.error('❌ Network error calling email-recommendation-received:', emailError);
-        }
+          }).then(({ data, error }) => {
+            if (error) console.error('❌ notify-new-recommendation failed:', error);
+            else console.log('🔔 notify-new-recommendation response:', data);
+          }).catch(err => console.error('❌ Network error:', err)),
+          
+          // Email notification
+          supabase.functions.invoke('email-recommendation-received', {
+            body: { recommendationId: insertData.id },
+          }).then(({ data, error }) => {
+            if (error) console.error('❌ email-recommendation-received failed:', error);
+            else console.log('📧 email-recommendation-received response:', data);
+          }).catch(err => console.error('❌ Network error:', err)),
+        ]);
       }
 
       // Update streak for recommenders (points are handled by edge function)
@@ -329,14 +307,16 @@ const SendRecommendation = () => {
     }
   };
 
-  const handleRestaurantChange = (name: string, address: string, placeId?: string) => {
+  // OPTIMIZED: Memoized handlers
+  const handleRestaurantChange = useCallback((name: string, address: string, placeId?: string) => {
     // Generate Google Maps URL for the selected place
     let mapsUrl = null;
+    const searchQuery = encodeURIComponent(`${name}${address ? ' ' + address : ''}`);
+    
     if (placeId) {
-      mapsUrl = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
-    } else if (name && address) {
-      const query = encodeURIComponent(`${name} ${address}`);
-      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}&query_place_id=${placeId}`;
+    } else if (name) {
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
     }
 
     setFormData(prev => ({
@@ -346,22 +326,16 @@ const SendRecommendation = () => {
       placeId: placeId || '',
       mapsUrl: mapsUrl || ''
     }));
-  };
+  }, []);
 
-  const handleChange = (field: string, value: string | number[]) => {
+  const handleChange = useCallback((field: string, value: string | number[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   if (!user) return null;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-xl text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <SendRecommendationSkeleton />;
   }
 
   if (!request) {
@@ -449,10 +423,10 @@ const SendRecommendation = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const query = encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`);
-                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-                            // Use location.assign instead of window.open to avoid popup blockers
-                            window.location.assign(mapsUrl);
+                            // Use pre-generated mapsUrl if available (includes query_place_id)
+                            const url = formData.mapsUrl || 
+                              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${formData.restaurantName} ${formData.restaurantAddress}`)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
                           }}
                           className="text-xs h-6"
                         >

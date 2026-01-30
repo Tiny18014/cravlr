@@ -8,4 +8,5 @@ export { EditProfileModal } from './EditProfileModal';
 export { EmailPreferencesSettings } from './EmailPreferencesSettings';
 export { SmsPreferencesSettings } from './SmsPreferencesSettings';
 export { SettingsLayout } from './SettingsLayout';
+export { UnifiedNotificationsSettings } from './UnifiedNotificationsSettings';
 export type { SettingsNavItem } from './SettingsLayout';

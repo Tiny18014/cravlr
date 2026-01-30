@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,20 +6,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Clock, Zap, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
 import { feedbackSessionManager } from '@/utils/feedbackSessionManager';
 import { z } from 'zod';
-import { DishTypeAutocomplete } from '@/components/DishTypeAutocomplete';
+import { DishTypeMultiSelect } from '@/components/DishTypeMultiSelect';
 import { FlavorMoodAutocomplete } from '@/components/FlavorMoodAutocomplete';
 import { CuisineAutocomplete } from '@/components/CuisineAutocomplete';
 
 
 const requestSchema = z.object({
-  dishType: z.string().optional(),
+  dishTypes: z.array(z.string()).optional(),
   flavorMood: z.string().optional(),
   cuisineStyle: z.string().optional(),
   locationCity: z.string()
@@ -64,13 +65,13 @@ const requestSchema = z.object({
 
 const RequestFood = () => {
   const { user } = useAuth();
+  const { profile, isLoading: isProfileLoading } = useUserProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationInput, setLocationInput] = useState('');
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
-  const [selectedDishType, setSelectedDishType] = useState<{ id: number; name: string } | null>(null);
+  const [selectedDishTypes, setSelectedDishTypes] = useState<string[]>([]);
   const [selectedFlavorMood, setSelectedFlavorMood] = useState<{ id: number; name: string } | null>(null);
   const [selectedCuisine, setSelectedCuisine] = useState<{ id: number; name: string } | null>(null);
   
@@ -85,51 +86,30 @@ const RequestFood = () => {
     lng: null as number | null
   });
 
-  // Goal 5: Prefill location from user profile
+  // OPTIMIZED: Use UserProfileContext instead of separate fetch
   useEffect(() => {
-    const loadUserLocation = async () => {
-      if (!user?.id) {
-        setIsLoadingProfile(false);
-        return;
-      }
+    if (isProfileLoading || !profile) return;
 
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('location_city, location_state, profile_lat, profile_lng, profile_country')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-
-        if (profile?.location_city) {
-          const cityDisplay = profile.location_state 
-            ? `${profile.location_city}, ${profile.location_state}`
-            : profile.location_city;
-          
-          setLocationInput(cityDisplay);
-          setFormData(prev => ({
-            ...prev,
-            locationCity: profile.location_city,
-            locationState: profile.location_state || '',
-            countryCode: profile.profile_country || '',
-            lat: profile.profile_lat,
-            lng: profile.profile_lng
-          }));
-        }
-      } catch (error) {
-        console.error('Error loading user location:', error);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
-    loadUserLocation();
-  }, [user?.id]);
+    if (profile.location_city) {
+      const cityDisplay = profile.location_state 
+        ? `${profile.location_city}, ${profile.location_state}`
+        : profile.location_city;
+      
+      setLocationInput(cityDisplay);
+      setFormData(prev => ({
+        ...prev,
+        locationCity: profile.location_city || '',
+        locationState: profile.location_state || '',
+        countryCode: profile.profile_country || '',
+        lat: profile.profile_lat,
+        lng: profile.profile_lng
+      }));
+    }
+  }, [profile, isProfileLoading]);
 
 
-  // Geocode the address to get coordinates
-  const geocodeAddress = async (city: string, state: string, address?: string) => {
+  // OPTIMIZED: Memoized geocode function
+  const geocodeAddress = useCallback(async (city: string, state: string, address?: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('geocode', {
         body: { city, state, address }
@@ -141,7 +121,7 @@ const RequestFood = () => {
       console.error('Geocoding failed:', error);
       return null;
     }
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,7 +131,7 @@ const RequestFood = () => {
     
     try {
       const validationResult = requestSchema.safeParse({
-        dishType: selectedDishType?.name,
+        dishTypes: selectedDishTypes.length > 0 ? selectedDishTypes : undefined,
         flavorMood: selectedFlavorMood?.name,
         cuisineStyle: selectedCuisine?.name,
         locationCity: formData.locationCity,
@@ -192,7 +172,10 @@ const RequestFood = () => {
         }
       }
 
-      const dishPart = validated.dishType && validated.dishType !== 'Anything' ? `${validated.dishType} | ` : '';
+      // Build food type string from selections
+      const dishPart = validated.dishTypes && validated.dishTypes.length > 0 && !validated.dishTypes.includes('Anything') 
+        ? validated.dishTypes.join(', ') + ' | ' 
+        : '';
       const flavorPart = validated.flavorMood && validated.flavorMood !== 'Anything' ? validated.flavorMood : 'Any Flavor';
       const cuisinePart = validated.cuisineStyle && validated.cuisineStyle !== 'Anything' ? validated.cuisineStyle : 'Any Cuisine';
       const foodTypeString = `${dishPart}${flavorPart} | ${cuisinePart}`;
@@ -217,28 +200,38 @@ const RequestFood = () => {
 
       if (error) throw error;
 
-      try {
-        console.log('🔔 Triggering send-nearby-notification for request:', data.id);
-        const { data: notifyData, error: notifyError } = await supabase.functions.invoke('send-nearby-notification', {
+      // Fire notifications in parallel - don't block navigation
+      console.log('🔔 Triggering notifications in parallel for request:', data.id);
+      
+      Promise.allSettled([
+        supabase.functions.invoke('send-nearby-notification', {
           body: { requestId: data.id }
-        });
-
-        if (notifyError) {
-          console.error('❌ Error response from send-nearby-notification:', notifyError);
+        }),
+        supabase.functions.invoke('email-request-broadcast', {
+          body: { requestId: data.id }
+        })
+      ]).then(([notifyResult, emailResult]) => {
+        // Log results but don't block UI
+        if (notifyResult.status === 'fulfilled') {
+          if (notifyResult.value.error) {
+            console.error('❌ Push notification error:', notifyResult.value.error);
+          } else {
+            console.log('✅ Push notifications sent:', notifyResult.value.data);
+          }
         } else {
-          console.log('✅ Push notification results:', notifyData);
+          console.error('❌ Push notification failed:', notifyResult.reason);
         }
 
-        // Also trigger email broadcast
-        console.log('📧 Triggering email-request-broadcast for request:', data.id);
-        const { error: emailError } = await supabase.functions.invoke('email-request-broadcast', {
-          body: { requestId: data.id }
-        });
-        if (emailError) console.error('❌ Error triggering email broadcast:', emailError);
-
-      } catch (notificationError) {
-        console.error('❌ Exception notifying area users:', notificationError);
-      }
+        if (emailResult.status === 'fulfilled') {
+          if (emailResult.value.error) {
+            console.error('❌ Email broadcast error:', emailResult.value.error);
+          } else {
+            console.log('✅ Email broadcast sent');
+          }
+        } else {
+          console.error('❌ Email broadcast failed:', emailResult.reason);
+        }
+      });
 
       toast({
         title: "Request created!",
@@ -261,9 +254,10 @@ const RequestFood = () => {
     }
   };
 
-  const handleChange = (field: string, value: string | number) => {
+  // OPTIMIZED: Memoized change handler
+  const handleChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   if (!user) {
     return (
@@ -299,10 +293,10 @@ const RequestFood = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Dish Type Section */}
-              <DishTypeAutocomplete 
-                value={selectedDishType} 
-                onSelect={setSelectedDishType} 
+              {/* Dish Type Section - Multi-select */}
+              <DishTypeMultiSelect 
+                value={selectedDishTypes} 
+                onChange={setSelectedDishTypes} 
               />
 
               {/* Flavor Mood Section */}
@@ -453,6 +447,7 @@ const RequestFood = () => {
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/')}
+                  disabled={isSubmitting}
                   className="flex-1 h-12 rounded-xl"
                 >
                   Cancel
@@ -460,9 +455,16 @@ const RequestFood = () => {
                 <Button
                   type="submit"
                   disabled={isSubmitting || !formData.locationCity}
-                  className="flex-1 h-12 rounded-xl"
+                  className="flex-1 h-12 rounded-xl relative"
                 >
-                  {isSubmitting ? 'Creating...' : 'Post Request'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Creating Request...
+                    </>
+                  ) : (
+                    'Post Request'
+                  )}
                 </Button>
               </div>
             </form>
