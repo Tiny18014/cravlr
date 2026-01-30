@@ -60,8 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: updateError } = await supabase
       .from('food_requests')
       .update({
-        status: 'expired',
-        closed_at: new Date().toISOString()
+        status: 'expired'
       })
       .in('id', expiredRequests.map(req => req.id));
 
