@@ -24,7 +24,7 @@ export const useVisitReminders = () => {
 
     try {
       // Get unread visit reminder notifications
-      const { data, error } = await supabase
+      const { data: notifications, error } = await supabase
         .from('notifications')
         .select(`
           id,
@@ -40,31 +40,53 @@ export const useVisitReminders = () => {
 
       if (error) throw error;
 
-      // For each notification, get the recommendation details
-      const remindersWithDetails = await Promise.all(
-        (data || []).map(async (notif) => {
-          const { data: recommendations, error: recError } = await supabase
-            .from('recommendations')
-            .select('id, restaurant_name, food_requests!inner(food_type)')
-            .eq('request_id', notif.request_id)
-            .limit(1);
+      if (!notifications || notifications.length === 0) {
+        setReminders([]);
+        setLoading(false);
+        return;
+      }
 
-          if (recError || !recommendations || recommendations.length === 0) {
-            return null;
-          }
+      // Batch fetch all recommendations for all request IDs at once (eliminates N+1)
+      const requestIds = [...new Set(notifications.map(n => n.request_id))];
+      
+      const { data: recommendations, error: recError } = await supabase
+        .from('recommendations')
+        .select('id, request_id, restaurant_name, food_requests!inner(food_type)')
+        .in('request_id', requestIds);
 
-          const rec = recommendations[0];
+      if (recError) {
+        console.error('Error fetching recommendations:', recError);
+        setReminders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Create a Map for O(1) lookups by request_id
+      const recByRequestId = new Map<string, typeof recommendations[0]>();
+      for (const rec of recommendations || []) {
+        // Store first recommendation per request (in case of multiples)
+        if (!recByRequestId.has(rec.request_id)) {
+          recByRequestId.set(rec.request_id, rec);
+        }
+      }
+
+      // Map notifications to reminders using the pre-fetched data
+      const remindersWithDetails = notifications
+        .map((notif) => {
+          const rec = recByRequestId.get(notif.request_id);
+          if (!rec) return null;
+
           return {
             id: notif.id,
             recommendation_id: rec.id,
             request_id: notif.request_id,
             restaurant_name: rec.restaurant_name,
-            food_type: (rec.food_requests as any).food_type,
+            food_type: (rec.food_requests as { food_type: string }).food_type,
           };
         })
-      );
+        .filter((r): r is VisitReminder => r !== null);
 
-      setReminders(remindersWithDetails.filter(Boolean) as VisitReminder[]);
+      setReminders(remindersWithDetails);
     } catch (error) {
       console.error('Error fetching visit reminders:', error);
       setReminders([]);
