@@ -10,8 +10,17 @@
  */
 
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { supabase } from '@/integrations/supabase/client';
+
+// NOTE: Native push is temporarily disabled (Firebase removed).
+// We keep the web OneSignal flow intact while preventing any native calls
+// that would crash without Firebase configuration.
+
+type MinimalPushNotification = {
+  title?: string;
+  body?: string;
+  data?: unknown;
+};
 
 // OneSignal App ID will be fetched from backend
 let ONESIGNAL_APP_ID: string | null = null;
@@ -75,49 +84,17 @@ export class NativePushNotificationService {
    * Initialize for native platforms (iOS/Android)
    */
   private static async initializeNative(): Promise<void> {
-    console.log('📱 Push: Initializing native push notifications...');
-
-    // Check current permission status
-    const permissionStatus = await PushNotifications.checkPermissions();
-    console.log('📱 Push: Current permission status:', permissionStatus.receive);
-
-    // Register listeners BEFORE requesting permissions
-    this.registerNativeListeners();
-
-    // If already granted, register for push
-    if (permissionStatus.receive === 'granted') {
-      await PushNotifications.register();
-    }
+    // Native push requires platform configuration (Android Firebase / iOS APNs).
+    // Until you explicitly decide to enable that, we disable native initialization.
+    console.log('📱 Push: Native push is disabled (Firebase not configured)');
   }
 
   /**
    * Register native event listeners
    */
   private static registerNativeListeners(): void {
-    // Registration success - device token received
-    PushNotifications.addListener('registration', async (token: Token) => {
-      console.log('📱 Push: Registration successful, token:', token.value.substring(0, 20) + '...');
-      await this.registerDeviceToken(token.value, Capacitor.getPlatform() as 'ios' | 'android');
-    });
-
-    // Registration error
-    PushNotifications.addListener('registrationError', (error: any) => {
-      console.error('📱 Push: Registration failed:', error);
-    });
-
-    // Notification received while app is in foreground
-    PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
-      console.log('📱 Push: Notification received in foreground:', notification);
-      this.handleForegroundNotification(notification);
-    });
-
-    // Notification tapped - app opened from notification
-    PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
-      console.log('📱 Push: Notification action performed:', action);
-      this.handleNotificationOpened(action.notification);
-    });
-
-    console.log('📱 Push: Native listeners registered');
+    // No-op while native push is disabled.
+    console.log('📱 Push: Native listeners skipped (native push disabled)');
   }
 
   /**
@@ -161,22 +138,7 @@ export class NativePushNotificationService {
    * Request native permission (iOS/Android)
    */
   private static async requestNativePermission(): Promise<boolean> {
-    // Check current status
-    let permissionStatus = await PushNotifications.checkPermissions();
-    console.log('📱 Push: Current permission:', permissionStatus.receive);
-
-    if (permissionStatus.receive === 'prompt' || permissionStatus.receive === 'prompt-with-rationale') {
-      // Request permission
-      permissionStatus = await PushNotifications.requestPermissions();
-      console.log('📱 Push: Permission after request:', permissionStatus.receive);
-    }
-
-    if (permissionStatus.receive === 'granted') {
-      // Register for push notifications
-      await PushNotifications.register();
-      return true;
-    }
-
+    console.log('📱 Push: Native permission request skipped (native push disabled)');
     return false;
   }
 
@@ -244,13 +206,13 @@ export class NativePushNotificationService {
   /**
    * Handle notification received in foreground
    */
-  private static handleForegroundNotification(notification: PushNotificationSchema): void {
+  private static handleForegroundNotification(notification: MinimalPushNotification): void {
     console.log('📱 Push: Foreground notification:', notification);
 
     // On native, you might want to show an in-app toast or banner
     // The system notification will still appear in the notification tray
     
-    const data = notification.data as NotificationData;
+    const data = (notification.data || {}) as NotificationData;
     
     // Dispatch custom event for UI components to react
     window.dispatchEvent(new CustomEvent('push-notification-received', {
@@ -265,7 +227,7 @@ export class NativePushNotificationService {
   /**
    * Handle notification opened (tapped)
    */
-  private static handleNotificationOpened(notification: PushNotificationSchema): void {
+  private static handleNotificationOpened(notification: MinimalPushNotification): void {
     console.log('📱 Push: Notification opened:', notification);
 
     const data = (notification.data || {}) as NotificationData;
@@ -314,9 +276,8 @@ export class NativePushNotificationService {
    * Check if push notifications are supported
    */
   static isSupported(): boolean {
-    if (Capacitor.isNativePlatform()) {
-      return true; // Native always supports push
-    }
+    // Native push is intentionally disabled for now.
+    if (Capacitor.isNativePlatform()) return false;
     
     // Web support check
     return 'Notification' in window && 'serviceWorker' in navigator;
@@ -328,8 +289,7 @@ export class NativePushNotificationService {
   static async getPermissionStatus(): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> {
     try {
       if (Capacitor.isNativePlatform()) {
-        const status = await PushNotifications.checkPermissions();
-        return status.receive as 'granted' | 'denied' | 'prompt';
+        return 'unknown';
       } else {
         // Web permission
         if ('Notification' in window) {
