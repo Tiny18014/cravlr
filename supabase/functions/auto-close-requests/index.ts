@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('food_requests')
       .select('id')
       .eq('status', 'active')
-      .lt('expires_at', new Date().toISOString());
+      .lt('expire_at', new Date().toISOString());
 
     if (selectError) {
       console.error('Error fetching expired requests:', selectError);
