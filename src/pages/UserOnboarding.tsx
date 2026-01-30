@@ -8,10 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CuisineMultiSelect } from '@/components/CuisineMultiSelect';
-import { MapPin, Utensils, Target, Check, Navigation, Loader2, AlertCircle } from 'lucide-react';
+import { MapPin, Utensils, Target, Check, Navigation, Loader2 } from 'lucide-react';
 import { useGpsCountryDetection } from '@/hooks/useGpsCountryDetection';
 import { LocationAutocomplete, NormalizedLocation } from '@/components/LocationAutocomplete';
-import { normalizeLocationString, hasValidCoordinates } from '@/utils/locationNormalization';
 
 // Goal 3: Distance unit options
 type DistanceUnit = 'miles' | 'km';
@@ -44,24 +43,17 @@ const UserOnboarding = () => {
   // Handle location selection from autocomplete (single location only)
   const handleLocationSelect = (location: NormalizedLocation) => {
     console.log('[Signup:Location] Location selected:', location);
-    
-    // Normalize city and state names
-    const normalizedCity = normalizeLocationString(location.city || location.displayLabel);
-    const normalizedState = normalizeLocationString(location.region || '');
-    
-    setLocationCity(normalizedCity);
-    setLocationState(normalizedState);
+    setLocationCity(location.city || location.displayLabel);
+    setLocationState(location.region || '');
     setLocationLat(location.lat);
     setLocationLng(location.lng);
     setLocationCountry(location.countryCode || '');
-    
     console.log('[Signup:Location] Saving to form state:', {
-      city: normalizedCity,
-      state: normalizedState,
+      city: location.city || location.displayLabel,
+      state: location.region || '',
       lat: location.lat,
       lng: location.lng,
       country: location.countryCode || '',
-      hasValidCoords: hasValidCoordinates(location.lat, location.lng),
     });
   };
 
@@ -82,16 +74,6 @@ const UserOnboarding = () => {
         toast({
           title: "Location Required",
           description: "Please provide your location to continue.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Validate that we have coordinates for accurate geo-filtering
-      if (!hasValidCoordinates(locationLat, locationLng)) {
-        toast({
-          title: "Location Incomplete",
-          description: "Please select a location from the suggestions or use GPS to ensure accurate matching.",
           variant: "destructive",
         });
         return;
@@ -253,29 +235,12 @@ const UserOnboarding = () => {
               
               {/* Show selected location confirmation */}
               {locationCity && (
-                <div className={`flex items-center gap-2 p-3 rounded-lg ${
-                  hasValidCoordinates(locationLat, locationLng)
-                    ? 'bg-[#9DBF70]/10 border border-[#9DBF70]/30'
-                    : 'bg-amber-50 border border-amber-200'
-                }`}>
-                  {hasValidCoordinates(locationLat, locationLng) ? (
-                    <MapPin className="h-5 w-5 text-[#9DBF70]" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-amber-500" />
-                  )}
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-[#3E2F25]">
-                      {locationCity}{locationState ? `, ${locationState}` : ''}
-                    </span>
-                    {!hasValidCoordinates(locationLat, locationLng) && (
-                      <p className="text-xs text-amber-600 mt-0.5">
-                        Please select from suggestions or use GPS for accurate matching
-                      </p>
-                    )}
-                  </div>
-                  {hasValidCoordinates(locationLat, locationLng) && (
-                    <Check className="h-4 w-4 text-[#9DBF70]" />
-                  )}
+                <div className="flex items-center gap-2 p-3 bg-[#9DBF70]/10 border border-[#9DBF70]/30 rounded-lg">
+                  <MapPin className="h-5 w-5 text-[#9DBF70]" />
+                  <span className="text-sm font-medium text-[#3E2F25]">
+                    {locationCity}{locationState ? `, ${locationState}` : ''}
+                  </span>
+                  <Check className="h-4 w-4 text-[#9DBF70] ml-auto" />
                 </div>
               )}
             </div>

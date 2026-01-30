@@ -221,8 +221,8 @@ serve(async (req) => {
       bodyText = `Craving ${cuisines} (${flavors})`;
     }
 
-    // Generate deep link URL - use the correct route path
-    const deepLinkPath = `/recommend/${request.id}`;
+    // Generate deep link URL
+    const deepLinkPath = `/send-recommendation?requestId=${request.id}`;
     const deepLinkUrl = `${APP_URL}${deepLinkPath}`;
     console.log('[send-nearby-notification] Generated deep link:', deepLinkUrl);
 
@@ -239,48 +239,33 @@ serve(async (req) => {
     };
 
     // Create in-app notifications FIRST (before sending push/SMS)
-    // Using simple insert instead of upsert because the unique index is a partial index
-    // which doesn't work with onConflict in Supabase
-    console.log('[send-nearby-notification] Creating in-app notifications for', matchedUsers.length, 'users...');
-    
-    // First check for existing notifications to avoid duplicates
-    const { data: existingNotifications } = await supabaseAdmin
-      .from('recommender_notifications')
-      .select('recommender_id')
-      .eq('request_id', request.id)
-      .eq('type', 'new_request_nearby')
-      .in('recommender_id', matchedUsers);
-
-    const existingUserIds = new Set(existingNotifications?.map(n => n.recommender_id) || []);
-    console.log('[send-nearby-notification] Existing notifications found:', existingUserIds.size);
-
-    // Filter out users who already have notifications
-    const newNotificationUsers = matchedUsers.filter(userId => !existingUserIds.has(userId));
-    console.log('[send-nearby-notification] New notifications to create:', newNotificationUsers.length);
+    console.log('[send-nearby-notification] Creating in-app notifications...');
+    const inAppNotifications = matchedUsers.map(userId => ({
+      recommender_id: userId,
+      request_id: request.id,
+      type: 'new_request_nearby',
+      title: notificationPayload.title,
+      message: notificationPayload.body,
+      restaurant_name: `${request.location_city} | ${request.food_type}`,
+      recommendation_id: null,
+      read: false,
+    }));
 
     let inAppCreated = 0;
-    if (newNotificationUsers.length > 0) {
-      const inAppNotifications = newNotificationUsers.map(userId => ({
-        recommender_id: userId,
-        request_id: request.id,
-        type: 'new_request_nearby',
-        title: notificationPayload.title,
-        message: notificationPayload.body,
-        restaurant_name: `${request.location_city} | ${request.food_type}`,
-        recommendation_id: null,
-        read: false,
-      }));
-
+    if (inAppNotifications.length > 0) {
       const { data: insertedData, error: insertError } = await supabaseAdmin
         .from('recommender_notifications')
-        .insert(inAppNotifications)
+        .upsert(inAppNotifications, { 
+          onConflict: 'recommender_id,request_id,type',
+          ignoreDuplicates: true 
+        })
         .select('id');
       
       if (insertError) {
         console.error('[send-nearby-notification] DB insert error:', insertError);
       } else {
         inAppCreated = insertedData?.length || 0;
-        console.log('[send-nearby-notification] ✅ DB insert success - created:', inAppCreated);
+        console.log('[send-nearby-notification] DB insert success - created:', inAppCreated);
       }
     }
 

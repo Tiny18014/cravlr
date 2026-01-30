@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserProfile } from '@/contexts/UserProfileContext';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, Send } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CountdownTimer from '@/components/CountdownTimer';
+import { ReputationBadge } from '@/components/ReputationBadge';
+import { ExitIntentFeedbackTrigger } from '@/components/ExitIntentFeedbackTrigger';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { useToast } from '@/hooks/use-toast';
@@ -22,8 +22,6 @@ interface FoodRequest {
   status: string;
   created_at: string;
   expire_at: string;
-  lat?: number;
-  lng?: number;
   profiles: {
     display_name: string;
   };
@@ -32,59 +30,24 @@ interface FoodRequest {
   user_state?: "accepted" | "ignored" | null;
 }
 
-// Haversine distance calculation
-const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-};
-
-// Skeleton loading component
-const BrowseRequestsSkeleton = React.memo(() => (
-  <div className="min-h-screen bg-background pb-20">
-    <div className="px-4 sm:px-6 pt-8 pb-5 border-b border-border/50">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-full" />
-        <Skeleton className="h-4 w-24" />
-      </div>
-    </div>
-    <main className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <Skeleton className="h-8 w-48 mb-2" />
-        <Skeleton className="h-4 w-64 mb-6" />
-        <Skeleton className="h-12 w-full rounded-lg mb-6" />
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-48 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    </main>
-  </div>
-));
-BrowseRequestsSkeleton.displayName = 'BrowseRequestsSkeleton';
-
-// Memoized ActionRow component
-const ActionRow = React.memo(({ 
+// ActionRow component implementing your exact spec
+const ActionRow = ({ 
   request, 
-  userId, 
+  user, 
   onOpenSuggestion,
   handleRequestAction
 }: { 
   request: FoodRequest; 
-  userId: string | undefined; 
+  user: any; 
   onOpenSuggestion: (req: FoodRequest) => void;
   handleRequestAction: (id: string, action: string) => void;
 }) => {
   const navigate = useNavigate();
   
-  const role = request.requester_id === userId ? 'requester' : 'recommender';
+  // Role detection
+  const role = request.requester_id === user?.id ? 'requester' : 'recommender';
+  
+  // State calculations
   const is_full = (request.recommendation_count || 0) >= 10;
   const now = Date.now();
   const expiresAt = new Date(request.expire_at).getTime();
@@ -92,6 +55,9 @@ const ActionRow = React.memo(({
   const expired = time_left <= 0;
   const inactive = request.status !== 'active' || is_full || expired;
 
+  console.log(`ActionRow for ${request.id}: role=${role}, inactive=${inactive}, is_full=${is_full}, expired=${expired}, user_has_recommended=${request.user_has_recommended}, user_state=${request.user_state}`);
+
+  // Guardrail: Requester view
   if (role === 'requester') {
     const buttonText = request.status === 'active' 
       ? `View recommendations (${request.recommendation_count || 0})`
@@ -108,20 +74,26 @@ const ActionRow = React.memo(({
     );
   }
 
+  // Recommender view - following exact spec order
+  
+  // 1. Inactive states
   if (inactive) {
     if (is_full) return <Badge variant="secondary">Already Full</Badge>;
     if (expired) return <Badge variant="secondary">Expired</Badge>;
     return <Badge variant="secondary">Closed</Badge>;
   }
 
+  // 2. Already recommended - show as status chip
   if (request.user_has_recommended) {
     return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">✅ Already Suggested</Badge>;
   }
 
+  // 3. Ignored state - show as status chip
   if (request.user_state === 'ignored') {
     return <Badge variant="secondary" className="text-muted-foreground">Ignored</Badge>;
   }
 
+  // 4. Accepted but hasn't recommended yet - show status chip + action
   if (request.user_state === 'accepted' && !request.user_has_recommended) {
     return (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
@@ -140,6 +112,7 @@ const ActionRow = React.memo(({
     );
   }
 
+  // 5. Default state - show Accept/Ignore
   return (
     <div className="flex items-center gap-2 w-full sm:w-auto">
       <Button
@@ -159,97 +132,75 @@ const ActionRow = React.memo(({
       </Button>
     </div>
   );
-});
-ActionRow.displayName = 'ActionRow';
+};
 
-// Memoized RequestCard component
-const RequestCard = React.memo(({ 
-  request, 
-  userId,
-  onOpenSuggestion,
-  handleRequestAction 
-}: { 
-  request: FoodRequest;
-  userId: string | undefined;
-  onOpenSuggestion: (req: FoodRequest) => void;
-  handleRequestAction: (id: string, action: string) => void;
-}) => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-bold">{request.food_type}</h3>
-          <div className="flex items-center gap-2">
-            <CountdownTimer expiresAt={request.expire_at} />
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <p className="text-muted-foreground">
-            Requested by {request.profiles?.display_name || 'Anonymous'}
-          </p>
-          <div className="flex items-center text-muted-foreground">
-            <MapPin className="h-4 w-4 mr-2" />
-            {request.location_city}, {request.location_state}
-          </div>
-        </div>
+// Haversine distance calculation
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
 
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {request.recommendation_count}/10 locals suggested
-            </Badge>
-            {(request.recommendation_count || 0) > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                🔥 {request.recommendation_count} vote{request.recommendation_count !== 1 ? 's' : ''}
-              </Badge>
-            )}
-          </div>
-          <div className="w-full sm:w-auto">
-            <ActionRow 
-              request={request} 
-              userId={userId}
-              onOpenSuggestion={onOpenSuggestion}
-              handleRequestAction={handleRequestAction}
-            />
-          </div>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-));
-RequestCard.displayName = 'RequestCard';
+interface UserLocation {
+  city: string | null;
+  state: string | null;
+  lat: number | null;
+  lng: number | null;
+  radiusKm: number;
+}
 
 const BrowseRequests = () => {
   const { user, signOut } = useAuth();
-  const { profile } = useUserProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageUpdatedAt, setProfileImageUpdatedAt] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
 
-  // Derived user data from profile context
-  const userName = useMemo(() => 
-    profile?.display_name || user?.email?.split('@')[0] || 'User',
-    [profile?.display_name, user?.email]
-  );
-
-  const userLocation = useMemo(() => ({
-    city: profile?.location_city || null,
-    state: profile?.location_state || null,
-    lat: profile?.profile_lat || null,
-    lng: profile?.profile_lng || null,
-    radiusKm: profile?.notification_radius_km || 20
-  }), [profile]);
-
-  // Fetch requests when profile is loaded
   useEffect(() => {
-    if (user && profile) {
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  // Fetch requests only after we have user location
+  useEffect(() => {
+    if (user && userLocation !== null) {
       fetchRequests();
     }
-  }, [user, profile]);
+  }, [user, userLocation]);
 
-  // Realtime subscription for new requests
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, location_city, location_state, profile_lat, profile_lng, notification_radius_km, profile_image_url, updated_at')
+      .eq('id', user.id)
+      .single();
+    
+    setUserName(profile?.display_name || user.email?.split('@')[0] || 'User');
+    setProfileImageUrl(profile?.profile_image_url || null);
+    setProfileImageUpdatedAt(profile?.updated_at || null);
+    setUserLocation({
+      city: profile?.location_city || null,
+      state: profile?.location_state || null,
+      lat: profile?.profile_lat || null,
+      lng: profile?.profile_lng || null,
+      radiusKm: profile?.notification_radius_km || 20
+    });
+  };
+
+  // Add realtime subscription for new requests
   useEffect(() => {
     if (!user) return;
 
@@ -258,15 +209,28 @@ const BrowseRequests = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'food_requests'
         },
         (payload) => {
+          console.log('🎯 New request created, refreshing list:', payload.new);
           // Only refresh if it's not the current user's request
-          if (payload.new && (payload.new as any).requester_id !== user.id) {
+          if (payload.new.requester_id !== user.id) {
             fetchRequests();
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'food_requests'
+        },
+        (payload) => {
+          console.log('🎯 Request updated, refreshing list:', payload.new);
+          fetchRequests();
         }
       )
       .subscribe();
@@ -276,23 +240,21 @@ const BrowseRequests = () => {
     };
   }, [user]);
 
-  const fetchRequests = useCallback(async () => {
-    if (!user) return;
-    
+  const fetchRequests = async () => {
     try {
       setLoading(true);
       
       // If user has no location set, show empty state
-      if (!userLocation.city && !userLocation.lat) {
+      if (!userLocation?.city && !userLocation?.lat) {
+        console.log('🎯 User has no location set, showing empty state');
         setRequests([]);
         setLoading(false);
         return;
       }
       
+      // Query for active requests that haven't expired
       const now = new Date().toISOString();
-      
-      // PERFORMANCE FIX: Single optimized query instead of N+1 pattern
-      const { data: requestsData, error: requestsError } = await supabase
+      const { data, error } = await supabase
         .from('food_requests')
         .select('*')
         .eq('status', 'active')
@@ -300,10 +262,11 @@ const BrowseRequests = () => {
         .gt('expire_at', now)
         .order('created_at', { ascending: false });
 
-      if (requestsError) throw requestsError;
+      if (error) throw error;
 
-      // Filter by location
-      const locationFilteredData = (requestsData || []).filter(request => {
+      // Filter by location - geo-based or city-based
+      const locationFilteredData = (data || []).filter(request => {
+        // Geo-based matching if both user and request have coordinates
         if (userLocation.lat && userLocation.lng && request.lat && request.lng) {
           const distance = calculateDistance(
             userLocation.lat,
@@ -314,6 +277,7 @@ const BrowseRequests = () => {
           return distance <= userLocation.radiusKm;
         }
         
+        // Fall back to city-based matching
         if (userLocation.city) {
           return request.location_city?.toLowerCase() === userLocation.city.toLowerCase();
         }
@@ -321,73 +285,48 @@ const BrowseRequests = () => {
         return false;
       });
 
-      if (locationFilteredData.length === 0) {
-        setRequests([]);
-        setLoading(false);
-        return;
-      }
+      console.log(`🎯 Fetched ${data?.length || 0} total requests, ${locationFilteredData.length} in user's area`);
 
-      // Get all request IDs and requester IDs for batch queries
-      const requestIds = locationFilteredData.map(r => r.id);
-      const requesterIds = [...new Set(locationFilteredData.map(r => r.requester_id))];
+      // For each request, get recommendation count, user state, and profile
+      const enrichedRequests = await Promise.all(
+        locationFilteredData.map(async (request) => {
+          // Get requester profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', request.requester_id)
+            .maybeSingle();
+          // Get recommendation count
+          const { count } = await supabase
+            .from('recommendations')
+            .select('*', { count: 'exact', head: true })
+            .eq('request_id', request.id);
 
-      // PERFORMANCE FIX: Batch fetch all related data in parallel
-      const [profilesResult, recommendationCounts, userRecommendations, userStates] = await Promise.all([
-        // Get all requester profiles at once
-        supabase
-          .from('profiles')
-          .select('id, display_name')
-          .in('id', requesterIds),
-        
-        // Get recommendation counts for all requests at once
-        supabase
-          .from('recommendations')
-          .select('request_id')
-          .in('request_id', requestIds),
-        
-        // Get user's recommendations for all requests at once
-        supabase
-          .from('recommendations')
-          .select('request_id')
-          .in('request_id', requestIds)
-          .eq('recommender_id', user.id),
-        
-        // Get user's states for all requests at once
-        supabase
-          .from('request_user_state')
-          .select('request_id, state')
-          .in('request_id', requestIds)
-          .eq('user_id', user.id)
-      ]);
+          // Check if user has already recommended
+          const { data: userRec } = await supabase
+            .from('recommendations')
+            .select('id')
+            .eq('request_id', request.id)
+            .eq('recommender_id', user.id)
+            .single();
 
-      // Create lookup maps for O(1) access
-      const profileMap = new Map<string, string>();
-      (profilesResult.data || []).forEach(p => {
-        profileMap.set(p.id, p.display_name || 'Anonymous');
-      });
+          // Get user's state for this request (accepted/ignored)
+          const { data: userState } = await supabase
+            .from('request_user_state')
+            .select('state')
+            .eq('request_id', request.id)
+            .eq('user_id', user.id)
+            .single();
 
-      const countMap = new Map<string, number>();
-      (recommendationCounts.data || []).forEach(rec => {
-        countMap.set(rec.request_id, (countMap.get(rec.request_id) || 0) + 1);
-      });
-
-      const userRecSet = new Set(
-        (userRecommendations.data || []).map(r => r.request_id)
+          return {
+            ...request,
+            profiles: { display_name: profile?.display_name || 'Anonymous' },
+            recommendation_count: count || 0,
+            user_has_recommended: !!userRec,
+            user_state: (userState?.state as "accepted" | "ignored") || null
+          };
+        })
       );
-
-      const stateMap = new Map<string, "accepted" | "ignored">();
-      (userStates.data || []).forEach(s => {
-        stateMap.set(s.request_id, s.state as "accepted" | "ignored");
-      });
-
-      // Enrich requests with the batch-fetched data
-      const enrichedRequests: FoodRequest[] = locationFilteredData.map(request => ({
-        ...request,
-        profiles: { display_name: profileMap.get(request.requester_id) || 'Anonymous' },
-        recommendation_count: countMap.get(request.id) || 0,
-        user_has_recommended: userRecSet.has(request.id),
-        user_state: stateMap.get(request.id) || null
-      }));
 
       setRequests(enrichedRequests);
     } catch (error) {
@@ -395,26 +334,37 @@ const BrowseRequests = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, userLocation]);
+  };
 
-  const handleRequestAction = useCallback(async (id: string, action: string) => {
+  const handleRequestAction = async (id: string, action: string) => {
     try {
+      console.log(`🎯 Action triggered: ${action} on request ${id}`);
+      
+      // Call the backend to record the accept/ignore action
       const response = await supabase.functions.invoke('request-accept-ignore', {
         body: { requestId: id, action }
       });
 
+      console.log('🎯 Backend response:', response);
+
+      // Check if there's an error in the response
       if (response.error) {
+        console.error('🎯 Edge function error:', response.error);
         throw response.error;
       }
 
+      // Update local state (match what the edge function stores)
       setRequests(prev => prev.map(req => 
         req.id === id 
           ? { ...req, user_state: (action === 'accept' ? 'accepted' : 'ignored') as "accepted" | "ignored" }
           : req
       ));
+
+      console.log(`✅ Successfully ${action}ed request ${id}`);
     } catch (error: any) {
-      console.error(`Error ${action}ing request:`, error);
+      console.error(`❌ Error ${action}ing request:`, error);
       
+      // Check if the request has expired
       const errorMessage = error?.message || error?.toString() || '';
       if (errorMessage.includes('expired')) {
         toast({
@@ -422,6 +372,7 @@ const BrowseRequests = () => {
           description: "This request is no longer available.",
           variant: "destructive"
         });
+        // Remove expired request from local state
         setRequests(prev => prev.filter(req => req.id !== id));
       } else {
         toast({
@@ -431,25 +382,22 @@ const BrowseRequests = () => {
         });
       }
     }
-  }, [toast]);
+  };
 
-  const onOpenSuggestion = useCallback((request: FoodRequest) => {
+  const onOpenSuggestion = (request: FoodRequest) => {
+    console.log('🎯 Opening suggestion for:', request.id);
     navigate(`/recommend/${request.id}`);
-  }, [navigate]);
+  };
 
   if (!user) return null;
-
-  if (loading) {
-    return <BrowseRequestsSkeleton />;
-  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <DashboardHeader 
         onSignOut={signOut} 
         userName={userName}
-        profileImageUrl={profile?.profile_image_url}
-        profileImageUpdatedAt={profile?.profile_image_updated_at}
+        profileImageUrl={profileImageUrl}
+        profileImageUpdatedAt={profileImageUpdatedAt}
       />
 
       <main className="container mx-auto px-4 py-8">
@@ -460,16 +408,23 @@ const BrowseRequests = () => {
             <p className="text-muted-foreground">Tap a request to share your favorite spot.</p>
           </div>
 
+          {/* Quick summary - only count non-expired requests */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              {userLocation.city || userLocation.lat 
-                ? `${requests.length} active request${requests.length !== 1 ? 's' : ''} in your area`
-                : "Set your location to see nearby requests"
+              {loading ? "Loading..." : 
+                userLocation?.city || userLocation?.lat 
+                  ? `${requests.length} active request${requests.length !== 1 ? 's' : ''} in your area`
+                  : "Set your location to see nearby requests"
               }
             </p>
           </div>
 
-          {!userLocation.city && !userLocation.lat ? (
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p>Loading nearby requests...</p>
+            </div>
+          ) : !userLocation?.city && !userLocation?.lat ? (
             <Card>
               <CardContent className="text-center py-8">
                 <div className="text-6xl mb-4">📍</div>
@@ -485,25 +440,69 @@ const BrowseRequests = () => {
             <Card>
               <CardContent className="text-center py-8">
                 <div className="text-6xl mb-4">🚀</div>
-                <p className="text-muted-foreground mb-2">No food requests in {userLocation.city || 'your area'} right now.</p>
+                <p className="text-muted-foreground mb-2">No food requests in {userLocation?.city || 'your area'} right now.</p>
                 <p className="text-sm text-muted-foreground">Check back later to help food lovers nearby.</p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
               {requests.map((request) => (
-                <RequestCard 
-                  key={request.id}
-                  request={request}
-                  userId={user?.id}
-                  onOpenSuggestion={onOpenSuggestion}
-                  handleRequestAction={handleRequestAction}
-                />
+                <Card key={request.id}>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Food type - big and bold */}
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-bold">{request.food_type}</h3>
+                        <div className="flex items-center gap-2">
+                          <CountdownTimer expiresAt={request.expire_at} />
+                        </div>
+                      </div>
+                      
+                      {/* Requester and location */}
+                      <div className="space-y-2">
+                        <p className="text-muted-foreground">
+                          Requested by {request.profiles?.display_name || 'Anonymous'}
+                        </p>
+                        <div className="flex items-center text-muted-foreground">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {request.location_city}, {request.location_state}
+                        </div>
+                      </div>
+
+                       {/* Recommendation count and actions */}
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {request.recommendation_count}/10 locals suggested
+                          </Badge>
+                          {request.recommendation_count > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              🔥 {request.recommendation_count} vote{request.recommendation_count !== 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="w-full sm:w-auto">
+                          <ActionRow 
+                            request={request} 
+                            user={user} 
+                            onOpenSuggestion={onOpenSuggestion}
+                            handleRequestAction={handleRequestAction}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
         </div>
       </main>
+      
+      <ExitIntentFeedbackTrigger
+        role="recommender"
+        sourceAction="exit_intent_recommender"
+      />
     </div>
   );
 };

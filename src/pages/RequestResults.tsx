@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, ArrowLeft, MapPin, Star, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, ArrowLeft, MapPin, Star, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useReferralLinks } from "@/hooks/useReferralLinks";
+import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { ExitIntentFeedbackTrigger } from "@/components/ExitIntentFeedbackTrigger";
 import { feedbackSessionManager } from "@/utils/feedbackSessionManager";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 
 interface Note {
   by: string;
@@ -23,7 +22,7 @@ interface RecommendationGroup {
   key: string;
   name: string;
   placeId?: string;
-  address?: string;
+  address?: string; // Full restaurant address
   rating?: number;
   reviews?: number;
   priceLevel?: number;
@@ -34,9 +33,9 @@ interface RecommendationGroup {
   firstSubmittedAt: string;
   lastSubmittedAt: string;
   notes: Note[];
-  recommendationId?: string;
-  referralUrl?: string;
-  isPremium?: boolean;
+  recommendationId?: string; // Add for referral tracking
+  referralUrl?: string; // Add for referral tracking
+  isPremium?: boolean; // Premium business flag
 }
 
 interface RequestResultsData {
@@ -58,201 +57,6 @@ interface FoodRequest {
   status: string;
 }
 
-// Skeleton loading component
-const ResultsSkeleton = () => (
-  <div className="min-h-screen bg-background">
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Skeleton className="h-10 w-10 rounded-full" />
-        <Skeleton className="h-8 w-48" />
-      </div>
-      <Skeleton className="h-24 w-full rounded-xl mb-6" />
-      <div className="space-y-4">
-        {[1, 2, 3].map(i => (
-          <Skeleton key={i} className="h-40 rounded-xl" />
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-// Helper function to open external URLs (works on both web and native)
-const openExternalUrl = async (url: string) => {
-  if (Capacitor.isNativePlatform()) {
-    // Use Capacitor Browser plugin for native apps
-    await Browser.open({ url });
-  } else {
-    // For web, use a direct link navigation
-    window.location.href = url;
-  }
-};
-
-// Memoized recommendation card component
-const RecommendationCard = React.memo(({ 
-  group,
-  isExpanded,
-  onToggleNotes,
-  onGoingClick,
-  onNotGoingClick,
-  isGoing,
-  formatDistance,
-  formatPrice,
-  getPhotoUrl,
-  onOpenMaps
-}: {
-  group: RecommendationGroup;
-  isExpanded: boolean;
-  onToggleNotes: () => void;
-  onGoingClick: () => void;
-  onNotGoingClick: () => void;
-  isGoing: boolean;
-  formatDistance: (d?: number) => string;
-  formatPrice: (p?: number) => string;
-  getPhotoUrl: (t?: string) => string | null;
-  onOpenMaps: (url: string) => void;
-}) => {
-  const photoUrl = getPhotoUrl(group.photoToken);
-  
-  return (
-    <Card className={`overflow-hidden ${group.isPremium ? 'ring-2 ring-primary/50' : ''}`}>
-      {group.isPremium && (
-        <div className="bg-gradient-to-r from-primary/20 to-primary/10 px-4 py-1.5 text-xs font-medium text-primary flex items-center gap-1">
-          <Star className="h-3 w-3 fill-primary" />
-          Featured Restaurant
-        </div>
-      )}
-      
-      <CardContent className="p-4">
-        {/* Stack vertically on mobile, horizontal on sm+ */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Photo */}
-          <div className="flex-shrink-0 w-full sm:w-20 h-32 sm:h-20 rounded-lg bg-muted overflow-hidden">
-            {photoUrl ? (
-              <img 
-                src={photoUrl} 
-                alt={group.name}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">
-                🍽️
-              </div>
-            )}
-          </div>
-          
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="font-semibold text-foreground truncate">{group.name}</h3>
-              <Badge variant="secondary" className="flex-shrink-0 text-xs">
-                {group.count} vote{group.count !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-            
-            {group.address && (
-              <p className="text-xs text-muted-foreground truncate mb-2">
-                {group.address}
-              </p>
-            )}
-            
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              {group.rating && (
-                <span className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  {group.rating.toFixed(1)}
-                </span>
-              )}
-              {group.priceLevel !== undefined && (
-                <span>{formatPrice(group.priceLevel)}</span>
-              )}
-              {group.distanceMeters && (
-                <span>{formatDistance(group.distanceMeters)}</span>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Notes Section */}
-        {group.notes.length > 0 && (
-          <Collapsible open={isExpanded}>
-            <CollapsibleTrigger 
-              onClick={onToggleNotes}
-              className="flex items-center gap-1 text-xs text-primary mt-3 hover:underline"
-            >
-              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              {group.notes.length} note{group.notes.length !== 1 ? 's' : ''} from locals
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 space-y-2">
-              {group.notes.map((note, idx) => (
-                <div key={idx} className="bg-muted/50 rounded-lg p-3 text-sm">
-                  <p className="text-foreground">{note.text}</p>
-                  <p className="text-xs text-muted-foreground mt-1">— {note.by}</p>
-                </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-        
-        {/* Action Buttons - Stack on mobile */}
-        <div className="flex flex-col sm:flex-row gap-2 mt-4">
-          {group.referralUrl && (
-            <Button
-              size="sm"
-              className="w-full sm:flex-1"
-              asChild
-            >
-              <a 
-                href={group.referralUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (Capacitor.isNativePlatform()) {
-                    e.preventDefault();
-                    onOpenMaps(group.referralUrl!);
-                  }
-                }}
-              >
-                <MapPin className="h-4 w-4 mr-1" />
-                Open in Maps
-              </a>
-            </Button>
-          )}
-          
-          {!isGoing && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onGoingClick}
-                className="w-full sm:w-auto text-green-600 border-green-200 hover:bg-green-50"
-              >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Going
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={onNotGoingClick}
-                className="w-full sm:w-auto text-muted-foreground"
-              >
-                Not Going
-              </Button>
-            </>
-          )}
-          
-          {isGoing && (
-            <Badge className="bg-green-100 text-green-700 border-green-200 w-fit">
-              ✓ You're going here
-            </Badge>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-});
-RecommendationCard.displayName = 'RecommendationCard';
-
 const RequestResults = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
@@ -264,31 +68,41 @@ const RequestResults = () => {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [goingIntents, setGoingIntents] = useState<Set<string>>(new Set());
   const { generateReferralLink } = useReferralLinks();
-  const hasFetched = useRef(false);
 
-  const fetchResults = useCallback(async () => {
-    if (!requestId || !user) {
+  const fetchResults = async () => {
+    if (!requestId) {
+      console.error("❌ RequestResults: No requestId provided");
       setLoading(false);
       return;
     }
 
     try {
+      console.log("🔍 RequestResults: Fetching results for request:", requestId);
+      console.log("🔍 RequestResults: Current user:", user?.id);
+      
       // Fetch request details first
       const { data: requestData, error: requestError } = await supabase
         .from('food_requests')
         .select('*')
         .eq('id', requestId)
-        .maybeSingle();
+        .maybeSingle(); // Use maybeSingle to avoid 404 errors
 
-      if (requestError || !requestData) {
-        console.error('Error fetching request:', requestError);
+      if (requestError) {
+        console.error('❌ Error fetching request:', requestError);
         setLoading(false);
         return;
       }
 
+      if (!requestData) {
+        console.error('❌ RequestResults: Request not found for ID:', requestId);
+        setLoading(false);
+        return;
+      }
+
+      console.log("✅ RequestResults: Found request:", requestData);
       setRequest(requestData);
 
-      // PERFORMANCE FIX: Fetch recommendations with profile names in a single query
+      // Fetch recommendations separately
       const { data: recommendations, error: recError } = await supabase
         .from('recommendations')
         .select('*')
@@ -300,22 +114,26 @@ const RequestResults = () => {
         return;
       }
 
-      // Batch fetch all recommender profiles
-      const recommenderIds = [...new Set((recommendations || []).map(r => r.recommender_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, display_name')
-        .in('id', recommenderIds);
-      
-      const profileMap = new Map<string, string>();
-      (profiles || []).forEach(p => {
-        profileMap.set(p.id, p.display_name || 'Anonymous');
-      });
+      console.log("🔍 RequestResults: Found recommendations:", recommendations);
 
-      // Group recommendations by restaurant
-      const groups = new Map<string, RecommendationGroup>();
+      // Fetch profiles for each recommendation separately
+      const enrichedRecs = await Promise.all((recommendations || []).map(async (rec) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', rec.recommender_id)
+          .maybeSingle();
+        
+        return {
+          ...rec,
+          profiles: { display_name: profile?.display_name || 'Anonymous' }
+        };
+      }));
+
+      // Simple aggregation for now - group by restaurant name
+      const groups = new Map();
       
-      for (const rec of recommendations || []) {
+      for (const rec of enrichedRecs) {
         const key = rec.place_id || rec.restaurant_name.toLowerCase().trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
         
         if (!groups.has(key)) {
@@ -323,7 +141,7 @@ const RequestResults = () => {
             key,
             name: rec.restaurant_name,
             placeId: rec.place_id,
-            address: rec.restaurant_address,
+            address: rec.restaurant_address, // Store full address
             mapsUrl: rec.maps_url,
             count: 0,
             firstSubmittedAt: rec.created_at,
@@ -333,17 +151,18 @@ const RequestResults = () => {
             priceLevel: null,
             photoToken: null,
             distanceMeters: null,
-            recommendationId: rec.id,
-            referralUrl: null
+            recommendationId: rec.id, // Store first recommendation ID for referral tracking
+            referralUrl: null // Will be populated later
           });
         }
 
-        const group = groups.get(key)!;
+        const group = groups.get(key);
         group.count++;
         group.lastSubmittedAt = rec.created_at;
         
+        // Add note if it exists
         if (rec.notes && rec.notes.trim()) {
-          const displayName = profileMap.get(rec.recommender_id) || 'Anonymous';
+          const displayName = rec.profiles?.display_name || 'Anonymous';
           group.notes.push({
             by: displayName,
             text: rec.notes.slice(0, 140)
@@ -351,39 +170,44 @@ const RequestResults = () => {
         }
       }
 
-      // Fetch premium status in batch
+      // Fetch premium status for each restaurant
       const placeIds = Array.from(groups.values())
         .filter(g => g.placeId)
         .map(g => g.placeId);
       
-      if (placeIds.length > 0) {
-        const { data: businessClaims } = await supabase
-          .from('business_claims')
-          .select(`
-            place_id,
-            user_id,
-            business_profiles!inner(is_premium)
-          `)
-          .in('place_id', placeIds)
-          .eq('status', 'verified');
+      const { data: businessClaims } = await supabase
+        .from('business_claims')
+        .select(`
+          place_id,
+          user_id,
+          business_profiles!inner(is_premium)
+        `)
+        .in('place_id', placeIds)
+        .eq('status', 'verified');
 
-        const premiumMap = new Map();
-        businessClaims?.forEach((claim: any) => {
-          if (claim.place_id) {
-            premiumMap.set(claim.place_id, claim.business_profiles?.is_premium === true);
-          }
-        });
+      // Create a map of place_id to premium status
+      const premiumMap = new Map();
+      businessClaims?.forEach((claim: any) => {
+        if (claim.place_id) {
+          premiumMap.set(claim.place_id, claim.business_profiles?.is_premium === true);
+        }
+      });
 
-        groups.forEach((group) => {
-          group.isPremium = group.placeId ? (premiumMap.get(group.placeId) || false) : false;
-        });
-      }
+      // Add premium status to groups
+      groups.forEach((group) => {
+        group.isPremium = group.placeId ? (premiumMap.get(group.placeId) || false) : false;
+      });
 
-      // Sort groups
+      // Convert to array and sort with priority placement for premium businesses
       const sortedGroups = Array.from(groups.values()).sort((a, b) => {
+        // Priority 1: Premium status (premium businesses first)
         if (a.isPremium && !b.isPremium) return -1;
         if (!a.isPremium && b.isPremium) return 1;
+        
+        // Priority 2: Recommendation count
         if (b.count !== a.count) return b.count - a.count;
+        
+        // Priority 3: Alphabetically
         return a.name.localeCompare(b.name);
       });
 
@@ -392,37 +216,53 @@ const RequestResults = () => {
         group.notes = group.notes.reverse().slice(0, 3);
       });
 
-      // PERFORMANCE FIX: Generate referral links in parallel instead of sequentially
-      await Promise.all(
-        sortedGroups
-          .filter(g => g.recommendationId && g.mapsUrl)
-          .map(async (group) => {
-            try {
-              const referralData = await generateReferralLink({
-                recommendationId: group.recommendationId!,
-                requestId,
-                restaurantName: group.name,
-                placeId: group.placeId,
-                mapsUrl: group.mapsUrl!
-              });
-              
-              if (referralData) {
-                group.referralUrl = referralData.referralUrl;
-              } else {
-                group.referralUrl = group.mapsUrl;
-              }
-            } catch {
+      console.log('🔍 Debug: Groups before referral generation:', sortedGroups.map(g => ({
+        name: g.name,
+        mapsUrl: g.mapsUrl,
+        recommendationId: g.recommendationId
+      })));
+
+      // Generate referral links for each group
+      for (const group of sortedGroups) {
+        console.log(`🔗 Processing ${group.name}: hasRecommendationId=${!!group.recommendationId}, hasMapsUrl=${!!group.mapsUrl}`);
+        
+        if (group.recommendationId && group.mapsUrl) {
+          try {
+            console.log(`🔗 Generating referral link for ${group.name}...`);
+            const referralData = await generateReferralLink({
+              recommendationId: group.recommendationId,
+              requestId,
+              restaurantName: group.name,
+              placeId: group.placeId,
+              mapsUrl: group.mapsUrl
+            });
+            
+            if (referralData) {
+              group.referralUrl = referralData.referralUrl;
+              console.log('✅ Generated referral URL for', group.name, referralData.referralUrl);
+            } else {
+              console.warn('⚠️ No referral data returned for', group.name);
               group.referralUrl = group.mapsUrl;
             }
-          })
-      );
-
-      // For groups without referral data, use mapsUrl directly
-      sortedGroups.forEach(group => {
-        if (!group.referralUrl && group.mapsUrl) {
-          group.referralUrl = group.mapsUrl;
+          } catch (error) {
+            console.error('❌ Failed to generate referral for', group.name, error);
+            // Fall back to original maps URL
+            group.referralUrl = group.mapsUrl;
+          }
+        } else {
+          console.warn(`⚠️ Missing data for ${group.name}: recommendationId=${group.recommendationId}, mapsUrl=${group.mapsUrl}`);
+          // If we have a maps URL but no recommendation ID, use the maps URL directly
+          if (group.mapsUrl) {
+            group.referralUrl = group.mapsUrl;
+          }
         }
-      });
+      }
+
+      console.log('🔍 Final groups with referral URLs:', sortedGroups.map(g => ({
+        name: g.name,
+        referralUrl: g.referralUrl,
+        mapsUrl: g.mapsUrl
+      })));
 
       setResults({
         requestId,
@@ -438,111 +278,99 @@ const RequestResults = () => {
     } finally {
       setLoading(false);
     }
-  }, [requestId, user, generateReferralLink]);
+  };
 
-  // Initial fetch
-  useEffect(() => {
-    if (requestId && !hasFetched.current) {
-      feedbackSessionManager.trackRequestView(requestId);
-      fetchResults();
-      hasFetched.current = true;
-    }
-  }, [requestId, fetchResults]);
-
-  // PERFORMANCE FIX: Use realtime subscription instead of polling
-  useEffect(() => {
-    if (!requestId) return;
-
-    const channel = supabase
-      .channel(`request-results-${requestId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'recommendations',
-          filter: `request_id=eq.${requestId}`
-        },
-        () => {
-          // Refetch when new recommendations come in
-          fetchResults();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [requestId, fetchResults]);
-
-  // Update time remaining
-  useEffect(() => {
+  const updateTimeRemaining = () => {
     if (!request?.expire_at) return;
 
-    const updateTime = () => {
-      const now = new Date();
-      const expiresAt = new Date(request.expire_at);
-      const diffMs = expiresAt.getTime() - now.getTime();
+    const now = new Date();
+    const expiresAt = new Date(request.expire_at);
+    const diffMs = expiresAt.getTime() - now.getTime();
 
-      if (diffMs <= 0) {
-        setTimeRemaining("closed");
-        return;
-      }
+    if (diffMs <= 0) {
+      setTimeRemaining("closed");
+      return;
+    }
 
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
-      if (hours > 0) {
-        setTimeRemaining(`${hours}h ${minutes}m`);
-      } else {
-        setTimeRemaining(`${minutes}m`);
-      }
-    };
+    if (hours > 0) {
+      setTimeRemaining(`${hours}h ${minutes}m`);
+    } else {
+      setTimeRemaining(`${minutes}m`);
+    }
+  };
 
-    updateTime();
-    const interval = setInterval(updateTime, 60000);
+  useEffect(() => {
+    if (requestId) {
+      // Track request view for feedback analytics
+      feedbackSessionManager.trackRequestView(requestId);
+      fetchResults();
+    }
+  }, [requestId]);
+
+  useEffect(() => {
+    if (request) {
+      updateTimeRemaining();
+      const interval = setInterval(updateTimeRemaining, 60000); // Update every minute
+      return () => clearInterval(interval);
+    }
+  }, [request]);
+
+  useEffect(() => {
+    // Poll for updates every 10 seconds
+    const interval = setInterval(fetchResults, 10000);
     return () => clearInterval(interval);
-  }, [request?.expire_at]);
+  }, [requestId]);
 
-  const toggleNotes = useCallback((groupKey: string) => {
-    setExpandedNotes(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(groupKey)) {
-        newSet.delete(groupKey);
-      } else {
-        newSet.add(groupKey);
-      }
-      return newSet;
-    });
-  }, []);
+  const toggleNotes = (groupKey: string) => {
+    const newExpanded = new Set(expandedNotes);
+    if (newExpanded.has(groupKey)) {
+      newExpanded.delete(groupKey);
+    } else {
+      newExpanded.add(groupKey);
+    }
+    setExpandedNotes(newExpanded);
+  };
 
-  const formatPrice = useCallback((priceLevel?: number) => {
+  const formatPrice = (priceLevel?: number) => {
     if (priceLevel === null || priceLevel === undefined) return "—";
     return "$".repeat(Math.max(1, priceLevel));
-  }, []);
+  };
 
-  const formatDistance = useCallback((distanceMeters?: number) => {
+  const formatDistance = (distanceMeters?: number) => {
     if (!distanceMeters) return "";
+    
     const miles = distanceMeters * 0.000621371;
     if (miles < 1) {
       return `${Math.round(distanceMeters)} m`;
     }
     return `${miles.toFixed(1)} mi`;
-  }, []);
+  };
 
-  const getPhotoUrl = useCallback((photoToken?: string) => {
+  const getPhotoUrl = (photoToken?: string) => {
     if (!photoToken) return null;
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ioqogdxfmapcijmqjcpb.supabase.co';
-    return `${supabaseUrl}/functions/v1/places-photo?ref=${photoToken}&w=200`;
-  }, []);
+    return `https://edazolwepxbdeniluamf.supabase.co/functions/v1/places-photo?ref=${photoToken}&w=200`;
+  };
 
-  const handleGoingClick = useCallback(async (group: RecommendationGroup) => {
-    if (!user || !request || !group.recommendationId) {
-      toast.error('Unable to log intent');
+  const handleGoingClick = async (group: RecommendationGroup) => {
+    console.log('🎯 handleGoingClick CALLED for:', group.name);
+    
+    if (!user || !request) {
+      console.error('❌ Missing user or request');
+      toast.error('Not logged in or request not loaded');
+      return;
+    }
+    
+    if (!group.recommendationId) {
+      console.error('❌ No recommendationId for this recommendation');
+      toast.error('Unable to log intent - missing recommendation data');
       return;
     }
     
     try {
+      // Generate or get existing referral link first
       if (group.mapsUrl) {
         await generateReferralLink({
           recommendationId: group.recommendationId,
@@ -553,7 +381,10 @@ const RequestResults = () => {
         });
       }
 
-      const { error } = await supabase.functions.invoke('log-visit-intent', {
+      console.log('📞 Calling log-visit-intent edge function...');
+      
+      // Call edge function to securely log the visit intent
+      const { data, error } = await supabase.functions.invoke('log-visit-intent', {
         body: {
           recommendationId: group.recommendationId,
           requestId: request.id,
@@ -562,27 +393,47 @@ const RequestResults = () => {
         }
       });
 
+      console.log('📥 Edge function response:', { data, error });
+
       if (error) {
+        console.error('❌ Error logging going intent:', error);
         toast.error('Failed to log your intent');
         return;
       }
 
+      // Mark as "going" in local state
       setGoingIntents(prev => new Set([...prev, group.key]));
+      
+      // Show success toast and redirect to dashboard
       toast.success("Enjoy your meal! Redirecting…");
       
-      setTimeout(() => navigate('/dashboard'), 800);
+      console.log('🚀 Navigating to /dashboard in 800ms');
+      setTimeout(() => {
+        console.log('🚀 EXECUTING NAVIGATION NOW');
+        navigate('/dashboard');
+      }, 800);
+
     } catch (error) {
+      console.error('❌ Error handling going click:', error);
       toast.error('Something went wrong');
     }
-  }, [user, request, generateReferralLink, navigate]);
+  };
 
-  const handleNotGoingClick = useCallback(async (group: RecommendationGroup) => {
-    if (!user || !request || !group.recommendationId) {
-      toast.error('Unable to log');
+  const handleNotGoingClick = async (group: RecommendationGroup) => {
+    console.log('🚫 handleNotGoingClick CALLED for:', group.name);
+    
+    if (!user || !request) {
+      toast.error('Not logged in or request not loaded');
+      return;
+    }
+    
+    if (!group.recommendationId) {
+      toast.error('Unable to log - missing recommendation data');
       return;
     }
     
     try {
+      // Call edge function to decline recommendation and notify recommender
       const { error } = await supabase.functions.invoke('handle-recommendation-decline', {
         body: {
           recommendationId: group.recommendationId,
@@ -592,24 +443,35 @@ const RequestResults = () => {
       });
 
       if (error) {
+        console.error('❌ Error marking as not going:', error);
         toast.error('Failed to update');
         return;
       }
       
+      // Show success toast and redirect to dashboard
       toast.success("Thanks for letting us know!");
-      setTimeout(() => navigate('/dashboard'), 800);
+      
+      console.log('🚀 Navigating to /dashboard in 800ms');
+      setTimeout(() => {
+        console.log('🚀 EXECUTING NAVIGATION NOW');
+        navigate('/dashboard');
+      }, 800);
+
     } catch (error) {
+      console.error('❌ Error handling not going click:', error);
       toast.error('Something went wrong');
     }
-  }, [user, request, navigate]);
-
-  const isExpired = useMemo(() => 
-    timeRemaining === "closed" || request?.status === 'closed',
-    [timeRemaining, request?.status]
-  );
+  };
 
   if (loading) {
-    return <ResultsSkeleton />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading recommendations...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!request || !results) {
@@ -625,6 +487,8 @@ const RequestResults = () => {
     );
   }
 
+  const isExpired = timeRemaining === "closed" || request.status === 'closed';
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -634,67 +498,260 @@ const RequestResults = () => {
             variant="ghost" 
             size="icon"
             onClick={() => navigate('/dashboard')}
+            className="shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-xl font-semibold">Results for "{request.food_type}"</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold">
+                Top Recommendations for {request.food_type}
+              </h1>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                {isExpired ? (
+                  <span className="text-red-600 font-medium">Request closed</span>
+                ) : (
+                  <span>Closes in {timeRemaining}</span>
+                )}
+              </div>
+            </div>
+            <p className="text-muted-foreground mt-1">
               {request.location_city}, {request.location_state}
             </p>
           </div>
         </div>
 
-        {/* Status Card */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {results.totalRecommendations} recommendation{results.totalRecommendations !== 1 ? 's' : ''}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isExpired ? 'Request closed' : `Closes in ${timeRemaining}`}
-                </p>
-              </div>
-              <Badge variant={isExpired ? "secondary" : "default"}>
-                {isExpired ? 'Closed' : 'Active'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Status Banner */}
+        {isExpired && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800 font-medium">
+              This request has been closed. No new recommendations can be submitted.
+            </p>
+          </div>
+        )}
 
-        {/* Recommendations */}
+        {/* Results */}
         {results.groups.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="text-4xl mb-4">🍽️</div>
-              <p className="text-muted-foreground mb-2">No recommendations yet</p>
-              <p className="text-sm text-muted-foreground">
-                Check back soon - locals are reviewing your request!
+          <div className="text-center py-12">
+            <div className="bg-muted/50 rounded-lg p-8 max-w-md mx-auto">
+              <h3 className="text-lg font-medium mb-2">No recommendations yet</h3>
+              <p className="text-muted-foreground">
+                We'll update this page when results arrive. Check back soon!
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <div className="space-y-4">
-            {results.groups.map((group) => (
-              <RecommendationCard
-                key={group.key}
-                group={group}
-                isExpanded={expandedNotes.has(group.key)}
-                onToggleNotes={() => toggleNotes(group.key)}
-                onGoingClick={() => handleGoingClick(group)}
-                onNotGoingClick={() => handleNotGoingClick(group)}
-                isGoing={goingIntents.has(group.key)}
-                formatDistance={formatDistance}
-                formatPrice={formatPrice}
-                getPhotoUrl={getPhotoUrl}
-                onOpenMaps={openExternalUrl}
-              />
-            ))}
+            {results.groups.map((group) => {
+              const photoUrl = getPhotoUrl(group.photoToken);
+              const isNotesExpanded = expandedNotes.has(group.key);
+              const hasMoreNotes = group.notes.length > 1;
+
+              return (
+                <Card key={group.key} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex flex-col sm:flex-row">
+                      {/* Photo */}
+                      <div className="w-full h-40 sm:w-24 sm:h-24 bg-muted sm:shrink-0 flex items-center justify-center">
+                        {photoUrl ? (
+                          <img 
+                            src={photoUrl} 
+                            alt={`Photo of ${group.name}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="text-muted-foreground">
+                            <MapPin className="h-6 w-6" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Main Content */}
+                      <div className="flex-1 p-4 min-w-0">
+                        <div className="flex flex-col gap-4">
+                          <div className="flex-1 space-y-2">
+                            {/* Name and Badge */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <h3 className="font-semibold text-lg">{group.name}</h3>
+                              {group.isPremium && (
+                                <Badge variant="default" className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white border-0 shrink-0">
+                                  ⭐ Featured Partner
+                                </Badge>
+                              )}
+                              <Badge variant="secondary" className="shrink-0">
+                                {group.count} recommended
+                              </Badge>
+                            </div>
+
+                            {/* Address */}
+                            {group.address && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{group.address}</span>
+                              </div>
+                            )}
+
+                            {/* Meta Info */}
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                              {group.rating && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 fill-current text-yellow-500" />
+                                  <span>{group.rating.toFixed(1)}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                <span>{formatPrice(group.priceLevel)}</span>
+                              </div>
+                              {group.distanceMeters && (
+                                <span>{formatDistance(group.distanceMeters)}</span>
+                              )}
+                            </div>
+
+                            {/* Notes */}
+                            {group.notes.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  {(isNotesExpanded ? group.notes : group.notes.slice(0, 1)).map((note, idx) => (
+                                    <div key={idx} className="text-sm">
+                                      <span className="font-medium text-primary">{note.by}:</span>
+                                      <span className="ml-2 text-muted-foreground">{note.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {hasMoreNotes && (
+                                  <Collapsible>
+                                    <CollapsibleTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => toggleNotes(group.key)}
+                                        className="text-primary hover:text-primary/80 p-0 h-auto"
+                                      >
+                                        {isNotesExpanded ? (
+                                          <>
+                                            <ChevronUp className="h-3 w-3 mr-1" />
+                                            Hide notes
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ChevronDown className="h-3 w-3 mr-1" />
+                                            Show all notes
+                                          </>
+                                        )}
+                                      </Button>
+                                    </CollapsibleTrigger>
+                                  </Collapsible>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Buttons - Full width on mobile */}
+                          <div className="flex flex-col sm:flex-row gap-2 w-full">
+                            {/* Going & Not Going Buttons */}
+                            {user && request && user.id === request.requester_id && (
+                              <>
+                                <Button 
+                                  variant={goingIntents.has(group.key) ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleGoingClick(group)}
+                                  disabled={goingIntents.has(group.key)}
+                                  className="w-full sm:w-auto"
+                                >
+                                  {goingIntents.has(group.key) ? (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Going!
+                                    </>
+                                  ) : (
+                                    "I'm Going"
+                                  )}
+                                </Button>
+                                {!goingIntents.has(group.key) && (
+                                  <Button 
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleNotGoingClick(group)}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    I'm Not Going
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            
+                            {/* Maps Button */}
+                            {(group.referralUrl || group.mapsUrl) && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                asChild
+                                className="w-full sm:w-auto"
+                              >
+                                <a 
+                                  href={group.referralUrl || group.mapsUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  aria-label={`Open ${group.name} in Maps`}
+                                >
+                                  <MapPin className="h-4 w-4 mr-2" />
+                                  Open in Maps
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Feedback Section - Only show to the requester */}
+                        {user && request && user.id === request.requester_id && group.recommendationId && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <FeedbackButtons 
+                              recommendationId={group.recommendationId}
+                              className="w-full"
+                              onFeedbackSubmitted={() => {
+                                console.log('⭐ Feedback submitted, redirecting to dashboard');
+                                toast.success("Thanks for your feedback!");
+                                setTimeout(() => {
+                                  console.log('🚀 EXECUTING NAVIGATION NOW');
+                                  navigate('/dashboard');
+                                }, 800);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {/* Load More */}
+            {results.hasMore && (
+              <div className="text-center pt-4">
+                <Button variant="outline">
+                  Show more recommendations
+                </Button>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="text-center text-sm text-muted-foreground pt-6">
+              Showing top {results.groups.length} of {results.totalRecommendations} recommendations
+            </div>
           </div>
         )}
       </div>
+      
+      <ExitIntentFeedbackTrigger
+        role="requester"
+        sourceAction="exit_intent_requester"
+      />
     </div>
   );
 };

@@ -146,47 +146,29 @@ export const UnifiedNotificationProvider: React.FC<{ children: React.ReactNode }
 
     console.log("🔔 Setting up realtime subscriptions for user:", user.id);
     
-    // Listen for new requests (for recommenders) - geo-filtered via recommender_notifications table
-    // The backend edge function 'send-nearby-notification' handles all geo-filtering
-    // and only inserts notifications for users within the configured radius
+    // Listen for new requests (for recommenders)
     const requestChannel = supabase
-      .channel('recommender-notifications')
+      .channel('unified-requests')
       .on('postgres_changes',
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'recommender_notifications',
-          filter: `recommender_id=eq.${user.id}` // Only notifications for current user
-        },
+        { event: 'INSERT', schema: 'public', table: 'food_requests' },
         (payload) => {
-          const notification = payload.new as {
-            id: string;
-            type: string;
-            title: string;
-            message: string;
-            request_id: string | null;
-            restaurant_name: string;
-            recommender_id: string;
-          };
+          const request = payload.new;
           
-          // Skip if DND mode is enabled
+          // Skip own requests
+          if (request.requester_id === user.id) return;
+          
+          // Skip if DND
           if (dnd) return;
           
-          // Only show popup for new request notifications
-          if (notification.type === 'new_request_nearby') {
-            showNotification({
-              type: 'new_request',
-              title: notification.title || 'New request nearby',
-              message: notification.message,
-              actionLabel: 'Accept',
-              actionUrl: notification.request_id ? `/recommend/${notification.request_id}` : '/browse-requests',
-              data: { 
-                requestId: notification.request_id, 
-                requestType: 'accept' 
-              },
-              priority: 'high' // Already geo-filtered, so it's relevant
-            });
-          }
+          showNotification({
+            type: 'new_request',
+            title: 'New request nearby',
+            message: `${request.food_type} • ${request.location_city}, ${request.location_state}`,
+            actionLabel: 'Accept',
+            actionUrl: `/recommend/${request.id}`,
+            data: { requestId: request.id, requestType: 'accept' },
+            priority: request.response_window <= 15 ? 'high' : 'normal'
+          });
         }
       )
       .subscribe();

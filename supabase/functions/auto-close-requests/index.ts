@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('food_requests')
       .select('id')
       .eq('status', 'active')
-      .lt('expire_at', new Date().toISOString());
+      .lt('expires_at', new Date().toISOString());
 
     if (selectError) {
       console.error('Error fetching expired requests:', selectError);
@@ -60,7 +60,8 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: updateError } = await supabase
       .from('food_requests')
       .update({
-        status: 'expired'
+        status: 'expired',
+        closed_at: new Date().toISOString()
       })
       .in('id', expiredRequests.map(req => req.id));
 

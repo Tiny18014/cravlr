@@ -1170,10 +1170,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      award_points_for_request: {
-        Args: { request_id_param: string }
-        Returns: number
-      }
       award_points_with_feedback: {
         Args: { base_points: number; feedback_bonus?: number; rec_id: string }
         Returns: undefined

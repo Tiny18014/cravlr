@@ -35,6 +35,3 @@ verify_jwt = false
 
 [functions.email-recommendation-received]
 verify_jwt = false
-
-[functions.check-phone-availability]
-verify_jwt = false
