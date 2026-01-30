@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Bell, X } from 'lucide-react';
-import { useDeviceToken } from '@/hooks/useDeviceToken';
+import { Bell, X, Smartphone } from 'lucide-react';
+import { useNativePush } from '@/hooks/useNativePush';
 import { cn } from '@/lib/utils';
 
 interface NotificationPermissionBannerProps {
@@ -14,16 +14,24 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
   className,
   onDismiss,
 }) => {
-  const { isRegistered, isLoading, permissionState, registerToken } = useDeviceToken();
+  const { 
+    isSupported, 
+    isEnabled, 
+    isLoading, 
+    permissionStatus, 
+    requestPermission,
+    platformInfo 
+  } = useNativePush();
+  
   const [isDismissed, setIsDismissed] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
 
   // Check if we should show the banner
   const shouldShow = 
     !isDismissed &&
-    !isRegistered &&
-    permissionState !== 'denied' &&
-    permissionState !== 'unsupported' &&
+    isSupported &&
+    !isEnabled &&
+    permissionStatus !== 'denied' &&
     !isLoading;
 
   // Check localStorage for previous dismissal
@@ -42,7 +50,7 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
   const handleEnable = async () => {
     setIsEnabling(true);
     try {
-      const success = await registerToken();
+      const success = await requestPermission();
       if (success) {
         setIsDismissed(true);
       }
@@ -59,20 +67,32 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
 
   if (!shouldShow) return null;
 
+  const isNative = platformInfo.isNative;
+  const platformName = platformInfo.platform === 'ios' ? 'iPhone' : 
+                       platformInfo.platform === 'android' ? 'Android' : 'browser';
+
   return (
     <Card className={cn("border-primary/20 bg-primary/5", className)}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <div className="rounded-full bg-primary/10 p-2">
-            <Bell className="h-5 w-5 text-primary" />
+            {isNative ? (
+              <Smartphone className="h-5 w-5 text-primary" />
+            ) : (
+              <Bell className="h-5 w-5 text-primary" />
+            )}
           </div>
           
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-foreground">
-              Get notified about food requests
+              {isNative 
+                ? `Enable notifications on your ${platformName}` 
+                : 'Get notified about food requests'}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Enable notifications to know when someone needs your food recommendations nearby.
+              {isNative
+                ? 'Receive alerts even when the app is closed - just like Swiggy or Zomato!'
+                : 'Enable notifications to know when someone needs your food recommendations nearby.'}
             </p>
             
             <div className="flex gap-2 mt-3">
