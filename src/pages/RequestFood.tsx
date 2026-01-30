@@ -200,28 +200,38 @@ const RequestFood = () => {
 
       if (error) throw error;
 
-      try {
-        console.log('🔔 Triggering send-nearby-notification for request:', data.id);
-        const { data: notifyData, error: notifyError } = await supabase.functions.invoke('send-nearby-notification', {
+      // Fire notifications in parallel - don't block navigation
+      console.log('🔔 Triggering notifications in parallel for request:', data.id);
+      
+      Promise.allSettled([
+        supabase.functions.invoke('send-nearby-notification', {
           body: { requestId: data.id }
-        });
-
-        if (notifyError) {
-          console.error('❌ Error response from send-nearby-notification:', notifyError);
+        }),
+        supabase.functions.invoke('email-request-broadcast', {
+          body: { requestId: data.id }
+        })
+      ]).then(([notifyResult, emailResult]) => {
+        // Log results but don't block UI
+        if (notifyResult.status === 'fulfilled') {
+          if (notifyResult.value.error) {
+            console.error('❌ Push notification error:', notifyResult.value.error);
+          } else {
+            console.log('✅ Push notifications sent:', notifyResult.value.data);
+          }
         } else {
-          console.log('✅ Push notification results:', notifyData);
+          console.error('❌ Push notification failed:', notifyResult.reason);
         }
 
-        // Also trigger email broadcast
-        console.log('📧 Triggering email-request-broadcast for request:', data.id);
-        const { error: emailError } = await supabase.functions.invoke('email-request-broadcast', {
-          body: { requestId: data.id }
-        });
-        if (emailError) console.error('❌ Error triggering email broadcast:', emailError);
-
-      } catch (notificationError) {
-        console.error('❌ Exception notifying area users:', notificationError);
-      }
+        if (emailResult.status === 'fulfilled') {
+          if (emailResult.value.error) {
+            console.error('❌ Email broadcast error:', emailResult.value.error);
+          } else {
+            console.log('✅ Email broadcast sent');
+          }
+        } else {
+          console.error('❌ Email broadcast failed:', emailResult.reason);
+        }
+      });
 
       toast({
         title: "Request created!",
